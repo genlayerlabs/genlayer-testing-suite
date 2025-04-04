@@ -10,6 +10,55 @@
 The GenLayer Testing Suite is a powerful testing framework designed to streamline the development and validation of intelligent contracts within the GenLayer ecosystem. Built on top of [pytest](https://docs.pytest.org/en/stable/), this suite provides developers with a comprehensive set of tools for deploying, interacting with, and testing intelligent contracts efficiently in a simulated GenLayer environment.
 
 
+## Prerequisites
+
+Before installing GenLayer Testing Suite, ensure you have the following prerequisites installed:
+
+- Python (>=3.9)
+- GenLayer Studio (Docker deployment)
+- pip (Python package installer)
+
+## 🛠️ Installation and Usage
+
+### Installation Options
+
+1. Install from PyPI (recommended):
+```bash
+$ pip install genlayer-testing-suite
+```
+
+2. Install from source:
+```bash
+$ git clone https://github.com/yeagerai/genlayer-testing-suite
+$ cd genlayer-testing-suite
+$ pip install -e .
+```
+
+
+### Running Tests
+
+1. Run all tests:
+```bash
+$ gltest
+```
+
+2. Run specific test file:
+```bash
+$ gltest tests/test_mycontract.py
+```
+
+3. Run tests with specific markers:
+```bash
+$ gltest -m "integration"
+```
+
+4. Run tests with verbose output:
+```bash
+$ gltest -v
+```
+
+For more detailed information and advanced usage, please refer to our [documentation](https://docs.genlayer.com/api-references/genlayer-testing-suite).
+
 ## 🚀 Key Features
 - **Pytest Integration** – Extends pytest to support intelligent contract testing, making it familiar and easy to adopt.
 
