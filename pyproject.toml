@@ -5,7 +5,10 @@ description = "GenLayer Testing Suite"
 authors = [{ name = "Genlayer" }]
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = ["pytest"]
+dependencies = [
+    "pytest",
+    "genlayer-py==0.1.0b1",
+]
 
 [project.scripts]
 gltest = "gltest.cli:main"
