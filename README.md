@@ -14,7 +14,7 @@ The GenLayer Testing Suite is a powerful testing framework designed to streamlin
 
 Before installing GenLayer Testing Suite, ensure you have the following prerequisites installed:
 
-- Python (>=3.9)
+- Python (>=3.8)
 - GenLayer Studio (Docker deployment)
 - pip (Python package installer)
 
@@ -24,7 +24,7 @@ Before installing GenLayer Testing Suite, ensure you have the following prerequi
 
 1. Install from PyPI (recommended):
 ```bash
-$ pip install genlayer-testing-suite
+$ pip install genlayer-test
 ```
 
 2. Install from source:
