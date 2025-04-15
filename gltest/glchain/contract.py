@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from gltest.artifacts import find_contract_definition
+from gltest.assertions import tx_execution_failed
+from gltest.exceptions import DeploymentError
 from .client import get_gl_client
-from genlayer_py.types import CalldataEncodable
+from genlayer_py.types import CalldataEncodable, GenLayerTransaction
 from eth_account.signers.local import LocalAccount
 from typing import List, Any, Type, Optional, Dict, Callable
 import types
@@ -74,7 +76,9 @@ class Contract:
             value: int = 0,
             consensus_max_rotations: Optional[int] = None,
             leader_only: bool = False,
-        ) -> Any:
+            wait_interval: Optional[int] = None,
+            wait_retries: Optional[int] = None,
+        ) -> GenLayerTransaction:
             """
             Wrapper to the contract write method.
             """
@@ -88,10 +92,15 @@ class Contract:
                 leader_only=leader_only,
                 args=args,
             )
-            client.wait_for_transaction_receipt(
-                transaction_hash=tx_hash, status="FINALIZED"
+            extra_args = {}
+            if wait_interval is not None:
+                extra_args["interval"] = wait_interval
+            if wait_retries is not None:
+                extra_args["retries"] = wait_retries
+            receipt = client.wait_for_transaction_receipt(
+                transaction_hash=tx_hash, status="FINALIZED", **extra_args
             )
-            return tx_hash
+            return receipt
 
         return read_contract_wrapper if read_only else write_contract_wrapper
 
@@ -122,7 +131,13 @@ class ContractFactory:
         )
 
     def deploy(
-        self, args: List[Any] = [], account: Optional[LocalAccount] = None
+        self,
+        args: List[Any] = [],
+        account: Optional[LocalAccount] = None,
+        consensus_max_rotations: Optional[int] = None,
+        leader_only: bool = False,
+        wait_interval: Optional[int] = None,
+        wait_retries: Optional[int] = None,
     ) -> Contract:
         """
         Deploy the contract
@@ -130,9 +145,20 @@ class ContractFactory:
         client = get_gl_client()
         try:
             tx_hash = client.deploy_contract(
-                code=self.contract_code, args=args, account=account
+                code=self.contract_code,
+                args=args,
+                account=account,
+                consensus_max_rotations=consensus_max_rotations,
+                leader_only=leader_only,
             )
-            tx_receipt = client.wait_for_transaction_receipt(tx_hash)
+            extra_args = {}
+            if wait_interval is not None:
+                extra_args["interval"] = wait_interval
+            if wait_retries is not None:
+                extra_args["retries"] = wait_retries
+            tx_receipt = client.wait_for_transaction_receipt(
+                transaction_hash=tx_hash, status="FINALIZED", **extra_args
+            )
 
             if (
                 not tx_receipt
@@ -143,13 +169,18 @@ class ContractFactory:
                     "Invalid transaction receipt: missing contract address"
                 )
 
+            if tx_execution_failed(tx_receipt):
+                raise ValueError(
+                    f"Deployment transaction finalized with error: {tx_receipt}"
+                )
+
             contract_address = tx_receipt["data"]["contract_address"]
             schema = client.get_contract_schema(address=contract_address)
             return Contract.from_address_and_schema(
                 address=contract_address, schema=schema
             )
         except Exception as e:
-            raise ValueError(
+            raise DeploymentError(
                 f"Failed to deploy contract {self.contract_name}: {str(e)}"
             ) from e
 
