@@ -30,5 +30,8 @@ classifiers = [
 [tool.setuptools.packages.find]
 where = ["."]
 
+[project.entry-points.pytest11]
+gltest = "gltest.plugin_hooks"
+
 [project.scripts]
-gltest = "gltest.cli:main"
+gltest = "gltest_cli.main:main"
