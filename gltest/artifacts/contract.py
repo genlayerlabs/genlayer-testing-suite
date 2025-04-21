@@ -1,5 +1,4 @@
 import ast
-from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
 from gltest.plugin_config import get_contracts_dir
@@ -26,7 +25,7 @@ def find_contract_definition(contract_name: str) -> Optional[ContractDefinition]
         raise FileNotFoundError(f"Contracts directory not found at: {contracts_dir}")
 
     # Search through all .gpy files in the contracts directory
-    for file_path in contracts_dir.glob("*.gpy"):
+    for file_path in contracts_dir.rglob("*.gpy"):
         try:
             # Read the file content
             with open(file_path, "r") as f:
