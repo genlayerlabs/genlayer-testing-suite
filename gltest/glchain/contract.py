@@ -3,7 +3,7 @@ from gltest.artifacts import find_contract_definition
 from gltest.assertions import tx_execution_failed
 from gltest.exceptions import DeploymentError
 from .client import get_gl_client
-from genlayer_py.types import CalldataEncodable, GenLayerTransaction
+from gltest.types import CalldataEncodable, GenLayerTransaction, TransactionStatus
 from eth_account.signers.local import LocalAccount
 from typing import List, Any, Type, Optional, Dict, Callable
 import types
@@ -18,36 +18,47 @@ class Contract:
 
     address: str
     account: Optional[LocalAccount] = None
+    _schema: Optional[Dict[str, Any]] = None
 
     @classmethod
-    def from_address_and_schema(
-        cls, address: str, schema: Dict[str, Any]
+    def new(
+        cls,
+        address: str,
+        schema: Dict[str, Any],
+        account: Optional[LocalAccount] = None,
     ) -> "Contract":
         """
         Build the methods from the schema.
         """
         if not isinstance(schema, dict) or "methods" not in schema:
             raise ValueError("Invalid schema: must contain 'methods' field")
-
-        instance = cls(address=address)
-        for method_name, method_info in schema["methods"].items():
-            if not isinstance(method_info, dict) or "readonly" not in method_info:
-                raise ValueError(
-                    f"Invalid method info for {method_name}: must contain 'readonly' field"
-                )
-            setattr(
-                instance,
-                method_name,
-                types.MethodType(
-                    cls.contract_method_factory(method_name, method_info["readonly"]),
-                    instance,
-                ),
-            )
+        instance = cls(address=address, _schema=schema, account=account)
+        instance._build_methods_from_schema()
         return instance
 
+    def _build_methods_from_schema(self):
+        if self._schema is None:
+            raise ValueError("No schema provided")
+        for method_name, method_info in self._schema["methods"].items():
+            if not isinstance(method_info, dict) or "readonly" not in method_info:
+                raise ValueError(
+                    f"Invalid method info for '{method_name}': must contain 'readonly' field"
+                )
+            method_func = self.contract_method_factory(
+                method_name, method_info["readonly"]
+            )
+            bound_method = types.MethodType(method_func, self)
+            setattr(self, method_name, bound_method)
+
     def connect(self, account: LocalAccount) -> "Contract":
-        self.account = account
-        return self
+        """
+        Create a new instance of the contract with the same methods and a different account.
+        """
+        new_contract = self.__class__(
+            address=self.address, account=account, _schema=self._schema
+        )
+        new_contract._build_methods_from_schema()
+        return new_contract
 
     @staticmethod
     def contract_method_factory(method_name: str, read_only: bool) -> Callable:
@@ -78,6 +89,9 @@ class Contract:
             leader_only: bool = False,
             wait_interval: Optional[int] = None,
             wait_retries: Optional[int] = None,
+            wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
+            wait_triggered_transactions: bool = True,
+            wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
         ) -> GenLayerTransaction:
             """
             Wrapper to the contract write method.
@@ -98,8 +112,18 @@ class Contract:
             if wait_retries is not None:
                 extra_args["retries"] = wait_retries
             receipt = client.wait_for_transaction_receipt(
-                transaction_hash=tx_hash, status="FINALIZED", **extra_args
+                transaction_hash=tx_hash,
+                status=wait_transaction_status,
+                **extra_args,
             )
+            if wait_triggered_transactions:
+                triggered_transactions = receipt["triggered_transactions"]
+                for triggered_transaction in triggered_transactions:
+                    client.wait_for_transaction_receipt(
+                        transaction_hash=triggered_transaction,
+                        status=wait_triggered_transactions_status,
+                        **extra_args,
+                    )
             return receipt
 
         return read_contract_wrapper if read_only else write_contract_wrapper
@@ -138,6 +162,7 @@ class ContractFactory:
         leader_only: bool = False,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
+        wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
     ) -> Contract:
         """
         Deploy the contract
@@ -157,9 +182,8 @@ class ContractFactory:
             if wait_retries is not None:
                 extra_args["retries"] = wait_retries
             tx_receipt = client.wait_for_transaction_receipt(
-                transaction_hash=tx_hash, status="FINALIZED", **extra_args
+                transaction_hash=tx_hash, status=wait_transaction_status, **extra_args
             )
-
             if (
                 not tx_receipt
                 or "data" not in tx_receipt
@@ -176,8 +200,8 @@ class ContractFactory:
 
             contract_address = tx_receipt["data"]["contract_address"]
             schema = client.get_contract_schema(address=contract_address)
-            return Contract.from_address_and_schema(
-                address=contract_address, schema=schema
+            return Contract.new(
+                address=contract_address, schema=schema, account=account
             )
         except Exception as e:
             raise DeploymentError(
