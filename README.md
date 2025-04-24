@@ -103,6 +103,11 @@ $ gltest -m "integration"
 $ gltest -v
 ```
 
+5. Run tests in specific contracts directories, by default `<path_to_contracts>` is set to `contracts/`
+```bash
+$ gltest --contracts-dir <path_to_contracts>
+```
+
 ## 🚀 Key Features
 
 - **Pytest Integration** – Extends pytest to support intelligent contract testing, making it familiar and easy to adopt.
@@ -245,6 +250,13 @@ def test_write_methods():
        consensus_max_rotations=5,  # Increase rotations
        leader_only=True,  # Try leader-only mode
    )
+   ```
+
+4. **Contracts Directory**
+   
+   The function `get_contract_factory` will search in the the contracts directory which is set to `contracts/` by default.
+   ```bash
+   gltest --contracts-dir <path_to_contracts>
    ```
 
 ## 🤝 Contributing
