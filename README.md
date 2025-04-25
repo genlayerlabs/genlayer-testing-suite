@@ -47,7 +47,7 @@ assert tx_execution_succeeded(tx_receipt)
 - [About](#about)
 - [Quick Start](#-quick-start)
 - [Prerequisites](#prerequisites)
-- [Installation and Usage](#-installation-and-usage)
+- [Installation and Usage](#installation-and-usage)
 - [Key Features](#-key-features)
 - [Examples](#-examples)
 - [Best Practices](#-best-practices)
@@ -55,7 +55,6 @@ assert tx_execution_succeeded(tx_receipt)
 - [Contributing](#-contributing)
 - [License](#-license)
 - [Support](#-support)
-- [Acknowledgments](#-acknowledgments)
 
 ## Prerequisites
 
@@ -65,7 +64,7 @@ Before installing GenLayer Testing Suite, ensure you have the following prerequi
 - GenLayer Studio (Docker deployment)
 - pip (Python package installer)
 
-## 🛠️ Installation and Usage
+## Installation and Usage
 
 ### Installation Options
 
@@ -120,29 +119,67 @@ $ gltest --contracts-dir <path_to_contracts>
 
 ## 📚 Examples
 
-### Contract Example
+### Project Structure
 
-For the following examples, we'll use a simple Storage contract:
+Before diving into the examples, let's understand the basic project structure:
 
-```python
-class Storage:
-    def __init__(self, initial_value: str):
-        self.value = initial_value
-
-    def get_value(self) -> str:
-        return self.value
-
-    def set_value(self, new_value: str):
-        self.value = new_value
+```
+genlayer-example/
+├── contracts/              # Contract definitions
+│   └── storage.gpy         # Example storage contract
+└── test/                   # Test files
+    └── test_contract.py    # Contract test cases
 ```
 
+### Storage Contract Example
+
+Let's examine a simple Storage contract that demonstrates basic read and write operations:
+
+```python
+# { "Depends": "py-genlayer:test" }
+
+from genlayer import *
+
+
+# contract class
+class Storage(gl.Contract):
+    # State variable to store data
+    storage: str
+
+    # Constructor - initializes the contract state
+    def __init__(self, initial_storage: str):
+        self.storage = initial_storage
+
+    # Read method - marked with @gl.public.view decorator
+    # Returns the current storage value
+    @gl.public.view
+    def get_storage(self) -> str:
+        return self.storage
+
+    # Write method - marked with @gl.public.write decorator
+    # Updates the storage value
+    @gl.public.write
+    def update_storage(self, new_storage: str) -> None:
+        self.storage = new_storage
+```
+
+Key features demonstrated in this contract:
+- State variable declaration
+- Constructor with initialization
+- Read-only method with `@gl.public.view` decorator
+- State-modifying method with `@gl.public.write` decorator
+- Type hints for better code clarity
+
 ### Contract Deployment
+
+Here's how to deploy the Storage contract:
 
 ```python
 from gltest import get_contract_factory, default_account
 
 def test_deployment():
     # Get the contract factory for your contract
+    # it will search in the contracts directory
     factory = get_contract_factory("Storage")
     
     # Deploy the contract with constructor arguments
@@ -159,6 +196,8 @@ def test_deployment():
 
 ### Read Methods
 
+Reading from the contract is straightforward:
+
 ```python
 from gltest import get_contract_factory, default_account
 
@@ -168,24 +207,27 @@ def test_read_methods():
     contract = factory.deploy(account=default_account)
     
     # Call a read-only method
-    result = contract.get_value()  # No arguments needed for read methods
+    result = contract.get_value(args=[])
     
-    # Assert the result
+    # Assert the result matches the initial value
     assert result == "initial_value"
 ```
 
 ### Write Methods
 
+Writing to the contract requires transaction handling:
+
 ```python
-from gltest import get_contract_factory, default_account
+from gltest import get_contract_factory
+from gltest.assertions import tx_execution_succeeded
 
 def test_write_methods():
     # Get the contract factory and deploy the contract
     factory = get_contract_factory("Storage")
-    contract = factory.deploy(account=default_account)
+    contract = factory.deploy()
     
     # Call a write method with arguments
-    tx_receipt = contract.set_value(
+    tx_receipt = contract.update_storage(
         args=["new_value"],  # Method arguments
         value=0,  # Optional: amount of native currency to send
         consensus_max_rotations=3,  # Optional: max consensus rotations
@@ -195,10 +237,10 @@ def test_write_methods():
     )
     
     # Verify the transaction was successful
-    assert tx_receipt["status"] == "FINALIZED"
+    assert tx_execution_succeeded(tx_receipt)
     
     # Verify the value was updated
-    assert contract.get_value() == "new_value"
+    assert contract.get_storage() == "new_value"
 ```
 
 ## 📝 Best Practices
@@ -258,6 +300,16 @@ def test_write_methods():
    ```bash
    gltest --contracts-dir <path_to_contracts>
    ```
+
+5. **Contract File Naming Convention**
+   
+   Contract files must use the `.gpy` extension to be properly recognized by the `get_contract_factory` function. For example:
+   ```python
+   # Correct: my_contract.gpy
+   # Incorrect: my_contract.py
+   ```
+   
+   This naming convention ensures proper contract discovery during testing.
 
 ## 🤝 Contributing
 
