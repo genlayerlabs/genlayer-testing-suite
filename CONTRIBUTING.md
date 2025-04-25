@@ -14,7 +14,7 @@ Help us make the project better by testing and giving feedback:
   ```sh
   $ pip install genlayer-test
   ```
-- Try out the SDK features and tell us what you think through our [feedback form](https://docs.google.com/forms/d/e/1FAIpQLSckZhe1WENv4ZtkMyrQSAun3bpOcQaa-21Ha8Zd174as-pltw/viewform?usp=sharing) or on our [Discord Channel](https://discord.gg/8Jm4v89VAu).
+- Try out the SDK features and tell us what you think through our [feedback form](https://docs.google.com/forms/d/e/1FAIpQLSdPcTz3ucZeU8fnCMdux-1sa663n2HsXrH8fGjb8K0W8eKGRw/viewform?usp=sharing) or on our [Discord Channel](https://discord.gg/8Jm4v89VAu).
 - If you find any issues, please report them on our [GitHub issues page](https://github.com/yeagerai/genlayer-testing-suite/issues).
 
 
