@@ -8,8 +8,8 @@ from gltest.exceptions import HelperError, InvalidSnapshotError
 class SnapshotRestorer:
     """Class responsible for restoring blockchain state to a snapshot."""
 
-    restorer: Callable[[], None]
-    snapshot_id: str
+    restore: Callable[[], None]
+    snapshot_id: int
 
 
 def take_snapshot() -> SnapshotRestorer:
@@ -17,17 +17,18 @@ def take_snapshot() -> SnapshotRestorer:
     Take a snapshot of the current blockchain state and return a function to restore the state and the snapshot ID.
     """
     provider = get_gl_provider()
-    snapshot_id = provider.make_request(method="evm_snapshot", params=[])["result"]
-    print("snapshot id ", snapshot_id)
-    if not isinstance(snapshot_id, str):
+    snapshot_id = provider.make_request(method="sim_createSnapshot", params=[])[
+        "result"
+    ]
+    if not isinstance(snapshot_id, int):
         raise HelperError(
-            "Assertion error: the value returned by evm_snapshot should be a string"
+            "Assertion error: the value returned by evm_snapshot should be a int"
         )
 
-    def restore():
-        reverted = provider.make_request(method="evm_revert", params=[snapshot_id])[
-            "result"
-        ]
+    def restore() -> None:
+        reverted = provider.make_request(
+            method="sim_restoreSnapshot", params=[snapshot_id]
+        )["result"]
 
         if not isinstance(reverted, bool):
             raise HelperError(
@@ -37,4 +38,4 @@ def take_snapshot() -> SnapshotRestorer:
         if not reverted:
             raise InvalidSnapshotError("")
 
-    return SnapshotRestorer(restorer=restore, snapshot_id=snapshot_id)
+    return SnapshotRestorer(restore=restore, snapshot_id=snapshot_id)
