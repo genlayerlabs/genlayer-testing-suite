@@ -270,6 +270,8 @@ def test_write_methods():
 ### Common Issues
 
 1. **Deployment Failures**
+   - **Problem**: Contract deployment fails due to various reasons like insufficient funds, invalid contract code, or network issues.
+   - **Solution**: Implement proper error handling
    ```python
    try:
        contract = factory.deploy(args=["initial_value"])
@@ -278,38 +280,81 @@ def test_write_methods():
    ```
 
 2. **Transaction Timeouts**
+   - **Problem**: Transactions take too long to complete or fail due to network congestion or consensus delays.
+   - **Solution**: Adjust timeout parameters and implement retry logic:
    ```python
    tx_receipt = contract.set_value(
        args=["new_value"],
-       wait_interval=2,  # Increase wait interval
-       wait_retries=20,  # Increase retries
+       wait_interval=2,  # Increase wait interval between status checks
+       wait_retries=20,  # Increase number of retry attempts
    )
    ```
 
 3. **Consensus Issues**
+   - **Problem**: Transactions fail due to consensus-related problems like network partitions or slow consensus.
+   - **Solution**: Adjust consensus parameters and try different modes:
    ```python
+   # Try with increased consensus parameters
    contract = factory.deploy(
-       consensus_max_rotations=5,  # Increase rotations
-       leader_only=True,  # Try leader-only mode
+       consensus_max_rotations=5,  # Increase number of consensus rotations
+       leader_only=True,  # Try leader-only mode for faster execution
+   )
+   
+   # For critical operations, use more conservative settings
+   contract = factory.deploy(
+       consensus_max_rotations=10,  # More rotations for better reliability
+       leader_only=False,  # Full consensus for better security
+       wait_interval=3,  # Longer wait between checks
+       wait_retries=30  # More retries for consensus
    )
    ```
 
-4. **Contracts Directory**
-   
-   The function `get_contract_factory` will search in the the contracts directory which is set to `contracts/` by default.
+4. **Contracts Directory Issues**
+   - **Problem**: `get_contract_factory` can't find your contract files.
+   - **Solution**: Ensure proper directory structure and configuration:
    ```bash
-   gltest --contracts-dir <path_to_contracts>
+   # Default structure
+   your_project/
+   ├── contracts/           # Default contracts directory
+   │   └── my_contract.gpy  # Your contract file
+   └── tests/
+       └── test_contract.py # Your test file
+   
+   # If using a different directory structure
+   gltest --contracts-dir /path/to/your/contracts
    ```
 
-5. **Contract File Naming Convention**
-   
-   Contract files must use the `.gpy` extension to be properly recognized by the `get_contract_factory` function. For example:
+5. **Contract File Naming and Structure**
+   - **Problem**: Contracts aren't being recognized or loaded properly.
+   - **Solution**: Follow the correct naming and structure conventions:
    ```python
-   # Correct: my_contract.gpy
-   # Incorrect: my_contract.py
-   ```
+   # Correct file: contracts/my_contract.gpy
+   # Correct structure:
+   from genlayer import *
    
-   This naming convention ensures proper contract discovery during testing.
+   class MyContract(gl.Contract):
+       # Contract code here
+       pass
+   
+   # Incorrect file: contracts/my_contract.py  # Wrong extension
+   # Incorrect structure:
+   class MyContract:  # Missing gl.Contract inheritance
+       pass
+   ```
+
+6. **Environment Setup Issues**
+   - **Problem**: Tests fail due to missing or incorrect environment setup.
+   - **Solution**: Verify your environment:
+   ```bash
+   # Check Python version
+   python --version  # Should be >= 3.8
+   
+   # Check GenLayer Studio status
+   docker ps  # Should show GenLayer Studio running
+   
+   # Verify package installation
+   pip list | grep genlayer-test  # Should show installed version
+   ```
 
 ## 🤝 Contributing
 
