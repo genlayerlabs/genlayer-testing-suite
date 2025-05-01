@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  test-with-python:
     runs-on: ubuntu-latest
     strategy:
       matrix:
