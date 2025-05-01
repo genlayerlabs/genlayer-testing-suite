@@ -2,9 +2,12 @@ from genlayer_py.chains import localnet
 from genlayer_py import create_client
 from .account import default_account
 from functools import lru_cache
+from gltest.plugin_config import get_rpc_url
 
 # Create the client
-gl_client = create_client(chain=localnet, account=default_account)
+gl_client = create_client(
+    chain=localnet, account=default_account, endpoint=get_rpc_url()
+)
 
 
 @lru_cache(maxsize=1)
