@@ -12,7 +12,7 @@ def test_help_message(pytester):
             "*Default wait interval for waiting transaction receipts",
             "*--default-wait-retries=DEFAULT_WAIT_RETRIES",
             "*Default wait retries for waiting transaction receipts",
-            "*--rpc-url=RPC_URL*Directory containing contract files",
+            "*--rpc-url=RPC_URL*RPC URL for the genlayer network",
         ]
     )
 

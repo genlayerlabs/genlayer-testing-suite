@@ -35,7 +35,7 @@ def pytest_addoption(parser):
         "--rpc-url",
         action="store",
         default=SIMULATOR_JSON_RPC_URL,
-        help="Directory containing contract files",
+        help="RPC URL for the genlayer network",
     )
 
 
