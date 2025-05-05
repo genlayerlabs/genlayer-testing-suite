@@ -7,6 +7,7 @@ from gltest.types import CalldataEncodable, GenLayerTransaction, TransactionStat
 from eth_account.signers.local import LocalAccount
 from typing import List, Any, Type, Optional, Dict, Callable
 import types
+from gltest.plugin_config import get_default_wait_interval, get_default_wait_retries
 
 
 @dataclass
@@ -87,9 +88,9 @@ class Contract:
             value: int = 0,
             consensus_max_rotations: Optional[int] = None,
             leader_only: bool = False,
-            wait_interval: Optional[int] = None,
-            wait_retries: Optional[int] = None,
             wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
+            wait_interval: int = get_default_wait_interval(),
+            wait_retries: int = get_default_wait_retries(),
             wait_triggered_transactions: bool = True,
             wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
         ) -> GenLayerTransaction:
@@ -106,15 +107,11 @@ class Contract:
                 leader_only=leader_only,
                 args=args,
             )
-            extra_args = {}
-            if wait_interval is not None:
-                extra_args["interval"] = wait_interval
-            if wait_retries is not None:
-                extra_args["retries"] = wait_retries
             receipt = client.wait_for_transaction_receipt(
                 transaction_hash=tx_hash,
                 status=wait_transaction_status,
-                **extra_args,
+                interval=wait_interval,
+                retries=wait_retries,
             )
             if wait_triggered_transactions:
                 triggered_transactions = receipt["triggered_transactions"]
@@ -122,7 +119,8 @@ class Contract:
                     client.wait_for_transaction_receipt(
                         transaction_hash=triggered_transaction,
                         status=wait_triggered_transactions_status,
-                        **extra_args,
+                        interval=wait_interval,
+                        retries=wait_retries,
                     )
             return receipt
 
@@ -160,8 +158,8 @@ class ContractFactory:
         account: Optional[LocalAccount] = None,
         consensus_max_rotations: Optional[int] = None,
         leader_only: bool = False,
-        wait_interval: Optional[int] = None,
-        wait_retries: Optional[int] = None,
+        wait_interval: int = get_default_wait_interval(),
+        wait_retries: int = get_default_wait_retries(),
         wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
     ) -> Contract:
         """
@@ -176,13 +174,11 @@ class ContractFactory:
                 consensus_max_rotations=consensus_max_rotations,
                 leader_only=leader_only,
             )
-            extra_args = {}
-            if wait_interval is not None:
-                extra_args["interval"] = wait_interval
-            if wait_retries is not None:
-                extra_args["retries"] = wait_retries
             tx_receipt = client.wait_for_transaction_receipt(
-                transaction_hash=tx_hash, status=wait_transaction_status, **extra_args
+                transaction_hash=tx_hash,
+                status=wait_transaction_status,
+                interval=wait_interval,
+                retries=wait_retries,
             )
             if (
                 not tx_receipt

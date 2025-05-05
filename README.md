@@ -60,7 +60,7 @@ assert tx_execution_succeeded(tx_receipt)
 
 Before installing GenLayer Testing Suite, ensure you have the following prerequisites installed:
 
-- Python (>=3.8)
+- Python (>=3.12)
 - GenLayer Studio (Docker deployment)
 - pip (Python package installer)
 
