@@ -13,3 +13,11 @@ def get_gl_client():
     return create_client(
         chain=localnet, account=default_account, endpoint=get_rpc_url()
     )
+
+
+def get_gl_provider():
+    """
+    Get the GenLayer provider instance.
+    """
+    client = get_gl_client()
+    return client.provider
