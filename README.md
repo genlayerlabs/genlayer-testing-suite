@@ -243,6 +243,8 @@ def test_write_methods():
     assert contract.get_storage() == "new_value"
 ```
 
+For more example contracts, check out the [contracts directory](tests/examples/contracts) which contains various sample contracts demonstrating different features and use cases.
+
 ## 📝 Best Practices
 
 1. **Test Organization**
