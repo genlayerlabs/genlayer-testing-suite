@@ -1,10 +1,15 @@
+from eth_typing import (
+    Address,
+    ChecksumAddress,
+)
+from eth_account.signers.local import LocalAccount
+from typing import Union
 from dataclasses import dataclass
 from gltest.artifacts import find_contract_definition
 from gltest.assertions import tx_execution_failed
 from gltest.exceptions import DeploymentError
 from .client import get_gl_client
 from gltest.types import CalldataEncodable, GenLayerTransaction, TransactionStatus
-from eth_account.signers.local import LocalAccount
 from typing import List, Any, Type, Optional, Dict, Callable
 import types
 from gltest.plugin_config import get_default_wait_interval, get_default_wait_retries
@@ -89,14 +94,18 @@ class Contract:
             consensus_max_rotations: Optional[int] = None,
             leader_only: bool = False,
             wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
-            wait_interval: int = get_default_wait_interval(),
-            wait_retries: int = get_default_wait_retries(),
+            wait_interval: Optional[int] = None,
+            wait_retries: Optional[int] = None,
             wait_triggered_transactions: bool = True,
             wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
         ) -> GenLayerTransaction:
             """
             Wrapper to the contract write method.
             """
+            if wait_interval is None:
+                wait_interval = get_default_wait_interval()
+            if wait_retries is None:
+                wait_retries = get_default_wait_retries()
             client = get_gl_client()
             tx_hash = client.write_contract(
                 address=self.address,
@@ -152,19 +161,42 @@ class ContractFactory:
             contract_name=contract_name, contract_code=contract_info.contract_code
         )
 
+    def build_contract(
+        self,
+        contract_address: Union[Address, ChecksumAddress],
+        account: Optional[LocalAccount] = None,
+    ) -> Contract:
+        """
+        Build contract from address
+        """
+        client = get_gl_client()
+        try:
+            schema = client.get_contract_schema(address=contract_address)
+            return Contract.new(
+                address=contract_address, schema=schema, account=account
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Failed to build contract {self.contract_name}: {str(e)}"
+            ) from e
+
     def deploy(
         self,
         args: List[Any] = [],
         account: Optional[LocalAccount] = None,
         consensus_max_rotations: Optional[int] = None,
         leader_only: bool = False,
-        wait_interval: int = get_default_wait_interval(),
-        wait_retries: int = get_default_wait_retries(),
+        wait_interval: Optional[int] = None,
+        wait_retries: Optional[int] = None,
         wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
     ) -> Contract:
         """
         Deploy the contract
         """
+        if wait_interval is None:
+            wait_interval = get_default_wait_interval()
+        if wait_retries is None:
+            wait_retries = get_default_wait_retries()
         client = get_gl_client()
         try:
             tx_hash = client.deploy_contract(
