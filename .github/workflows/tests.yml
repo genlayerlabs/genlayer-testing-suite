@@ -26,6 +26,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install .
         
-    - name: Run tests
+    - name: Run plugin tests
       run: |
-        gltest
+        gltest tests/plugin

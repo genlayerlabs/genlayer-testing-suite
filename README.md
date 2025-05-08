@@ -107,6 +107,21 @@ $ gltest -v
 $ gltest --contracts-dir <path_to_contracts>
 ```
 
+6. Run tests with a custom RPC url
+```bash
+$ gltest --rpc-url <custom_rpc_url>
+```
+
+6. Run tests with a default wait interval for waiting transaction receipts
+```bash
+$ gltest --default-wait-interval <default_wait_interval>
+```
+
+6. Run tests with a default wait retries for waiting transaction receipts
+```bash
+$ gltest --default-wait-retries <default_wait_retries>
+```
+
 ## 🚀 Key Features
 
 - **Pytest Integration** – Extends pytest to support intelligent contract testing, making it familiar and easy to adopt.
@@ -242,6 +257,8 @@ def test_write_methods():
     # Verify the value was updated
     assert contract.get_storage() == "new_value"
 ```
+
+For more example contracts, check out the [contracts directory](tests/examples/contracts) which contains various sample contracts demonstrating different features and use cases.
 
 ## 📝 Best Practices
 
