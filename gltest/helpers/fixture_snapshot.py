@@ -6,6 +6,9 @@ from gltest.exceptions import (
     InvalidSnapshotError,
     FixtureAnonymousFunctionError,
 )
+from gltest.plugin_config import get_rpc_url
+
+NOT_SUPPORTED_RPCS = ["https://studio.genlayer.com/api"]
 
 
 T = TypeVar("T")
@@ -31,6 +34,10 @@ def load_fixture(fixture: Callable[[], T]) -> T:
     if fixture.__name__ == "<lambda>":
         raise FixtureAnonymousFunctionError("Fixtures must be named functions")
 
+    rpc_url = get_rpc_url()
+    if rpc_url in NOT_SUPPORTED_RPCS:
+        return fixture()
+
     # Find existing snapshot for this fixture
     global _snapshots
     snapshot = next((s for s in _snapshots if s.fixture == fixture), None)
@@ -38,8 +45,8 @@ def load_fixture(fixture: Callable[[], T]) -> T:
     if snapshot is not None:
         try:
             snapshot.restorer.restore()
+
             # Remove snapshots that were taken after this one
-            
             _snapshots = [
                 s
                 for s in _snapshots
