@@ -1,5 +1,6 @@
 from typing import TypeVar, Callable, List, Any
 from dataclasses import dataclass
+from urllib.parse import urlparse
 from .take_snapshot import SnapshotRestorer, take_snapshot
 from gltest.exceptions import (
     FixtureSnapshotError,
@@ -8,8 +9,7 @@ from gltest.exceptions import (
 )
 from gltest.plugin_config import get_rpc_url
 
-NOT_SUPPORTED_RPCS = ["https://studio.genlayer.com/api"]
-
+SUPPORTED_RPC_DOMAINS = ["localhost", "127.0.0.1"]
 
 T = TypeVar("T")
 
@@ -35,7 +35,8 @@ def load_fixture(fixture: Callable[[], T]) -> T:
         raise FixtureAnonymousFunctionError("Fixtures must be named functions")
 
     rpc_url = get_rpc_url()
-    if rpc_url in NOT_SUPPORTED_RPCS:
+    domain = urlparse(rpc_url).netloc.split(':')[0]  # Extract domain without port
+    if domain not in SUPPORTED_RPC_DOMAINS:
         return fixture()
 
     # Find existing snapshot for this fixture
