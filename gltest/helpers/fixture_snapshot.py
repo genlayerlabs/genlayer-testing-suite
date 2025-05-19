@@ -1,12 +1,15 @@
 from typing import TypeVar, Callable, List, Any
 from dataclasses import dataclass
+from urllib.parse import urlparse
 from .take_snapshot import SnapshotRestorer, take_snapshot
 from gltest.exceptions import (
     FixtureSnapshotError,
     InvalidSnapshotError,
     FixtureAnonymousFunctionError,
 )
+from gltest.plugin_config import get_rpc_url
 
+SUPPORTED_RPC_DOMAINS = ["localhost", "127.0.0.1"]
 
 T = TypeVar("T")
 
@@ -31,6 +34,11 @@ def load_fixture(fixture: Callable[[], T]) -> T:
     if fixture.__name__ == "<lambda>":
         raise FixtureAnonymousFunctionError("Fixtures must be named functions")
 
+    rpc_url = get_rpc_url()
+    domain = urlparse(rpc_url).netloc.split(':')[0]  # Extract domain without port
+    if domain not in SUPPORTED_RPC_DOMAINS:
+        return fixture()
+
     # Find existing snapshot for this fixture
     global _snapshots
     snapshot = next((s for s in _snapshots if s.fixture == fixture), None)
@@ -38,8 +46,8 @@ def load_fixture(fixture: Callable[[], T]) -> T:
     if snapshot is not None:
         try:
             snapshot.restorer.restore()
+
             # Remove snapshots that were taken after this one
-            
             _snapshots = [
                 s
                 for s in _snapshots
