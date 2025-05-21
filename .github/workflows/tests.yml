@@ -1,10 +1,8 @@
 name: Tests
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   test-with-python:
@@ -29,3 +27,7 @@ jobs:
     - name: Run plugin tests
       run: |
         gltest tests/plugin
+    
+    - name: Run artifact tests
+      run: |
+        gltest tests/artifact
