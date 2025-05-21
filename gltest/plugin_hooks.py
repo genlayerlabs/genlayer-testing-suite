@@ -3,9 +3,11 @@ from gltest.plugin_config import (
     set_default_wait_interval,
     set_default_wait_retries,
     set_rpc_url,
+    set_network,
 )
 from pathlib import Path
 from genlayer_py.chains.localnet import SIMULATOR_JSON_RPC_URL
+from gltest.config import NetworkConfig
 
 
 def pytest_addoption(parser):
@@ -38,14 +40,23 @@ def pytest_addoption(parser):
         help="RPC URL for the genlayer network",
     )
 
+    group.addoption(
+        "--network",
+        action="store",
+        default=NetworkConfig.LOCALNET,
+        help="The target network, possible values: localnet, testnet_asimov [default: localnet]",
+    )
+
 
 def pytest_configure(config):
     contracts_dir = config.getoption("--contracts-dir")
     default_wait_interval = config.getoption("--default-wait-interval")
     default_wait_retries = config.getoption("--default-wait-retries")
     rpc_url = config.getoption("--rpc-url")
+    network = config.getoption("--network")
 
     set_contracts_dir(Path(contracts_dir))
     set_default_wait_interval(int(default_wait_interval))
     set_default_wait_retries(int(default_wait_retries))
     set_rpc_url(str(rpc_url))
+    set_network(NetworkConfig(network))
