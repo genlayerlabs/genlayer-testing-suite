@@ -10,6 +10,7 @@ def create_accounts(n_accounts: int):
         accounts.append(create_account())
     return accounts
 
+
 # Accounts for testing
 accounts = create_accounts(n_accounts=10)
 
