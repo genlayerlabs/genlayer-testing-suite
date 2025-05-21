@@ -14,8 +14,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "pytest",
-    "genlayer-py==0.3.0",
     "setuptools>=77.0",
+    "genlayer-py==0.5.0",
     "colorama>=0.4.6",
     "pyyaml",
     "python-dotenv"
@@ -33,7 +33,7 @@ classifiers = [
 where = ["."]
 
 [project.entry-points.pytest11]
-gltest = "gltest.plugin_hooks"
+gltest = "gltest_cli.config.plugin"
 
 [project.scripts]
 gltest = "gltest_cli.main:main"
