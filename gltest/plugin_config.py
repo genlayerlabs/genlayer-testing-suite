@@ -1,9 +1,21 @@
 from pathlib import Path
+from gltest.config import NetworkConfig
 
+# Config variables
 _contracts_dir = None
 _rpc_url = None
 _default_wait_interval = None
 _default_wait_retries = None
+_network = None
+
+
+def set_network(network: NetworkConfig):
+    global _network
+    _network = network
+
+
+def get_network() -> str:
+    return _network
 
 
 def set_contracts_dir(path: Path):
