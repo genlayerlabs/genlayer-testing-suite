@@ -32,8 +32,15 @@ def search_path_by_class_name(contracts_dir: Path, contract_name: str) -> Path:
             # Search for class definitions
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef) and node.name == contract_name:
-                    # Found the contract class
-                    return file_path
+                    # Check if the class directly inherits from gl.Contract
+                    for base in node.bases:
+                        if isinstance(base, ast.Attribute):
+                            if (
+                                isinstance(base.value, ast.Name)
+                                and base.value.id == "gl"
+                                and base.attr == "Contract"
+                            ):
+                                return file_path
         except Exception as e:
             raise ValueError(f"Error reading file {file_path}: {e}")
     raise FileNotFoundError(f"Contract {contract_name} not found at: {contracts_dir}")
