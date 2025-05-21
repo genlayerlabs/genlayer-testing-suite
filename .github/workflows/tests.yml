@@ -23,10 +23,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install .
+        cd tests
         
     - name: Run plugin tests
       run: |
-        gltest tests/plugin
+        gltest plugin
     
     - name: Run artifact tests
       run: |
