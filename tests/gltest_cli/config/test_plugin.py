@@ -23,10 +23,11 @@ def test_default_wait_interval(pytester):
 
     pytester.makepyfile(
         """
-        from gltest.plugin_config import get_default_wait_interval
+        from gltest_cli.config.general import get_general_config
 
         def test_default_wait_interval():
-            assert get_default_wait_interval() == 5000
+            general_config = get_general_config()
+            assert general_config.get_default_wait_interval() == 5000
     """
     )
 
@@ -43,10 +44,11 @@ def test_default_wait_interval(pytester):
 def test_default_wait_retries(pytester):
     pytester.makepyfile(
         """
-        from gltest.plugin_config import get_default_wait_retries
+        from gltest_cli.config.general import get_general_config
 
         def test_default_wait_retries():
-            assert get_default_wait_retries() == 4000
+            general_config = get_general_config()
+            assert general_config.get_default_wait_retries() == 4000
     """
     )
 
@@ -63,10 +65,11 @@ def test_default_wait_retries(pytester):
 def test_rpc_url(pytester):
     pytester.makepyfile(
         """
-        from gltest.plugin_config import get_rpc_url
+        from gltest_cli.config.general import get_general_config
 
         def test_rpc_url():
-            assert get_rpc_url() == 'http://custom-rpc-url:8545' 
+            general_config = get_general_config()
+            assert general_config.get_rpc_url() == 'http://custom-rpc-url:8545' 
     """
     )
 
@@ -83,11 +86,11 @@ def test_rpc_url(pytester):
 def test_network_localnet(pytester):
     pytester.makepyfile(
         """
-        from gltest.plugin_config import get_network
-        from gltest.config import NetworkConfig
+        from gltest_cli.config.general import get_general_config
 
         def test_network():
-            assert get_network() == NetworkConfig.LOCALNET
+            general_config = get_general_config()
+            assert general_config.get_network_name() == "localnet"
     """
     )
 
@@ -104,11 +107,11 @@ def test_network_localnet(pytester):
 def test_network_testnet(pytester):
     pytester.makepyfile(
         """
-        from gltest.plugin_config import get_network
-        from gltest.config import NetworkConfig
+        from gltest_cli.config.general import get_general_config
 
         def test_network():
-            assert get_network() == NetworkConfig.TESTNET_ASIMOV
+            general_config = get_general_config()
+            assert general_config.get_network_name() == "testnet_asimov"
     """
     )
 
