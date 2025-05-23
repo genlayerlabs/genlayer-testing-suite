@@ -1,13 +1,23 @@
 import pytest
-from gltest.logging import logger
-from gltest.config import check_user_config, load_user_config
+from gltest_cli.logging import logger
+from gltest_cli.config.user import (
+    user_config_exists,
+    load_user_config,
+    get_default_user_config,
+)
+from gltest_cli.config.general import get_general_config
 
 
 def main():
-    if not check_user_config():
-        logger.error("gltest.config.yaml not found in the current directory")
-        return
+    if not user_config_exists():
+        logger.info(
+            "gltest.config.yaml not found in the current directory, using default config"
+        )
+        user_config = get_default_user_config()
+    else:
+        logger.info("gltest.config.yaml found in the current directory, using it")
+        user_config = load_user_config("gltest.config.yaml")
 
-    config = load_user_config("gltest.config.yaml")
-    print(config)
-    # return pytest.main()
+    general_config = get_general_config()
+    general_config.user_config = user_config
+    return pytest.main()
