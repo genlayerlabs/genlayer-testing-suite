@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "genlayer-test"
-version = "0.1.2"
+version = "0.2.0"
 description = "GenLayer Testing Suite"
 authors = [
     { name = "GenLayer" }
@@ -16,6 +16,7 @@ dependencies = [
     "pytest",
     "genlayer-py==0.3.0",
     "setuptools>=77.0",
+    "genlayer-py==0.2.0",
     "colorama>=0.4.6",
     "pyyaml",
     "python-dotenv"
@@ -35,7 +36,7 @@ classifiers = [
 where = ["."]
 
 [project.entry-points.pytest11]
-gltest = "gltest.plugin_hooks"
+gltest = "gltest_cli.config.plugin"
 
 [project.scripts]
 gltest = "gltest_cli.main:main"
