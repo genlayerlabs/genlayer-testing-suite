@@ -12,7 +12,7 @@ from .client import get_gl_client
 from gltest.types import CalldataEncodable, GenLayerTransaction, TransactionStatus
 from typing import List, Any, Type, Optional, Dict, Callable
 import types
-from gltest.plugin_config import get_default_wait_interval, get_default_wait_retries
+from gltest_cli.config.general import get_general_config
 
 
 @dataclass
@@ -102,10 +102,11 @@ class Contract:
             """
             Wrapper to the contract write method.
             """
+            general_config = get_general_config()
             if wait_interval is None:
-                wait_interval = get_default_wait_interval()
+                wait_interval = general_config.get_default_wait_interval()
             if wait_retries is None:
-                wait_retries = get_default_wait_retries()
+                wait_retries = general_config.get_default_wait_retries()
             client = get_gl_client()
             tx_hash = client.write_contract(
                 address=self.address,
@@ -193,10 +194,12 @@ class ContractFactory:
         """
         Deploy the contract
         """
+        general_config = get_general_config()
         if wait_interval is None:
-            wait_interval = get_default_wait_interval()
+            wait_interval = general_config.get_default_wait_interval()
         if wait_retries is None:
-            wait_retries = get_default_wait_retries()
+            wait_retries = general_config.get_default_wait_retries()
+
         client = get_gl_client()
         try:
             tx_hash = client.deploy_contract(

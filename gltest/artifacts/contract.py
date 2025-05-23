@@ -2,7 +2,7 @@ import ast
 from typing import Optional
 from dataclasses import dataclass
 from pathlib import Path
-from gltest.plugin_config import get_contracts_dir
+from gltest_cli.config.general import get_general_config
 import io
 import zipfile
 from typing import Union
@@ -75,7 +75,8 @@ def find_contract_definition(contract_name: str) -> Optional[ContractDefinition]
     """
     Search in the contracts directory for a contract definition.
     """
-    contracts_dir = get_contracts_dir()
+    general_config = get_general_config()
+    contracts_dir = general_config.get_contracts_dir()
     if not contracts_dir.exists():
         raise FileNotFoundError(f"Contracts directory not found at: {contracts_dir}")
     main_file_path = search_path_by_class_name(contracts_dir, contract_name)
