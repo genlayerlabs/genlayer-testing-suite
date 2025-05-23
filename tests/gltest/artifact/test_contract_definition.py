@@ -3,12 +3,13 @@ from gltest.artifacts.contract import (
     find_contract_definition,
     compute_contract_code,
 )
-from gltest.plugin_config import set_contracts_dir
+from gltest_cli.config.general import get_general_config
 from pathlib import Path
 
 
 def test_single_file():
-    set_contracts_dir(".")
+    general_config = get_general_config()
+    general_config.set_contracts_dir(Path("."))
     contract_definition = find_contract_definition("PredictionMarket")
 
     assert contract_definition.contract_name == "PredictionMarket"
@@ -28,7 +29,8 @@ def test_single_file():
 
 
 def test_multiple_files():
-    set_contracts_dir(".")
+    general_config = get_general_config()
+    general_config.set_contracts_dir(Path("."))
     contract_definition = find_contract_definition("MultiFileContract")
 
     assert contract_definition.contract_name == "MultiFileContract"
@@ -47,7 +49,8 @@ def test_multiple_files():
 
 
 def test_single_file_legacy():
-    set_contracts_dir(".")
+    general_config = get_general_config()
+    general_config.set_contracts_dir(Path("."))
     contract_definition = find_contract_definition("StorageLegacy")
 
     # Assert complete contract definition
@@ -66,7 +69,8 @@ def test_single_file_legacy():
 
 
 def test_multiple_files_legacy():
-    set_contracts_dir(".")
+    general_config = get_general_config()
+    general_config.set_contracts_dir(Path("."))
     contract_definition = find_contract_definition("MultiFileContractLegacy")
 
     # Assert complete contract definition
@@ -86,7 +90,8 @@ def test_multiple_files_legacy():
 
 
 def test_class_is_not_intelligent_contract():
-    set_contracts_dir(".")
+    general_config = get_general_config()
+    general_config.set_contracts_dir(Path("."))
 
     with pytest.raises(FileNotFoundError):
         _ = find_contract_definition("NotICContract")
