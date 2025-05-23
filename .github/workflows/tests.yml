@@ -24,11 +24,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install .
         
-    - name: Run plugin tests
+    - name: Run gltest cli tests
       run: |
-        gltest tests/plugin
+        pytest tests/gltest_cli/
     
-    - name: Run artifact tests
+    - name: Run gltest tests
       run: |
-        cd tests
-        gltest artifact
+        pytest tests/gltest/
