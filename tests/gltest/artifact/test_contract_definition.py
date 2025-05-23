@@ -15,7 +15,9 @@ def test_single_file():
     assert contract_definition.contract_name == "PredictionMarket"
 
     # Assert complete contract definition
-    expected_main_file_path = Path("tests/examples/contracts/football_prediction_market.py")
+    expected_main_file_path = Path(
+        "tests/examples/contracts/football_prediction_market.py"
+    )
     expected_runner_file_path = None
     contract_code = compute_contract_code(
         expected_main_file_path, expected_runner_file_path
@@ -36,7 +38,9 @@ def test_multiple_files():
     assert contract_definition.contract_name == "MultiFileContract"
 
     # Assert complete contract definition
-    expected_main_file_path = Path("tests/examples/contracts/multi_file_contract/__init__.py")
+    expected_main_file_path = Path(
+        "tests/examples/contracts/multi_file_contract/__init__.py"
+    )
     expected_runner_file_path = Path(
         "tests/examples/contracts/multi_file_contract/runner.json"
     )

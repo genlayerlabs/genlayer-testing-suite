@@ -68,9 +68,13 @@ def validate_network_config(network_name: str, network_config: dict):
     if "url" in network_config and not isinstance(network_config["url"], str):
         raise ValueError(f"network {network_name} url must be a string")
 
-    if "accounts" in network_config and not isinstance(network_config["accounts"], list):
+    if "accounts" in network_config and not isinstance(
+        network_config["accounts"], list
+    ):
         raise ValueError(f"network {network_name} accounts must be a list")
-    if "accounts" in network_config and not all(isinstance(acc, str) for acc in network_config["accounts"]):
+    if "accounts" in network_config and not all(
+        isinstance(acc, str) for acc in network_config["accounts"]
+    ):
         raise ValueError(f"network {network_name} accounts must be strings")
 
     if "from" in network_config and not isinstance(network_config["from"], str):

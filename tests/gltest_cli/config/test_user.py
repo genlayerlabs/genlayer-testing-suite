@@ -188,7 +188,12 @@ def test_validate_raw_user_config_invalid():
 
     with pytest.raises(ValueError, match="network testnet must have a url"):
         validate_raw_user_config(
-            {"networks": {"default": "localnet", "testnet": {"id": 4221,"accounts": ["0x123"]}}}
+            {
+                "networks": {
+                    "default": "localnet",
+                    "testnet": {"id": 4221, "accounts": ["0x123"]},
+                }
+            }
         )
 
     with pytest.raises(ValueError, match="network testnet must have accounts"):
@@ -205,7 +210,11 @@ def test_validate_raw_user_config_invalid():
     valid_config_without_from = {
         "networks": {
             "default": "localnet",
-            "testnet": {"id": 4221, "url": "http://testnet:8545", "accounts": ["0x123", "0x456"]},
+            "testnet": {
+                "id": 4221,
+                "url": "http://testnet:8545",
+                "accounts": ["0x123", "0x456"],
+            },
         }
     }
     # Should not raise any exception
