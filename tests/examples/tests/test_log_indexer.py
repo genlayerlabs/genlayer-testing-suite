@@ -52,7 +52,6 @@ def test_log_indexer():
     assert float(closest_vector_log_0_3["similarity"]) > 0.67
     assert float(closest_vector_log_0_3["similarity"]) < 0.68
 
-
     # Add third log
     transaction_response_add_log_2 = contract.add_log(args=["This is the third log", 3])
     assert tx_execution_succeeded(transaction_response_add_log_2)
