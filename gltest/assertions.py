@@ -14,4 +14,3 @@ def tx_execution_succeeded(result: GenLayerTransaction) -> bool:
 
 def tx_execution_failed(result: GenLayerTransaction) -> bool:
     return not tx_execution_succeeded(result)
-

@@ -35,7 +35,7 @@ def load_fixture(fixture: Callable[[], T]) -> T:
         raise FixtureAnonymousFunctionError("Fixtures must be named functions")
 
     rpc_url = get_rpc_url()
-    domain = urlparse(rpc_url).netloc.split(':')[0]  # Extract domain without port
+    domain = urlparse(rpc_url).netloc.split(":")[0]  # Extract domain without port
     if domain not in SUPPORTED_RPC_DOMAINS:
         return fixture()
 

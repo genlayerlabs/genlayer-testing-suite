@@ -16,12 +16,10 @@ def test_user_storage():
     factory = get_contract_factory("UserStorage")
     contract = factory.deploy()
 
-    
     # GET Initial State
     contract_state_1 = contract.get_complete_storage(args=[])
     assert contract_state_1 == {}
 
-    
     # ADD User A State
     transaction_response_call_1 = contract.update_storage(args=[INITIAL_STATE_USER_A])
     assert tx_execution_succeeded(transaction_response_call_1)
@@ -34,7 +32,6 @@ def test_user_storage():
     contract_state_2_2 = contract.get_account_storage(args=[from_account_a.address])
     assert contract_state_2_2 == INITIAL_STATE_USER_A
 
-    
     # ADD User B State
     transaction_response_call_2 = contract.connect(from_account_b).update_storage(
         args=[INITIAL_STATE_USER_B]
