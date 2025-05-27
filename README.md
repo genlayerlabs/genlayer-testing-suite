@@ -141,7 +141,7 @@ Before diving into the examples, let's understand the basic project structure:
 ```
 genlayer-example/
 ├── contracts/              # Contract definitions
-│   └── storage.gpy         # Example storage contract
+│   └── storage.py          # Example storage contract
 └── test/                   # Test files
     └── test_contract.py    # Contract test cases
 ```
@@ -371,7 +371,7 @@ For more example contracts, check out the [contracts directory](tests/examples/c
    # Default structure
    your_project/
    ├── contracts/           # Default contracts directory
-   │   └── my_contract.gpy  # Your contract file
+   │   └── my_contract.py   # Your contract file
    └── tests/
        └── test_contract.py # Your test file
    
@@ -383,7 +383,8 @@ For more example contracts, check out the [contracts directory](tests/examples/c
    - **Problem**: Contracts aren't being recognized or loaded properly.
    - **Solution**: Follow the correct naming and structure conventions:
    ```python
-   # Correct file: contracts/my_contract.gpy
+   # Correct file: contracts/my_contract.py
+
    # Correct structure:
    from genlayer import *
    
@@ -391,7 +392,7 @@ For more example contracts, check out the [contracts directory](tests/examples/c
        # Contract code here
        pass
    
-   # Incorrect file: contracts/my_contract.py  # Wrong extension
+
    # Incorrect structure:
    class MyContract:  # Missing gl.Contract inheritance
        pass
@@ -402,7 +403,7 @@ For more example contracts, check out the [contracts directory](tests/examples/c
    - **Solution**: Verify your environment:
    ```bash
    # Check Python version
-   python --version  # Should be >= 3.8
+   python --version  # Should be >= 3.12
    
    # Check GenLayer Studio status
    docker ps  # Should show GenLayer Studio running
