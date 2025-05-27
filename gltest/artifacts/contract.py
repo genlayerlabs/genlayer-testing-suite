@@ -10,7 +10,7 @@ from typing import Union
 
 @dataclass
 class ContractDefinition:
-    """Class that represents a contract definition from a .gpy file."""
+    """Class that represents a contract definition from a contract file."""
 
     contract_name: str
     contract_code: Union[str, bytes]
