@@ -168,15 +168,17 @@ def transform_raw_to_user_config_with_defaults(raw_config: dict) -> UserConfig:
         url = network_config["url"]
         accounts = network_config["accounts"]
         from_account = network_config.get("from", accounts[0])
+        network_id = network_config.get("id")
 
         networks_config[network_name] = NetworkConfigData(
+            id=network_id,
             url=url,
             accounts=accounts,
             from_account=from_account,
         )
     return UserConfig(
         networks=networks_config,
-        paths=PathConfig(contracts=paths.get("contracts", DEFAULT_CONTRACTS_DIR)),
+        paths=PathConfig(contracts=Path(paths.get("contracts", DEFAULT_CONTRACTS_DIR))),
         environment=environment,
         default_network=default_network,
     )
