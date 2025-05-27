@@ -11,7 +11,7 @@ def pytest_addoption(parser):
     group.addoption(
         "--contracts-dir",
         action="store",
-        default="contracts",
+        default=None,
         help="Directory containing contract files",
     )
 
@@ -32,7 +32,7 @@ def pytest_addoption(parser):
     group.addoption(
         "--rpc-url",
         action="store",
-        default=SIMULATOR_JSON_RPC_URL,
+        default=None,
         help="RPC URL for the genlayer network",
     )
 
@@ -52,10 +52,12 @@ def pytest_configure(config):
     network = config.getoption("--network")
 
     plugin_config = PluginConfig()
-    plugin_config.contracts_dir = Path(contracts_dir)
+    plugin_config.contracts_dir = (
+        Path(contracts_dir) if contracts_dir is not None else None
+    )
     plugin_config.default_wait_interval = int(default_wait_interval)
     plugin_config.default_wait_retries = int(default_wait_retries)
-    plugin_config.rpc_url = str(rpc_url)
+    plugin_config.rpc_url = rpc_url
     plugin_config.network_name = network
 
     general_config = get_general_config()

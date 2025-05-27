@@ -98,6 +98,16 @@ class GeneralConfig:
             return self.user_config.networks[network_name].url
         return self.user_config.networks[self.user_config.default_network].url
 
+    def get_default_account_key(self, network_name: Optional[str] = None) -> str:
+        if network_name is not None:
+            return self.user_config.networks[network_name].from_account
+        return self.user_config.networks[self.user_config.default_network].from_account
+
+    def get_accounts_keys(self, network_name: Optional[str] = None) -> List[str]:
+        if network_name is not None:
+            return self.user_config.networks[network_name].accounts
+        return self.user_config.networks[self.user_config.default_network].accounts
+
     def get_chain(self, network_name: str) -> GenLayerChain:
         chain_map_by_id = {
             61999: localnet,

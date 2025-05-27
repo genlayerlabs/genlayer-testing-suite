@@ -1,18 +1,20 @@
+from gltest_cli.config.general import get_general_config
 from genlayer_py import create_account
 
 
 def create_accounts(n_accounts: int):
-    """
-    Create a list of accounts
-    """
-    accounts = []
-    for _ in range(n_accounts):
-        accounts.append(create_account())
-    return accounts
+    return [create_account() for _ in range(n_accounts)]
 
 
-# Accounts for testing
-accounts = create_accounts(n_accounts=10)
+def get_accounts():
+    general_config = get_general_config()
+    selected_network = general_config.get_network_name()
+    accounts = general_config.get_accounts_keys(selected_network)
+    return [create_account(account) for account in accounts]
 
-# Default account to use for transaction handling, if not specified
-default_account = accounts[0]
+
+def get_default_account():
+    general_config = get_general_config()
+    selected_network = general_config.get_network_name()
+    default_account_key = general_config.get_default_account_key(selected_network)
+    return create_account(default_account_key)
