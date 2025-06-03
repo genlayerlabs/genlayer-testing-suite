@@ -6,6 +6,8 @@ def tx_execution_succeeded(result: GenLayerTransaction) -> bool:
         return False
     if "leader_receipt" not in result["consensus_data"]:
         return False
+    if len(result["consensus_data"]["leader_receipt"]) == 0:
+        return False
     if "execution_result" not in result["consensus_data"]["leader_receipt"][0]:
         return False
     execution_result = result["consensus_data"]["leader_receipt"][0]["execution_result"]
