@@ -21,16 +21,11 @@ def test_with_failed_transaction():
     assert tx_execution_failed(GENLAYER_FAILED_TRANSACTION) is True
 
 
-def test_with_invalid_transaction():
-    assert tx_execution_succeeded({}) is False
-    assert tx_execution_failed({}) is True
-
-
 def test_with_empty_leader_receipt():
     assert tx_execution_succeeded(GENLAYER_EMPTY_LEADER_RECEIPT) is False
     assert tx_execution_failed(GENLAYER_EMPTY_LEADER_RECEIPT) is True
 
 
-def test_with_empty_transaction():
+def test_with_invalid_transaction():
     assert tx_execution_succeeded({}) is False
     assert tx_execution_failed({}) is True
