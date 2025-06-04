@@ -236,14 +236,27 @@ def test_load_user_config(mock_load_dotenv, mock_file):
 
     # Check config structure
     assert isinstance(config, UserConfig)
+
+    # Check default network
     assert config.default_network == "localnet"
     assert isinstance(config.networks["localnet"], NetworkConfigData)
     assert config.networks["localnet"].id == 61999
     assert config.networks["localnet"].url == "http://localhost:8545"
     assert config.networks["localnet"].accounts == ["0x123", "0x456"]
     assert config.networks["localnet"].from_account == "0x123"
+
+    # Check testnet_asimov network
+    assert isinstance(config.networks["testnet_asimov"], NetworkConfigData)
+    assert config.networks["testnet_asimov"].id == 4221
+    assert config.networks["testnet_asimov"].url == "http://34.32.169.58:9151"
+    assert config.networks["testnet_asimov"].accounts == ["0x123", "0x456"]
+    assert config.networks["testnet_asimov"].from_account == "0x123"
+
+    # Check paths
     assert isinstance(config.paths, PathConfig)
     assert config.paths.contracts == "contracts"
+
+    # Check environment
     assert config.environment == ".env"
 
 
