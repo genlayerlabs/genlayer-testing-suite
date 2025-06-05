@@ -34,15 +34,20 @@ def tx_execution_succeeded(
         if match_std_out is not None:
             if "stdout" not in genvm_result:
                 return False
-            if not re.search(match_std_out, genvm_result["stdout"]):
+            try:
+                if not re.search(match_std_out, genvm_result["stdout"]):
+                    return False
+            except re.error:
                 return False
 
         if match_std_err is not None:
             if "stderr" not in genvm_result:
                 return False
-            if not re.search(match_std_err, genvm_result["stderr"]):
+            try:
+                if not re.search(match_std_err, genvm_result["stderr"]):
+                    return False
+            except re.error:
                 return False
-
     return True
 
 
