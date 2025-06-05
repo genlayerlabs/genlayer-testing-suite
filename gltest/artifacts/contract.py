@@ -21,7 +21,7 @@ class ContractDefinition:
 def search_path_by_class_name(contracts_dir: Path, contract_name: str) -> Path:
     """Search for a file by class name in the contracts directory."""
     matching_files = []
-    
+
     for file_path in contracts_dir.rglob("*"):
         if not file_path.suffix in [".gpy", ".py"]:
             continue
@@ -47,16 +47,18 @@ def search_path_by_class_name(contracts_dir: Path, contract_name: str) -> Path:
                     break
         except Exception as e:
             raise ValueError(f"Error reading file {file_path}: {e}")
-    
+
     if len(matching_files) == 0:
-        raise FileNotFoundError(f"Contract {contract_name} not found at: {contracts_dir}")
+        raise FileNotFoundError(
+            f"Contract {contract_name} not found at: {contracts_dir}"
+        )
     elif len(matching_files) > 1:
         file_paths_str = ", ".join(str(f) for f in matching_files)
         raise ValueError(
             f"Multiple contracts named '{contract_name}' found in contracts directory. "
             f"Found in files: {file_paths_str}. Please ensure contract names are unique."
         )
-    
+
     return matching_files[0]
 
 
