@@ -282,3 +282,63 @@ def test_find_from_path_no_valid_contract_class():
     
     with pytest.raises(ValueError, match="No valid contract class found in"):
         _ = find_contract_definition_from_path("artifact/contracts/not_ic_contract.py")
+
+
+def test_multiple_contracts_same_name():
+    """
+    Test error handling when multiple contracts with the same name exist.
+    
+    Verifies that the function raises ValueError with appropriate error message
+    when multiple files contain contracts with the same name, listing all
+    duplicate file locations and providing guidance for resolution.
+    """
+    set_contracts_dir(".")
+    
+    with pytest.raises(
+        ValueError, 
+        match=r"Multiple contracts named 'DuplicateContract' found in contracts directory\. Found in files: .+\. Please ensure contract names are unique\."
+    ):
+        _ = find_contract_definition_from_name("DuplicateContract")
+
+
+def test_duplicate_contract_error_message_format():
+    """
+    Test that the duplicate contract error message contains all expected elements.
+    
+    Verifies that when multiple contracts with the same name are found, the error
+    message includes the contract name, mentions "contracts directory", lists
+    file paths, and provides clear guidance about ensuring uniqueness.
+    """
+    set_contracts_dir(".")
+    
+    try:
+        _ = find_contract_definition_from_name("DuplicateContract")
+        pytest.fail("Expected ValueError for duplicate contracts")
+    except ValueError as e:
+        error_message = str(e)
+        # Verify error message contains key components
+        assert "Multiple contracts named 'DuplicateContract' found" in error_message
+        assert "contracts directory" in error_message
+        assert "Found in files:" in error_message
+        assert "Please ensure contract names are unique" in error_message
+        # Verify that multiple file paths are mentioned (comma-separated)
+        assert "," in error_message or len(error_message.split("Found in files: ")[1].split(".")[0]) > 0
+    except Exception as e:
+        pytest.fail(f"Expected ValueError but got {type(e).__name__}: {e}")
+
+
+def test_single_contract_still_works_with_duplicate_detection():
+    """
+    Test that normal single contract loading still works after duplicate detection changes.
+    
+    Verifies that the enhanced search_path_by_class_name function doesn't break
+    the normal case where only one contract with a given name exists, ensuring
+    backward compatibility with existing functionality.
+    """
+    set_contracts_dir(".")
+    
+    # This should work normally - no duplicates expected for PredictionMarket
+    contract_definition = find_contract_definition_from_name("PredictionMarket")
+    assert contract_definition.contract_name == "PredictionMarket"
+    assert contract_definition.main_file_path is not None
+    assert "football_prediction_market.py" in str(contract_definition.main_file_path)
