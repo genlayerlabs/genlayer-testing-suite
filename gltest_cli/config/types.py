@@ -91,12 +91,11 @@ class GeneralConfig:
     def set_contracts_dir(self, contracts_dir: Path):
         self.plugin_config.contracts_dir = contracts_dir
 
-    def get_rpc_url(self, network_name: Optional[str] = None) -> str:
+    def get_rpc_url(self) -> str:
         if self.plugin_config.rpc_url is not None:
             return self.plugin_config.rpc_url
-        if network_name is not None:
-            return self.user_config.networks[network_name].url
-        return self.user_config.networks[self.user_config.default_network].url
+        network_name = self.get_network_name()
+        return self.user_config.networks[network_name].url
 
     def get_default_account_key(self, network_name: Optional[str] = None) -> str:
         if network_name is not None:
@@ -108,11 +107,12 @@ class GeneralConfig:
             return self.user_config.networks[network_name].accounts
         return self.user_config.networks[self.user_config.default_network].accounts
 
-    def get_chain(self, network_name: str) -> GenLayerChain:
+    def get_chain(self) -> GenLayerChain:
         chain_map_by_id = {
             61999: localnet,
             4221: testnet_asimov,
         }
+        network_name = self.get_network_name()
         network_id = self.user_config.networks[network_name].id
         if network_id not in chain_map_by_id:
             raise ValueError(
