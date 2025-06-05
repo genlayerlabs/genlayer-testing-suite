@@ -120,7 +120,9 @@ def _create_contract_definition(
     )
 
 
-def find_contract_definition_from_name(contract_name: str) -> Optional[ContractDefinition]:
+def find_contract_definition_from_name(
+    contract_name: str,
+) -> Optional[ContractDefinition]:
     """
     Search in the contracts directory for a contract definition.
     """
