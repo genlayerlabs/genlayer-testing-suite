@@ -7,7 +7,7 @@ from typing import Union
 from pathlib import Path
 from dataclasses import dataclass
 from gltest.artifacts import (
-    find_contract_definition,
+    find_contract_definition_from_name,
     find_contract_definition_from_path,
 )
 from gltest.assertions import tx_execution_failed
@@ -156,7 +156,7 @@ class ContractFactory:
         """
         Create a ContractFactory instance given the contract name.
         """
-        contract_info = find_contract_definition(contract_name)
+        contract_info = find_contract_definition_from_name(contract_name)
         if contract_info is None:
             raise ValueError(
                 f"Contract {contract_name} not found in the contracts directory"
