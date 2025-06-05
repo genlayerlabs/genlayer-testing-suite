@@ -277,5 +277,4 @@ def get_contract_factory(
 
     if contract_name is not None:
         return ContractFactory.from_name(contract_name)
-    else:
-        return ContractFactory.from_file_path(contract_file_path)
+    return ContractFactory.from_file_path(contract_file_path)
