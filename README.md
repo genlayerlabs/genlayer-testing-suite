@@ -141,7 +141,7 @@ Before diving into the examples, let's understand the basic project structure:
 ```
 genlayer-example/
 ├── contracts/              # Contract definitions
-│   └── storage.gpy         # Example storage contract
+│   └── storage.py          # Example storage contract
 └── test/                   # Test files
     └── test_contract.py    # Contract test cases
 ```
@@ -258,6 +258,44 @@ def test_write_methods():
     assert contract.get_storage() == "new_value"
 ```
 
+### Assertions
+
+The GenLayer Testing Suite provides powerful assertion functions to validate transaction results and their output:
+
+#### Basic Transaction Assertions
+
+```python
+from gltest.assertions import tx_execution_succeeded, tx_execution_failed
+
+# Basic success/failure checks
+assert tx_execution_succeeded(tx_receipt)
+assert tx_execution_failed(tx_receipt)  # Opposite of tx_execution_succeeded
+```
+
+#### Advanced Output Matching
+
+You can match specific patterns in the transaction's stdout and stderr output using regex patterns, similar to pytest's `match` parameter:
+
+```python
+# Simple string matching
+assert tx_execution_succeeded(tx_receipt, match_std_out="Process completed")
+assert tx_execution_failed(tx_receipt, match_std_err="Warning: deprecated")
+
+# Regex pattern matching
+assert tx_execution_succeeded(tx_receipt, match_std_out=r".*code \d+")
+assert tx_execution_failed(tx_receipt, match_std_err=r"Method.*failed")
+```
+
+#### Assertion Function Parameters
+
+Both `tx_execution_succeeded` and `tx_execution_failed` accept the following parameters:
+
+- `result`: The transaction result object from contract method calls
+- `match_std_out` (optional): String or regex pattern to match in stdout
+- `match_std_err` (optional): String or regex pattern to match in stderr
+
+**Network Compatibility**: The stdout/stderr matching feature (`match_std_out` and `match_std_err` parameters) is only available when running on **studionet** and **localnet**. These features are not supported on testnet.
+
 For more example contracts, check out the [contracts directory](tests/examples/contracts) which contains various sample contracts demonstrating different features and use cases.
 
 ## 📝 Best Practices
@@ -333,7 +371,7 @@ For more example contracts, check out the [contracts directory](tests/examples/c
    # Default structure
    your_project/
    ├── contracts/           # Default contracts directory
-   │   └── my_contract.gpy  # Your contract file
+   │   └── my_contract.py   # Your contract file
    └── tests/
        └── test_contract.py # Your test file
    
@@ -345,7 +383,8 @@ For more example contracts, check out the [contracts directory](tests/examples/c
    - **Problem**: Contracts aren't being recognized or loaded properly.
    - **Solution**: Follow the correct naming and structure conventions:
    ```python
-   # Correct file: contracts/my_contract.gpy
+   # Correct file: contracts/my_contract.py
+
    # Correct structure:
    from genlayer import *
    
@@ -353,7 +392,7 @@ For more example contracts, check out the [contracts directory](tests/examples/c
        # Contract code here
        pass
    
-   # Incorrect file: contracts/my_contract.py  # Wrong extension
+
    # Incorrect structure:
    class MyContract:  # Missing gl.Contract inheritance
        pass
@@ -364,7 +403,7 @@ For more example contracts, check out the [contracts directory](tests/examples/c
    - **Solution**: Verify your environment:
    ```bash
    # Check Python version
-   python --version  # Should be >= 3.8
+   python --version  # Should be >= 3.12
    
    # Check GenLayer Studio status
    docker ps  # Should show GenLayer Studio running
