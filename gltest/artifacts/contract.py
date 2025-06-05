@@ -93,3 +93,61 @@ def find_contract_definition(contract_name: str) -> Optional[ContractDefinition]
         main_file_path=main_file_path,
         runner_file_path=runner_file_path,
     )
+
+
+def find_contract_definition_from_path(
+    contract_file_path: Union[str, Path],
+) -> ContractDefinition:
+    """
+    Create a ContractDefinition from a given file path.
+    """
+    main_file_path = Path(contract_file_path)
+    if not main_file_path.exists():
+        raise FileNotFoundError(f"Contract file not found at: {main_file_path}")
+
+    # Extract contract name from the file by parsing the AST
+    contract_name = None
+    try:
+        with open(main_file_path, "r") as f:
+            content = f.read()
+        tree = ast.parse(content)
+
+        # Search for class definitions that inherit from gl.Contract
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                for base in node.bases:
+                    if isinstance(base, ast.Attribute):
+                        if (
+                            isinstance(base.value, ast.Name)
+                            and base.value.id == "gl"
+                            and base.attr == "Contract"
+                        ):
+                            contract_name = node.name
+                            break
+                if contract_name:
+                    break
+    except Exception as e:
+        raise ValueError(f"Error parsing contract file {main_file_path}: {e}")
+
+    if not contract_name:
+        raise ValueError(f"No valid contract class found in {main_file_path}")
+
+    # Determine if it's a multifile contract
+    main_file_dir = main_file_path.parent
+    runner_file_path = None
+    if main_file_path.name in ["__init__.py", "__init__.gpy"]:
+        # Likely a multifile contract
+        runner_file_path = main_file_dir.joinpath("runner.json")
+        if not runner_file_path.exists():
+            # No runner file, so it's a single file contract
+            runner_file_path = None
+
+    # Compute contract code using the same logic as find_contract_definition
+    contract_code = compute_contract_code(main_file_path, runner_file_path)
+
+    return ContractDefinition(
+        contract_name=contract_name,
+        contract_code=contract_code,
+        main_file_path=main_file_path,
+        runner_file_path=runner_file_path,
+    )
