@@ -150,7 +150,7 @@ class ContractFactory:
     contract_code: str
 
     @classmethod
-    def from_artifact(
+    def from_name(
         cls: Type["ContractFactory"], contract_name: str
     ) -> "ContractFactory":
         """
@@ -276,6 +276,6 @@ def get_contract_factory(
         raise ValueError("Either contract_name or contract_file_path must be provided")
 
     if contract_name is not None:
-        return ContractFactory.from_artifact(contract_name)
+        return ContractFactory.from_name(contract_name)
     else:
         return ContractFactory.from_file_path(contract_file_path)
