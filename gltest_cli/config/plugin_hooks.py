@@ -1,11 +1,9 @@
-from gltest.plugin_config import (
-    set_contracts_dir,
-    set_default_wait_interval,
-    set_default_wait_retries,
-    set_rpc_url,
+from gltest_cli.config.general import (
+    get_general_config,
 )
 from pathlib import Path
 from genlayer_py.chains.localnet import SIMULATOR_JSON_RPC_URL
+from gltest_cli.config.types import NetworkConfig, PluginConfig
 
 
 def pytest_addoption(parser):
@@ -38,14 +36,27 @@ def pytest_addoption(parser):
         help="RPC URL for the genlayer network",
     )
 
+    group.addoption(
+        "--network",
+        action="store",
+        default=NetworkConfig.LOCALNET,
+        help="The target network, possible values: localnet, testnet_asimov [default: localnet]",
+    )
+
 
 def pytest_configure(config):
     contracts_dir = config.getoption("--contracts-dir")
     default_wait_interval = config.getoption("--default-wait-interval")
     default_wait_retries = config.getoption("--default-wait-retries")
     rpc_url = config.getoption("--rpc-url")
+    network = config.getoption("--network")
 
-    set_contracts_dir(Path(contracts_dir))
-    set_default_wait_interval(int(default_wait_interval))
-    set_default_wait_retries(int(default_wait_retries))
-    set_rpc_url(str(rpc_url))
+    plugin_config = PluginConfig()
+    plugin_config.contracts_dir = Path(contracts_dir)
+    plugin_config.default_wait_interval = int(default_wait_interval)
+    plugin_config.default_wait_retries = int(default_wait_retries)
+    plugin_config.rpc_url = str(rpc_url)
+    plugin_config.network_name = NetworkConfig(network)
+
+    general_config = get_general_config()
+    general_config.plugin_config = plugin_config

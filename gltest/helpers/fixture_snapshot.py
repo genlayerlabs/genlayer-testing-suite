@@ -7,7 +7,7 @@ from gltest.exceptions import (
     InvalidSnapshotError,
     FixtureAnonymousFunctionError,
 )
-from gltest.plugin_config import get_rpc_url
+from gltest_cli.config.general import get_general_config
 
 SUPPORTED_RPC_DOMAINS = ["localhost", "127.0.0.1"]
 
@@ -34,7 +34,8 @@ def load_fixture(fixture: Callable[[], T]) -> T:
     if fixture.__name__ == "<lambda>":
         raise FixtureAnonymousFunctionError("Fixtures must be named functions")
 
-    rpc_url = get_rpc_url()
+    general_config = get_general_config()
+    rpc_url = general_config.get_rpc_url()
     domain = urlparse(rpc_url).netloc.split(":")[0]  # Extract domain without port
     if domain not in SUPPORTED_RPC_DOMAINS:
         return fixture()

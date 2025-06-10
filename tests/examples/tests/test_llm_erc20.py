@@ -1,4 +1,4 @@
-from gltest import get_contract_factory, default_account, create_account
+from gltest import get_contract_factory, get_default_account, create_account
 from gltest.assertions import tx_execution_succeeded
 
 TOKEN_TOTAL_SUPPLY = 1000
@@ -7,7 +7,7 @@ TRANSFER_AMOUNT = 100
 
 def test_llm_erc20():
     # Account Setup
-    from_account_a = default_account
+    from_account_a = get_default_account()
     from_account_b = create_account()
 
     # Deploy Contract
