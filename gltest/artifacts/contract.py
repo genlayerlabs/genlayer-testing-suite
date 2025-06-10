@@ -20,6 +20,8 @@ class ContractDefinition:
 
 def search_path_by_class_name(contracts_dir: Path, contract_name: str) -> Path:
     """Search for a file by class name in the contracts directory."""
+    matching_files = []
+
     for file_path in contracts_dir.rglob("*"):
         if not file_path.suffix in [".gpy", ".py"]:
             continue
@@ -40,10 +42,24 @@ def search_path_by_class_name(contracts_dir: Path, contract_name: str) -> Path:
                                 and base.value.id == "gl"
                                 and base.attr == "Contract"
                             ):
-                                return file_path
+                                matching_files.append(file_path)
+                                break
+                    break
         except Exception as e:
-            raise ValueError(f"Error reading file {file_path}: {e}")
-    raise FileNotFoundError(f"Contract {contract_name} not found at: {contracts_dir}")
+            raise ValueError(f"Error reading file {file_path}: {e}") from e
+
+    if len(matching_files) == 0:
+        raise FileNotFoundError(
+            f"Contract {contract_name} not found at: {contracts_dir}"
+        )
+    if len(matching_files) > 1:
+        file_paths_str = ", ".join(str(f) for f in matching_files)
+        raise ValueError(
+            f"Multiple contracts named '{contract_name}' found in contracts directory. "
+            f"Found in files: {file_paths_str}. Please ensure contract names are unique."
+        ) from None
+
+    return matching_files[0]
 
 
 def compute_contract_code(
@@ -71,14 +87,35 @@ def compute_contract_code(
     return buffer.getvalue()
 
 
-def find_contract_definition(contract_name: str) -> Optional[ContractDefinition]:
-    """
-    Search in the contracts directory for a contract definition.
-    """
-    contracts_dir = get_contracts_dir()
-    if not contracts_dir.exists():
-        raise FileNotFoundError(f"Contracts directory not found at: {contracts_dir}")
-    main_file_path = search_path_by_class_name(contracts_dir, contract_name)
+def _extract_contract_name_from_file(file_path: Path) -> str:
+    """Extract contract name from a file by parsing the AST."""
+    try:
+        with open(file_path, "r") as f:
+            content = f.read()
+        tree = ast.parse(content)
+
+        # Search for class definitions that inherit from gl.Contract
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                for base in node.bases:
+                    if (
+                        isinstance(base, ast.Attribute)
+                        and isinstance(base.value, ast.Name)
+                        and base.value.id == "gl"
+                        and base.attr == "Contract"
+                    ):
+                        return node.name
+    except Exception as e:
+        raise ValueError(f"Error parsing contract file {file_path}: {e}") from e
+
+    raise ValueError(f"No valid contract class found in {file_path}")
+
+
+def _create_contract_definition(
+    main_file_path: Path, contract_name: str
+) -> ContractDefinition:
+    """Create a ContractDefinition from a main file path and contract name."""
+    # Determine if it's a multifile contract
     main_file_dir = main_file_path.parent
     runner_file_path = None
     if main_file_path.name in ["__init__.py", "__init__.gpy"]:
@@ -87,9 +124,47 @@ def find_contract_definition(contract_name: str) -> Optional[ContractDefinition]
         if not runner_file_path.exists():
             # No runner file, so it's a single file contract
             runner_file_path = None
+
+    # Compute contract code
+    contract_code = compute_contract_code(main_file_path, runner_file_path)
+
     return ContractDefinition(
         contract_name=contract_name,
-        contract_code=compute_contract_code(main_file_path, runner_file_path),
+        contract_code=contract_code,
         main_file_path=main_file_path,
         runner_file_path=runner_file_path,
     )
+
+
+def find_contract_definition_from_name(
+    contract_name: str,
+) -> Optional[ContractDefinition]:
+    """
+    Search in the contracts directory for a contract definition.
+    """
+    contracts_dir = get_contracts_dir()
+    if not contracts_dir.exists():
+        raise FileNotFoundError(f"Contracts directory not found at: {contracts_dir}")
+
+    main_file_path = search_path_by_class_name(contracts_dir, contract_name)
+    return _create_contract_definition(main_file_path, contract_name)
+
+
+def find_contract_definition_from_path(
+    contract_file_path: Union[str, Path],
+) -> ContractDefinition:
+    """
+    Create a ContractDefinition from a given file path relative to the contracts directory.
+    """
+    contracts_dir = get_contracts_dir()
+    if not contracts_dir.exists():
+        raise FileNotFoundError(f"Contracts directory not found at: {contracts_dir}")
+
+    # Resolve the file path relative to contracts directory
+    main_file_path = contracts_dir / contract_file_path
+    if not main_file_path.exists():
+        raise FileNotFoundError(f"Contract file not found at: {main_file_path}")
+
+    contract_name = _extract_contract_name_from_file(main_file_path)
+
+    return _create_contract_definition(main_file_path, contract_name)

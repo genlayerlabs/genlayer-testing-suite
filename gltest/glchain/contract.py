@@ -4,8 +4,12 @@ from eth_typing import (
 )
 from eth_account.signers.local import LocalAccount
 from typing import Union
+from pathlib import Path
 from dataclasses import dataclass
-from gltest.artifacts import find_contract_definition
+from gltest.artifacts import (
+    find_contract_definition_from_name,
+    find_contract_definition_from_path,
+)
 from gltest.assertions import tx_execution_failed
 from gltest.exceptions import DeploymentError
 from .client import get_gl_client
@@ -146,19 +150,32 @@ class ContractFactory:
     contract_code: str
 
     @classmethod
-    def from_artifact(
+    def from_name(
         cls: Type["ContractFactory"], contract_name: str
     ) -> "ContractFactory":
         """
         Create a ContractFactory instance given the contract name.
         """
-        contract_info = find_contract_definition(contract_name)
+        contract_info = find_contract_definition_from_name(contract_name)
         if contract_info is None:
             raise ValueError(
                 f"Contract {contract_name} not found in the contracts directory"
             )
         return cls(
             contract_name=contract_name, contract_code=contract_info.contract_code
+        )
+
+    @classmethod
+    def from_file_path(
+        cls: Type["ContractFactory"], contract_file_path: Union[str, Path]
+    ) -> "ContractFactory":
+        """
+        Create a ContractFactory instance given the contract file path.
+        """
+        contract_info = find_contract_definition_from_path(contract_file_path)
+        return cls(
+            contract_name=contract_info.contract_name,
+            contract_code=contract_info.contract_code,
         )
 
     def build_contract(
@@ -237,8 +254,27 @@ class ContractFactory:
             ) from e
 
 
-def get_contract_factory(contract_name: str) -> ContractFactory:
+def get_contract_factory(
+    contract_name: Optional[str] = None,
+    contract_file_path: Optional[Union[str, Path]] = None,
+) -> ContractFactory:
     """
     Get a ContractFactory instance for a contract.
+
+    Args:
+        contract_name: Name of the contract to load from artifacts
+        contract_file_path: Path to the contract file to load directly
+
+    Note: Exactly one of contract_name or contract_file_path must be provided.
     """
-    return ContractFactory.from_artifact(contract_name)
+    if contract_name is not None and contract_file_path is not None:
+        raise ValueError(
+            "Only one of contract_name or contract_file_path should be provided"
+        )
+
+    if contract_name is None and contract_file_path is None:
+        raise ValueError("Either contract_name or contract_file_path must be provided")
+
+    if contract_name is not None:
+        return ContractFactory.from_name(contract_name)
+    return ContractFactory.from_file_path(contract_file_path)
