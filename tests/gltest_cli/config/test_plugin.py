@@ -7,14 +7,14 @@ def test_help_message(pytester):
         [
             "gltest:",
             "  --contracts-dir=CONTRACTS_DIR",
-            "                        Directory containing contract files",
+            "                        Path to directory containing contract files",
             "  --default-wait-interval=DEFAULT_WAIT_INTERVAL",
-            "                        Default wait interval for waiting transaction receipts",
+            "                        Default interval (ms) between transaction receipt checks",
             "  --default-wait-retries=DEFAULT_WAIT_RETRIES",
-            "                        Default wait retries for waiting transaction receipts",
-            "  --rpc-url=RPC_URL     RPC URL for the genlayer network",
-            "  --network=NETWORK     The target network, possible values: localnet,",
-            "                        testnet_asimov [default: localnet]",
+            "                        Default number of retries for transaction receipt checks",
+            "  --rpc-url=RPC_URL     RPC endpoint URL for the GenLayer network",
+            "  --network=NETWORK     Target network (defaults to 'localnet' if no config",
+            "                        file)",
         ]
     )
 
@@ -23,10 +23,11 @@ def test_default_wait_interval(pytester):
 
     pytester.makepyfile(
         """
-        from gltest.plugin_config import get_default_wait_interval
+        from gltest_cli.config.general import get_general_config
 
         def test_default_wait_interval():
-            assert get_default_wait_interval() == 5000
+            general_config = get_general_config()
+            assert general_config.get_default_wait_interval() == 5000
     """
     )
 
@@ -43,10 +44,11 @@ def test_default_wait_interval(pytester):
 def test_default_wait_retries(pytester):
     pytester.makepyfile(
         """
-        from gltest.plugin_config import get_default_wait_retries
+        from gltest_cli.config.general import get_general_config
 
         def test_default_wait_retries():
-            assert get_default_wait_retries() == 4000
+            general_config = get_general_config()
+            assert general_config.get_default_wait_retries() == 4000
     """
     )
 
@@ -63,10 +65,11 @@ def test_default_wait_retries(pytester):
 def test_rpc_url(pytester):
     pytester.makepyfile(
         """
-        from gltest.plugin_config import get_rpc_url
+        from gltest_cli.config.general import get_general_config
 
         def test_rpc_url():
-            assert get_rpc_url() == 'http://custom-rpc-url:8545' 
+            general_config = get_general_config()
+            assert general_config.get_rpc_url() == 'http://custom-rpc-url:8545' 
     """
     )
 
@@ -83,11 +86,11 @@ def test_rpc_url(pytester):
 def test_network_localnet(pytester):
     pytester.makepyfile(
         """
-        from gltest.plugin_config import get_network
-        from gltest.config import NetworkConfig
+        from gltest_cli.config.general import get_general_config
 
         def test_network():
-            assert get_network() == NetworkConfig.LOCALNET
+            general_config = get_general_config()
+            assert general_config.get_network_name() == "localnet"
     """
     )
 
@@ -104,15 +107,17 @@ def test_network_localnet(pytester):
 def test_network_testnet(pytester):
     pytester.makepyfile(
         """
-        from gltest.plugin_config import get_network
-        from gltest.config import NetworkConfig
+        from gltest_cli.config.general import get_general_config
 
         def test_network():
-            assert get_network() == NetworkConfig.TESTNET_ASIMOV
+            general_config = get_general_config()
+            assert general_config.get_network_name() == "testnet_asimov"
     """
     )
 
-    result = pytester.runpytest("--network=testnet_asimov", "-v")
+    result = pytester.runpytest(
+        "--network=testnet_asimov", "--rpc-url=http://test.example.com:9151", "-v"
+    )
 
     result.stdout.fnmatch_lines(
         [
