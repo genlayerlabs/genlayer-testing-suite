@@ -21,9 +21,12 @@ class ContractDefinition:
 def search_path_by_class_name(contracts_dir: Path, contract_name: str) -> Path:
     """Search for a file by class name in the contracts directory."""
     matching_files = []
+    exclude_dirs = {".venv", "venv", "env", "build", "dist", "__pycache__", ".git"}
 
     for file_path in contracts_dir.rglob("*"):
-        if not file_path.suffix in [".gpy", ".py"]:
+        if any(exclude_dir in file_path.parts for exclude_dir in exclude_dirs):
+            continue
+        if file_path.suffix not in [".gpy", ".py"]:
             continue
         try:
             # Read the file content
