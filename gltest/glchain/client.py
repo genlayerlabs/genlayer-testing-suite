@@ -36,6 +36,21 @@ def get_gl_hosted_studio_client():
     )
 
 
+@lru_cache(maxsize=1)
+def get_local_client():
+    """
+    Get the GenLayer local client instance.
+
+    Note: This is a temporary solution to get contract schema.
+    TODO: Remove this once we have a proper way to get contract schema from testnet.
+    """
+    return create_client(
+        chain=localnet,
+        account=get_default_account(),
+        endpoint="http://127.0.0.1:4000/api",
+    )
+
+
 def get_gl_provider():
     """
     Get the GenLayer provider instance.

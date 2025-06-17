@@ -12,11 +12,12 @@ from gltest.artifacts import (
 )
 from gltest.assertions import tx_execution_failed
 from gltest.exceptions import DeploymentError
-from .client import get_gl_client
+from .client import get_gl_client, get_gl_hosted_studio_client, get_local_client
 from gltest.types import CalldataEncodable, GenLayerTransaction, TransactionStatus
 from typing import List, Any, Type, Optional, Dict, Callable
 import types
 from gltest_cli.config.general import get_general_config
+from gltest_cli.logging import logger
 
 
 @dataclass
@@ -101,7 +102,7 @@ class Contract:
             wait_interval: Optional[int] = None,
             wait_retries: Optional[int] = None,
             wait_triggered_transactions: bool = True,
-            wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+            wait_triggered_transactions_status: TransactionStatus = TransactionStatus.FINALIZED,
         ) -> GenLayerTransaction:
             """
             Wrapper to the contract write method.
@@ -179,6 +180,31 @@ class ContractFactory:
             contract_code=contract_info.contract_code,
         )
 
+    def _get_schema_with_fallback(self):
+        """Attempts to get the contract schema using multiple clients in a fallback pattern.
+
+        This method tries to get the contract schema in the following order:
+        1. Hosted studio client
+        2. Local client
+        3. Regular client
+
+        Returns:
+            Optional[Dict[str, Any]]: The contract schema if successful, None if all attempts fail.
+        """
+        clients = (
+            ("hosted studio", get_gl_hosted_studio_client()),
+            ("local", get_local_client()),
+            ("default", get_gl_client()),
+        )
+        for label, client in clients:
+            try:
+                return client.get_contract_schema_for_code(
+                    contract_code=self.contract_code
+                )
+            except Exception as e:
+                logger.warning("Schema fetch via %s client failed: %s", label, e)
+        return None
+
     def build_contract(
         self,
         contract_address: Union[Address, ChecksumAddress],
@@ -187,16 +213,13 @@ class ContractFactory:
         """
         Build contract from address
         """
-        client = get_gl_client()
-        try:
-            schema = client.get_contract_schema(address=contract_address)
-            return Contract.new(
-                address=contract_address, schema=schema, account=account
-            )
-        except Exception as e:
+        schema = self._get_schema_with_fallback()
+        if schema is None:
             raise ValueError(
-                f"Failed to build contract {self.contract_name}: {str(e)}"
-            ) from e
+                "Failed to get schema from all clients (hosted studio, local, and regular)"
+            )
+
+        return Contract.new(address=contract_address, schema=schema, account=account)
 
     def deploy(
         self,
@@ -217,7 +240,6 @@ class ContractFactory:
         if wait_retries is None:
             wait_retries = general_config.get_default_wait_retries()
 
-        chain = general_config.get_chain()
         client = get_gl_client()
         try:
             tx_hash = client.deploy_contract(
@@ -233,22 +255,27 @@ class ContractFactory:
                 interval=wait_interval,
                 retries=wait_retries,
             )
-            if (
-                not tx_receipt
-                or "data" not in tx_receipt
-                or "contract_address" not in tx_receipt["data"]
-            ):
-                raise ValueError(
-                    "Invalid transaction receipt: missing contract address"
-                )
-
             if tx_execution_failed(tx_receipt):
                 raise ValueError(
                     f"Deployment transaction finalized with error: {tx_receipt}"
                 )
 
-            contract_address = tx_receipt["data"]["contract_address"]
-            schema = client.get_contract_schema(address=contract_address)
+            if (
+                "tx_data_decoded" in tx_receipt
+                and "contract_address" in tx_receipt["tx_data_decoded"]
+            ):
+                contract_address = tx_receipt["tx_data_decoded"]["contract_address"]
+            elif "data" in tx_receipt and "contract_address" in tx_receipt["data"]:
+                contract_address = tx_receipt["data"]["contract_address"]
+            else:
+                raise ValueError("Transaction receipt missing contract address")
+
+            schema = self._get_schema_with_fallback()
+            if schema is None:
+                raise ValueError(
+                    "Failed to get schema from all clients (hosted studio, local, and regular)"
+                )
+
             return Contract.new(
                 address=contract_address, schema=schema, account=account
             )
