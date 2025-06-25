@@ -2,7 +2,7 @@ import ast
 from typing import Optional
 from dataclasses import dataclass
 from pathlib import Path
-from gltest.plugin_config import get_contracts_dir
+from gltest_cli.config.general import get_general_config
 import io
 import zipfile
 from typing import Union
@@ -21,9 +21,12 @@ class ContractDefinition:
 def search_path_by_class_name(contracts_dir: Path, contract_name: str) -> Path:
     """Search for a file by class name in the contracts directory."""
     matching_files = []
+    exclude_dirs = {".venv", "venv", "env", "build", "dist", "__pycache__", ".git"}
 
     for file_path in contracts_dir.rglob("*"):
-        if not file_path.suffix in [".gpy", ".py"]:
+        if any(exclude_dir in file_path.parts for exclude_dir in exclude_dirs):
+            continue
+        if file_path.suffix not in [".gpy", ".py"]:
             continue
         try:
             # Read the file content
@@ -142,7 +145,8 @@ def find_contract_definition_from_name(
     """
     Search in the contracts directory for a contract definition.
     """
-    contracts_dir = get_contracts_dir()
+    general_config = get_general_config()
+    contracts_dir = general_config.get_contracts_dir()
     if not contracts_dir.exists():
         raise FileNotFoundError(f"Contracts directory not found at: {contracts_dir}")
 
@@ -156,7 +160,8 @@ def find_contract_definition_from_path(
     """
     Create a ContractDefinition from a given file path relative to the contracts directory.
     """
-    contracts_dir = get_contracts_dir()
+    general_config = get_general_config()
+    contracts_dir = general_config.get_contracts_dir()
     if not contracts_dir.exists():
         raise FileNotFoundError(f"Contracts directory not found at: {contracts_dir}")
 

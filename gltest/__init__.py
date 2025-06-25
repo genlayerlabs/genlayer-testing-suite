@@ -3,8 +3,8 @@ from gltest.glchain import (
     create_accounts,
     get_contract_factory,
     get_gl_client,
-    default_account,
-    accounts,
+    get_accounts,
+    get_default_account,
 )
 
 __all__ = [
@@ -13,6 +13,6 @@ __all__ = [
     "create_accounts",
     "get_contract_factory",
     "get_gl_client",
-    "default_account",
-    "accounts",
+    "get_accounts",
+    "get_default_account",
 ]

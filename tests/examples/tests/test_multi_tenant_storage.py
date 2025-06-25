@@ -1,5 +1,7 @@
-from gltest import get_contract_factory, create_account
+from gltest import get_contract_factory, create_account, get_accounts
 from gltest.assertions import tx_execution_succeeded
+from gltest_cli.config.general import get_general_config
+from genlayer_py.chains import testnet_asimov
 
 
 def test_multi_tenant_storage():
@@ -15,8 +17,15 @@ def test_multi_tenant_storage():
 
     This test demonstrates contract-to-contract interactions and multi-tenant data management.
     """
-    user_account_a = create_account()
-    user_account_b = create_account()
+    general_config = get_general_config()
+    chain = general_config.get_chain()
+
+    if chain.id == testnet_asimov.id:
+        user_account_a = get_accounts()[0]
+        user_account_b = get_accounts()[1]
+    else:
+        user_account_a = create_account()
+        user_account_b = create_account()
 
     # Storage Contracts
     storage_factory = get_contract_factory("Storage")

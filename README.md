@@ -22,13 +22,13 @@ pip install genlayer-test
 ### Basic Usage
 
 ```python
-from gltest import get_contract_factory, default_account, create_account
+from gltest import get_contract_factory, get_default_account, create_account
 from gltest.assertions import tx_execution_succeeded
 
 factory = get_contract_factory("MyContract")
 # Deploy a contract with default account
 contract = factory.deploy() # This will be deployed with default_account
-assert contract.account == default_account
+assert contract.account == get_default_account()
 
 # Deploy a contract with other account
 other_account = create_account()
@@ -80,6 +80,58 @@ $ cd genlayer-testing-suite
 $ pip install -e .
 ```
 
+### Configuration
+
+The GenLayer Testing Suite can be configured using an optional but recommended `gltest.config.yaml` file in your project root. While not required, this file helps manage network configurations, contract paths, and environment settings in a centralized way, making it easier to maintain different environments and share configurations across team members.
+
+```yaml
+# gltest.config.yaml
+networks:
+  default: localnet  # Default network to use
+
+  localnet:  # Local development network configuration
+    url: "http://127.0.0.1:4000/api"
+
+  testnet_asimov:  # Test network configuration
+    id: 4221
+    url: "http://34.32.169.58:9151"
+    accounts:
+      - "${ACCOUNT_PRIVATE_KEY_1}"
+      - "${ACCOUNT_PRIVATE_KEY_2}"
+      - "${ACCOUNT_PRIVATE_KEY_3}"
+
+paths:
+  contracts: "contracts"  # Path to your contracts directory
+
+environment: .env  # Path to your environment file containing private keys and other secrets
+```
+
+Key configuration sections:
+
+1. **Networks**: Define different network environments
+   - `default`: Specifies which network to use by default
+   - Network configurations can include:
+     - `url`: The RPC endpoint for the network
+     - `id`: Chain ID
+     - `accounts`: List of account private keys (using environment variables)
+   - Special case for `localnet`:
+     - If a network is named `localnet`, missing fields will be filled with default values
+     - For all other network names, `id`, `url`, and `accounts` are required fields
+
+2. **Paths**: Define important directory paths
+   - `contracts`: Location of your contract files
+
+3. **Environment**: Path to your `.env` file containing sensitive information like private keys
+
+If you don't provide a config file, the suite will use default values. You can override these settings using command-line arguments. For example:
+```bash
+# Override the default network
+gltest --network testnet_asimov
+
+# Override the contracts directory
+gltest --contracts-dir custom/contracts/path
+```
+
 ### Running Tests
 
 1. Run all tests:
@@ -107,17 +159,27 @@ $ gltest -v
 $ gltest --contracts-dir <path_to_contracts>
 ```
 
-6. Run tests with a custom RPC url
+6. Run tests on a specific network:
+```bash
+# Run tests on localnet (default)
+$ gltest --network localnet
+
+# Run tests on testnet
+$ gltest --network testnet_asimov
+```
+The `--network` flag allows you to specify which network configuration to use from your `gltest.config.yaml`. If not specified, it will use the `default` network defined in your config file.
+
+7. Run tests with a custom RPC url
 ```bash
 $ gltest --rpc-url <custom_rpc_url>
 ```
 
-6. Run tests with a default wait interval for waiting transaction receipts
+8. Run tests with a default wait interval for waiting transaction receipts
 ```bash
 $ gltest --default-wait-interval <default_wait_interval>
 ```
 
-6. Run tests with a default wait retries for waiting transaction receipts
+9. Run tests with a default wait retries for waiting transaction receipts
 ```bash
 $ gltest --default-wait-retries <default_wait_retries>
 ```
@@ -214,13 +276,14 @@ def test_deployment():
 Reading from the contract is straightforward:
 
 ```python
-from gltest import get_contract_factory, default_account
+from gltest import get_contract_factory
 
 def test_read_methods():
+
     # Get the contract factory and deploy the contract
     factory = get_contract_factory("Storage")
-    contract = factory.deploy(account=default_account)
-    
+    contract = factory.deploy()
+
     # Call a read-only method
     result = contract.get_value(args=[])
     

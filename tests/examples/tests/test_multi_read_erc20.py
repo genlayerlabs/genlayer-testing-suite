@@ -1,5 +1,7 @@
-from gltest import get_contract_factory, create_account
+from gltest import get_contract_factory, create_account, get_accounts
 from gltest.assertions import tx_execution_succeeded
+from gltest_cli.config.general import get_general_config
+from genlayer_py.chains import testnet_asimov
 
 
 def test_multi_read_erc20():
@@ -15,9 +17,17 @@ def test_multi_read_erc20():
 
     This test demonstrates the integration contract to contract reads
     """
+    general_config = get_general_config()
+    chain = general_config.get_chain()
+
     TOKEN_TOTAL_SUPPLY = 1000
-    from_account_doge = create_account()
-    from_account_shiba = create_account()
+
+    if chain.id == testnet_asimov.id:
+        from_account_doge = get_accounts()[0]
+        from_account_shiba = get_accounts()[1]
+    else:
+        from_account_doge = create_account()
+        from_account_shiba = create_account()
 
     # LLM ERC20
     llm_erc20_factory = get_contract_factory("LlmErc20")

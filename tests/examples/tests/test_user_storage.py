@@ -1,5 +1,12 @@
-from gltest import get_contract_factory, default_account, create_account
+from gltest import (
+    get_contract_factory,
+    get_default_account,
+    create_account,
+    get_accounts,
+)
 from gltest.assertions import tx_execution_succeeded
+from gltest_cli.config.general import get_general_config
+from genlayer_py.chains import testnet_asimov
 
 
 INITIAL_STATE_USER_A = "user_a_initial_state"
@@ -9,9 +16,16 @@ UPDATED_STATE_USER_B = "user_b_updated_state"
 
 
 def test_user_storage():
+    general_config = get_general_config()
+    chain = general_config.get_chain()
+
     # Account Setup
-    from_account_a = default_account
-    from_account_b = create_account()
+    if chain.id == testnet_asimov.id:
+        from_account_a = get_accounts()[0]
+        from_account_b = get_accounts()[1]
+    else:
+        from_account_a = get_default_account()
+        from_account_b = create_account()
 
     factory = get_contract_factory("UserStorage")
     contract = factory.deploy()

@@ -1,4 +1,4 @@
-from gltest import get_contract_factory, default_account
+from gltest import get_contract_factory, get_default_account
 
 
 def test_read_erc20():
@@ -32,6 +32,6 @@ def test_read_erc20():
 
         # check balance
         contract_state = read_erc20_contract.get_balance_of(
-            args=[default_account.address]
+            args=[get_default_account().address]
         )
         assert contract_state == TOKEN_TOTAL_SUPPLY

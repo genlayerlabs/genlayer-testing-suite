@@ -8,14 +8,16 @@ UPDATED_STATE = "b"
 
 def test_storage():
     factory = get_contract_factory("Storage")
-    contract = factory.deploy(args=[INITIAL_STATE])
+    contract = factory.deploy(args=[INITIAL_STATE], wait_retries=40)
 
     # Get initial state
     contract_state_1 = contract.get_storage(args=[])
     assert contract_state_1 == INITIAL_STATE
 
     # Update State
-    transaction_response_call_1 = contract.update_storage(args=[UPDATED_STATE])
+    transaction_response_call_1 = contract.update_storage(
+        args=[UPDATED_STATE], wait_retries=40
+    )
     assert tx_execution_succeeded(transaction_response_call_1)
 
     # Get Updated State
