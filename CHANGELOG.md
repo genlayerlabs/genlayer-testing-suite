@@ -2,6 +2,43 @@
 
 <!-- version list -->
 
+## v0.3.0 (2025-06-25)
+
+### Bug Fixes
+
+- Exclude enviroment dirs from search
+  ([`b136ffc`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/b136ffc9246e265c06014e8452e41b983f58b490))
+
+### Continuous Integration
+
+- Update test workflow
+  ([`5ecbdcf`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/5ecbdcfee9096051641c07f6ddf68ec13b5b854e))
+
+### Documentation
+
+- Add gltest.config.yaml documentation
+  ([`579ca0b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/579ca0b1b78ee11561643fa9228a3dd546219e93))
+
+### Features
+
+- Add network param and move config logic to gltest_cli
+  ([`c8f5fea`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/c8f5fea511e187c563bc357a2548ce8710868ffb))
+
+- Implement gltest config file
+  ([`ffc9aac`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/ffc9aac19e7555cd4ce399133746f3f3221822d4))
+
+- Implement logging module
+  ([`7d4b4a5`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/7d4b4a50a334dd3ba9e4ab2225938c16ee6dea0f))
+
+- **testnet**: Add support for deploy and build contract functions
+  ([`4bfd4c9`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/4bfd4c95fa41a499e70baf65b14a8b58ebeec4c3))
+
+### Testing
+
+- Increase coverage and organize folders
+  ([`bf3052a`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/bf3052af17668a7da1bde34dce3631149365789a))
+
+
 ## v0.2.0 (2025-06-11)
 
 ### Bug Fixes
