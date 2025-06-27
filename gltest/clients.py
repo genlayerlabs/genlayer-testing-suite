@@ -1,6 +1,6 @@
 from genlayer_py.chains import localnet
 from genlayer_py import create_client
-from .account import get_default_account
+from gltest.accounts import get_default_account
 from functools import lru_cache
 from gltest_cli.config.general import get_general_config
 

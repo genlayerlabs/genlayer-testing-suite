@@ -1,4 +1,4 @@
-from gltest.glchain import get_gl_provider
+from gltest.clients import get_gl_provider
 from dataclasses import dataclass
 from typing import Callable
 from gltest.exceptions import HelperError, InvalidSnapshotError
