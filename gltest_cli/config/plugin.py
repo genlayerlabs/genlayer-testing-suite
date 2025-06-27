@@ -48,6 +48,13 @@ def pytest_addoption(parser):
         help="Target network (defaults to 'localnet' if no config file)",
     )
 
+    group.addoption(
+        "--test-with-mocks",
+        action="store_true",
+        default=False,
+        help="Test with mocks",
+    )
+
 
 def pytest_configure(config):
     general_config = get_general_config()
@@ -73,6 +80,7 @@ def pytest_configure(config):
     default_wait_retries = config.getoption("--default-wait-retries")
     rpc_url = config.getoption("--rpc-url")
     network = config.getoption("--network")
+    test_with_mocks = config.getoption("--test-with-mocks")
 
     plugin_config = PluginConfig()
     plugin_config.contracts_dir = (
@@ -82,6 +90,7 @@ def pytest_configure(config):
     plugin_config.default_wait_retries = int(default_wait_retries)
     plugin_config.rpc_url = rpc_url
     plugin_config.network_name = network
+    plugin_config.test_with_mocks = test_with_mocks
 
     general_config.plugin_config = plugin_config
 
@@ -100,3 +109,7 @@ def pytest_sessionstart(session):
         f"  Default wait interval: {general_config.get_default_wait_interval()} ms"
     )
     logger.info(f"  Default wait retries: {general_config.get_default_wait_retries()}")
+    logger.info(f"  Test with mocks: {general_config.get_test_with_mocks()}")
+
+
+pytest_plugins = ["gltest.fixtures"]
