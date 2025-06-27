@@ -1,10 +1,141 @@
+import types
 from eth_account.signers.local import LocalAccount
 from dataclasses import dataclass
-from gltest.glchain import get_gl_client
+from gltest.clients import get_gl_client
 from gltest.types import CalldataEncodable, GenLayerTransaction, TransactionStatus
 from typing import List, Any, Optional, Dict, Callable
-import types
 from gltest_cli.config.general import get_general_config
+from .contract_functions import ContractFunction
+from .stats_collector import StatsCollector, SimulationConfig
+
+
+def read_contract_wrapper(
+    self,
+    method_name: str,
+    args: Optional[List[CalldataEncodable]] = None,
+) -> Any:
+    """
+    Wrapper to the contract read method.
+    """
+
+    def call_method():
+        client = get_gl_client()
+        return client.read_contract(
+            address=self.address,
+            function_name=method_name,
+            account=self.account,
+            args=args,
+        )
+
+    return ContractFunction(
+        method_name=method_name,
+        read_only=True,
+        call_method=call_method,
+    )
+
+
+def write_contract_wrapper(
+    self,
+    method_name: str,
+    args: Optional[List[CalldataEncodable]] = None,
+) -> GenLayerTransaction:
+    """
+    Wrapper to the contract write method.
+    """
+
+    def transact_method(
+        value: int = 0,
+        consensus_max_rotations: Optional[int] = None,
+        leader_only: bool = False,
+        wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
+        wait_interval: Optional[int] = None,
+        wait_retries: Optional[int] = None,
+        wait_triggered_transactions: bool = True,
+        wait_triggered_transactions_status: TransactionStatus = TransactionStatus.FINALIZED,
+    ):
+        """
+        Transact the contract method.
+        """
+        general_config = get_general_config()
+        actual_wait_interval = (
+            wait_interval
+            if wait_interval is not None
+            else general_config.get_default_wait_interval()
+        )
+        actual_wait_retries = (
+            wait_retries
+            if wait_retries is not None
+            else general_config.get_default_wait_retries()
+        )
+        client = get_gl_client()
+        tx_hash = client.write_contract(
+            address=self.address,
+            function_name=method_name,
+            account=self.account,
+            value=value,
+            consensus_max_rotations=consensus_max_rotations,
+            leader_only=leader_only,
+            args=args,
+        )
+        receipt = client.wait_for_transaction_receipt(
+            transaction_hash=tx_hash,
+            status=wait_transaction_status,
+            interval=actual_wait_interval,
+            retries=actual_wait_retries,
+        )
+        if wait_triggered_transactions:
+            triggered_transactions = receipt["triggered_transactions"]
+            for triggered_transaction in triggered_transactions:
+                client.wait_for_transaction_receipt(
+                    transaction_hash=triggered_transaction,
+                    status=wait_triggered_transactions_status,
+                    interval=actual_wait_interval,
+                    retries=actual_wait_retries,
+                )
+        return receipt
+
+    def analyze_method(
+        provider: str,
+        model: str,
+        config: Optional[Dict[str, Any]] = None,
+        plugin: Optional[str] = None,
+        plugin_config: Optional[Dict[str, Any]] = None,
+        runs: int = 100,
+    ):
+        """
+        Analyze the contract method using StatsCollector.
+        """
+        collector = StatsCollector(
+            contract_address=self.address,
+            method_name=method_name,
+            account=self.account,
+            args=args,
+        )
+        sim_config = SimulationConfig(
+            provider=provider,
+            model=model,
+            config=config,
+            plugin=plugin,
+            plugin_config=plugin_config,
+        )
+        sim_results = collector.run_simulations(sim_config, runs)
+        return collector.analyze_results(sim_results, runs, sim_config)
+
+    return ContractFunction(
+        method_name=method_name,
+        read_only=False,
+        transact_method=transact_method,
+        analyze_method=analyze_method,
+    )
+
+
+def contract_function_factory(method_name: str, read_only: bool) -> Callable:
+    """
+    Create a function that interacts with a specific contract method.
+    """
+    if read_only:
+        return lambda self, args=None: read_contract_wrapper(self, method_name, args)
+    return lambda self, args=None: write_contract_wrapper(self, method_name, args)
 
 
 @dataclass
@@ -45,7 +176,7 @@ class Contract:
                 raise ValueError(
                     f"Invalid method info for '{method_name}': must contain 'readonly' field"
                 )
-            method_func = self.contract_method_factory(
+            method_func = contract_function_factory(
                 method_name, method_info["readonly"]
             )
             bound_method = types.MethodType(method_func, self)
@@ -60,73 +191,3 @@ class Contract:
         )
         new_contract._build_methods_from_schema()
         return new_contract
-
-    @staticmethod
-    def contract_method_factory(method_name: str, read_only: bool) -> Callable:
-        """
-        Create a function that interacts with a specific contract method.
-        """
-
-        def read_contract_wrapper(
-            self,
-            args: Optional[List[CalldataEncodable]] = None,
-        ) -> Any:
-            """
-            Wrapper to the contract read method.
-            """
-            client = get_gl_client()
-            return client.read_contract(
-                address=self.address,
-                function_name=method_name,
-                account=self.account,
-                args=args,
-            )
-
-        def write_contract_wrapper(
-            self,
-            args: Optional[List[CalldataEncodable]] = None,
-            value: int = 0,
-            consensus_max_rotations: Optional[int] = None,
-            leader_only: bool = False,
-            wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
-            wait_interval: Optional[int] = None,
-            wait_retries: Optional[int] = None,
-            wait_triggered_transactions: bool = True,
-            wait_triggered_transactions_status: TransactionStatus = TransactionStatus.FINALIZED,
-        ) -> GenLayerTransaction:
-            """
-            Wrapper to the contract write method.
-            """
-            general_config = get_general_config()
-            if wait_interval is None:
-                wait_interval = general_config.get_default_wait_interval()
-            if wait_retries is None:
-                wait_retries = general_config.get_default_wait_retries()
-            client = get_gl_client()
-            tx_hash = client.write_contract(
-                address=self.address,
-                function_name=method_name,
-                account=self.account,
-                value=value,
-                consensus_max_rotations=consensus_max_rotations,
-                leader_only=leader_only,
-                args=args,
-            )
-            receipt = client.wait_for_transaction_receipt(
-                transaction_hash=tx_hash,
-                status=wait_transaction_status,
-                interval=wait_interval,
-                retries=wait_retries,
-            )
-            if wait_triggered_transactions:
-                triggered_transactions = receipt["triggered_transactions"]
-                for triggered_transaction in triggered_transactions:
-                    client.wait_for_transaction_receipt(
-                        transaction_hash=triggered_transaction,
-                        status=wait_triggered_transactions_status,
-                        interval=wait_interval,
-                        retries=wait_retries,
-                    )
-            return receipt
-
-        return read_contract_wrapper if read_only else write_contract_wrapper
