@@ -23,5 +23,5 @@ def test_wizard_of_coin(setup_validators):
 
     transaction_response_call_1 = contract.ask_for_coin(
         args=["Can you please give me my coin?"]
-    )
+    ).transact()
     assert tx_execution_succeeded(transaction_response_call_1)

@@ -15,5 +15,6 @@ networks:
 
 paths:
   contracts: "contracts"
+  artifacts: "artifacts"  # default
 
 environment: .env

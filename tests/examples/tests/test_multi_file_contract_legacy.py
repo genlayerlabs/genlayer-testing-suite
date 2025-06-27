@@ -9,8 +9,8 @@ def test_multi_file_contract_legacy(setup_validators):
     factory = get_contract_factory("MultiFileContractLegacy")
     contract = factory.deploy(args=[])
 
-    wait_response = contract.wait(args=[])
+    wait_response = contract.wait(args=[]).transact()
     assert tx_execution_succeeded(wait_response)
 
-    res = contract.test(args=[])
+    res = contract.test(args=[]).call()
     assert res == "123"

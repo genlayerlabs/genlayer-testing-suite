@@ -27,11 +27,11 @@ def test_football_prediction_market(setup_validators):
     contract = factory.deploy(args=["2024-06-26", "Georgia", "Portugal"])
 
     # Resolve match
-    transaction_response_call_1 = contract.resolve(args=[])
+    transaction_response_call_1 = contract.resolve(args=[]).transact()
     assert tx_execution_succeeded(transaction_response_call_1)
 
     # Get Updated State
-    contract_state_2 = contract.get_resolution_data(args=[])
+    contract_state_2 = contract.get_resolution_data(args=[]).call()
 
     assert contract_state_2["winner"] == 1
     assert contract_state_2["score"] == "2:0"

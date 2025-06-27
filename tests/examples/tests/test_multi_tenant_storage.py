@@ -48,19 +48,23 @@ def test_multi_tenant_storage(setup_validators):
         ]
     )
     # update storage for first contract
-    transaction_response_call = multi_tenant_storage_contract.connect(
-        account=user_account_a
-    ).update_storage(args=["user_a_storage"])
+    transaction_response_call = (
+        multi_tenant_storage_contract.connect(account=user_account_a)
+        .update_storage(args=["user_a_storage"])
+        .transact()
+    )
     assert tx_execution_succeeded(transaction_response_call)
 
     # update storage for second contract
-    transaction_response_call = multi_tenant_storage_contract.connect(
-        account=user_account_b
-    ).update_storage(args=["user_b_storage"])
+    transaction_response_call = (
+        multi_tenant_storage_contract.connect(account=user_account_b)
+        .update_storage(args=["user_b_storage"])
+        .transact()
+    )
     assert tx_execution_succeeded(transaction_response_call)
 
     # get all storages
-    storages = multi_tenant_storage_contract.get_all_storages(args=[])
+    storages = multi_tenant_storage_contract.get_all_storages(args=[]).call()
 
     assert storages == {
         second_storage_contract.address: "user_a_storage",

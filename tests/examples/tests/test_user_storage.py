@@ -37,41 +37,51 @@ def test_user_storage(setup_validators):
     contract = factory.deploy()
 
     # GET Initial State
-    contract_state_1 = contract.get_complete_storage(args=[])
+    contract_state_1 = contract.get_complete_storage(args=[]).call()
     assert contract_state_1 == {}
 
     # ADD User A State
-    transaction_response_call_1 = contract.update_storage(args=[INITIAL_STATE_USER_A])
+    transaction_response_call_1 = contract.update_storage(
+        args=[INITIAL_STATE_USER_A]
+    ).transact()
     assert tx_execution_succeeded(transaction_response_call_1)
 
     # Get Updated State
-    contract_state_2_1 = contract.get_complete_storage(args=[])
+    contract_state_2_1 = contract.get_complete_storage(args=[]).call()
     assert contract_state_2_1[from_account_a.address] == INITIAL_STATE_USER_A
 
     # Get Updated State
-    contract_state_2_2 = contract.get_account_storage(args=[from_account_a.address])
+    contract_state_2_2 = contract.get_account_storage(
+        args=[from_account_a.address]
+    ).call()
     assert contract_state_2_2 == INITIAL_STATE_USER_A
 
     # ADD User B State
-    transaction_response_call_2 = contract.connect(from_account_b).update_storage(
-        args=[INITIAL_STATE_USER_B]
+    transaction_response_call_2 = (
+        contract.connect(from_account_b)
+        .update_storage(args=[INITIAL_STATE_USER_B])
+        .transact()
     )
     assert tx_execution_succeeded(transaction_response_call_2)
 
     # Get Updated State
-    contract_state_3 = contract.get_complete_storage(args=[])
+    contract_state_3 = contract.get_complete_storage(args=[]).call()
     assert contract_state_3[from_account_a.address] == INITIAL_STATE_USER_A
     assert contract_state_3[from_account_b.address] == INITIAL_STATE_USER_B
 
     # UPDATE User A State
-    transaction_response_call_3 = contract.update_storage(args=[UPDATED_STATE_USER_A])
+    transaction_response_call_3 = contract.update_storage(
+        args=[UPDATED_STATE_USER_A]
+    ).transact()
     assert tx_execution_succeeded(transaction_response_call_3)
 
     # Get Updated State
-    contract_state_4_1 = contract.get_complete_storage(args=[])
+    contract_state_4_1 = contract.get_complete_storage(args=[]).call()
     assert contract_state_4_1[from_account_a.address] == UPDATED_STATE_USER_A
     assert contract_state_4_1[from_account_b.address] == INITIAL_STATE_USER_B
 
     # Get Updated State
-    contract_state_4_2 = contract.get_account_storage(args=[from_account_b.address])
+    contract_state_4_2 = contract.get_account_storage(
+        args=[from_account_b.address]
+    ).call()
     assert contract_state_4_2 == INITIAL_STATE_USER_B

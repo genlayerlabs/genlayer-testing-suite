@@ -34,5 +34,5 @@ def test_read_erc20(setup_validators):
         # check balance
         contract_state = read_erc20_contract.get_balance_of(
             args=[get_default_account().address]
-        )
+        ).call()
         assert contract_state == TOKEN_TOTAL_SUPPLY
