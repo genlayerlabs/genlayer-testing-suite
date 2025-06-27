@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.3.1 (2025-06-27)
+
+### Bug Fixes
+
+- Update genlayer-py 0.6.1
+  ([`ff1d262`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/ff1d2620cf5da3dd3ea4ef3209950b3bdbcb6148))
+
+
 ## v0.3.0 (2025-06-25)
 
 ### Bug Fixes
