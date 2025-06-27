@@ -11,6 +11,7 @@ from gltest_cli.config.user import (
     DEFAULT_NETWORK,
     DEFAULT_ENVIRONMENT,
     DEFAULT_CONTRACTS_DIR,
+    DEFAULT_ARTIFACTS_DIR,
 )
 from gltest_cli.config.constants import DEFAULT_RPC_URL
 from gltest_cli.config.types import UserConfig, NetworkConfigData, PathConfig
@@ -33,7 +34,7 @@ VALID_CONFIG = {
             "from": "0x123",
         },
     },
-    "paths": {"contracts": "contracts"},
+    "paths": {"contracts": "contracts", "artifacts": "artifacts"},
     "environment": ".env",
 }
 
@@ -73,6 +74,7 @@ def test_get_default_user_config():
     # Check paths
     assert isinstance(config.paths, PathConfig)
     assert config.paths.contracts == DEFAULT_CONTRACTS_DIR
+    assert config.paths.artifacts == DEFAULT_ARTIFACTS_DIR
 
     # Check environment
     assert config.environment == DEFAULT_ENVIRONMENT
@@ -255,6 +257,7 @@ def test_load_user_config(mock_load_dotenv, mock_file):
     # Check paths
     assert isinstance(config.paths, PathConfig)
     assert config.paths.contracts == Path("contracts")
+    assert config.paths.artifacts == Path("artifacts")
 
     # Check environment
     assert config.environment == ".env"
@@ -349,3 +352,50 @@ def test_user_config_exists(mock_cwd):
     # Test with no files
     mock_path.iterdir.return_value = []
     assert user_config_exists() is False
+
+
+# Tests for artifacts directory functionality
+def test_artifacts_path_in_config():
+    """Test that artifacts path is properly handled in configuration."""
+    config_with_artifacts = {
+        "networks": {"default": "localnet"},
+        "paths": {"contracts": "contracts", "artifacts": "build/artifacts"},
+    }
+
+    config = transform_raw_to_user_config_with_defaults(config_with_artifacts)
+    assert config.paths.artifacts == Path("build/artifacts")
+
+
+def test_artifacts_path_defaults():
+    """Test that artifacts path defaults to DEFAULT_ARTIFACTS_DIR when not specified."""
+    config_without_artifacts = {
+        "networks": {"default": "localnet"},
+        "paths": {"contracts": "contracts"},
+    }
+
+    config = transform_raw_to_user_config_with_defaults(config_without_artifacts)
+    assert config.paths.artifacts == DEFAULT_ARTIFACTS_DIR
+
+
+def test_artifacts_path_validation():
+    """Test validation of artifacts path configuration."""
+    # Valid config with artifacts
+    valid_config = {"paths": {"artifacts": "custom/artifacts"}}
+    validate_raw_user_config(valid_config)  # Should not raise
+
+    # Test that artifacts is included in valid path keys
+    from gltest_cli.config.user import VALID_PATHS_KEYS
+
+    assert "artifacts" in VALID_PATHS_KEYS
+
+
+def test_artifacts_path_only_config():
+    """Test configuration with only artifacts path specified."""
+    config_artifacts_only = {
+        "networks": {"default": "localnet"},
+        "paths": {"artifacts": "my_artifacts"},
+    }
+
+    config = transform_raw_to_user_config_with_defaults(config_artifacts_only)
+    assert config.paths.contracts == DEFAULT_CONTRACTS_DIR
+    assert config.paths.artifacts == Path("my_artifacts")
