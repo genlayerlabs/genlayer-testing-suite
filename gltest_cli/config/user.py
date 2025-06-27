@@ -4,20 +4,21 @@ import re
 from dotenv import load_dotenv
 from pathlib import Path
 from functools import lru_cache
-from gltest.glchain.account import create_accounts
+from gltest.accounts import create_accounts
 from gltest_cli.config.constants import (
     GLTEST_CONFIG_FILE,
     DEFAULT_NETWORK,
     DEFAULT_RPC_URL,
     DEFAULT_ENVIRONMENT,
     DEFAULT_CONTRACTS_DIR,
+    DEFAULT_ARTIFACTS_DIR,
     DEFAULT_NETWORK_ID,
 )
 from gltest_cli.config.types import UserConfig, NetworkConfigData, PathConfig
 
 VALID_ROOT_KEYS = ["networks", "paths", "environment"]
 VALID_NETWORK_KEYS = ["id", "url", "accounts", "from"]
-VALID_PATHS_KEYS = ["contracts"]
+VALID_PATHS_KEYS = ["contracts", "artifacts"]
 
 
 @lru_cache(maxsize=1)
@@ -34,7 +35,9 @@ def get_default_user_config() -> UserConfig:
                 from_account=accounts_private_keys[0],
             ),
         },
-        paths=PathConfig(contracts=DEFAULT_CONTRACTS_DIR),
+        paths=PathConfig(
+            contracts=DEFAULT_CONTRACTS_DIR, artifacts=DEFAULT_ARTIFACTS_DIR
+        ),
         environment=DEFAULT_ENVIRONMENT,
         default_network=DEFAULT_NETWORK,
     )
@@ -208,10 +211,10 @@ def _get_overridden_environment(raw_config: dict) -> str:
 def _get_overridden_paths(raw_config: dict) -> PathConfig:
     default_config = get_default_user_config()
     if "paths" in raw_config:
+        paths_config = raw_config.get("paths", {})
         return PathConfig(
-            contracts=Path(
-                raw_config.get("paths", {}).get("contracts", DEFAULT_CONTRACTS_DIR)
-            )
+            contracts=Path(paths_config.get("contracts", DEFAULT_CONTRACTS_DIR)),
+            artifacts=Path(paths_config.get("artifacts", DEFAULT_ARTIFACTS_DIR)),
         )
     return default_config.paths
 
