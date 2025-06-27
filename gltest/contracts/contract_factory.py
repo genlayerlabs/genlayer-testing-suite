@@ -10,7 +10,7 @@ from gltest.artifacts import (
     find_contract_definition_from_name,
     find_contract_definition_from_path,
 )
-from gltest.glchain import (
+from gltest.clients import (
     get_gl_client,
     get_gl_hosted_studio_client,
     get_local_client,
@@ -74,9 +74,9 @@ class ContractFactory:
             Optional[Dict[str, Any]]: The contract schema if successful, None if all attempts fail.
         """
         clients = (
+            ("default", get_gl_client()),
             ("hosted studio", get_gl_hosted_studio_client()),
             ("local", get_local_client()),
-            ("default", get_gl_client()),
         )
         for label, client in clients:
             try:
