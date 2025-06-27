@@ -15,6 +15,7 @@ class NetworkConfig(str, Enum):
 @dataclass
 class PluginConfig:
     contracts_dir: Optional[Path] = None
+    artifacts_dir: Optional[Path] = None
     rpc_url: Optional[str] = None
     default_wait_interval: Optional[int] = None
     default_wait_retries: Optional[int] = None
@@ -46,10 +47,13 @@ class NetworkConfigData:
 @dataclass
 class PathConfig:
     contracts: Optional[Path] = None
+    artifacts: Optional[Path] = None
 
     def __post_init__(self):
         if self.contracts is not None and not isinstance(self.contracts, (str, Path)):
             raise ValueError("contracts must be a string or Path")
+        if self.artifacts is not None and not isinstance(self.artifacts, (str, Path)):
+            raise ValueError("artifacts must be a string or Path")
 
 
 @dataclass
@@ -92,6 +96,18 @@ class GeneralConfig:
 
     def set_contracts_dir(self, contracts_dir: Path):
         self.plugin_config.contracts_dir = contracts_dir
+
+    def get_artifacts_dir(self) -> Path:
+        if self.plugin_config.artifacts_dir is not None:
+            return self.plugin_config.artifacts_dir
+        return self.user_config.paths.artifacts
+
+    def set_artifacts_dir(self, artifacts_dir: Path):
+        self.plugin_config.artifacts_dir = artifacts_dir
+
+    def get_analysis_dir(self) -> Path:
+        artifacts_dir = self.get_artifacts_dir()
+        return artifacts_dir / "analysis"
 
     def get_rpc_url(self) -> str:
         if self.plugin_config.rpc_url is not None:
