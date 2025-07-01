@@ -27,7 +27,7 @@ from gltest.assertions import tx_execution_succeeded
 
 factory = get_contract_factory("MyContract")
 # Deploy a contract with default account
-contract = factory.deploy() # This will be deployed with default_account
+contract = factory.deploy() # This will be deployed with the default account
 assert contract.account == get_default_account()
 
 # Deploy a contract with other account
@@ -184,6 +184,30 @@ $ gltest --default-wait-interval <default_wait_interval>
 $ gltest --default-wait-retries <default_wait_retries>
 ```
 
+10. Run tests with mocked LLM responses (localnet only)
+```bash
+$ gltest --test-with-mocks
+```
+The `--test-with-mocks` flag enables mocking of LLM responses when creating validators. This is particularly useful for:
+- Testing without actual LLM API calls
+- Ensuring deterministic test results
+- Faster test execution
+- Testing specific edge cases with controlled responses
+
+When using this flag with the `setup_validators` fixture, you can provide custom mock responses:
+```python
+def test_with_mocked_llm(setup_validators):
+    # Setup validators with a specific mock response
+    mock_response = {"result": "This is a mocked LLM response"}
+    setup_validators(mock_response=mock_response)
+    
+    # Your LLM-based contract will receive the mocked response
+    contract = factory.deploy()
+    result = contract.llm_method()  # Will use the mocked response
+```
+
+Note: This feature is only available when running tests on localnet.
+
 ## 🚀 Key Features
 
 - **Pytest Integration** – Extends pytest to support intelligent contract testing, making it familiar and easy to adopt.
@@ -252,7 +276,7 @@ Key features demonstrated in this contract:
 Here's how to deploy the Storage contract:
 
 ```python
-from gltest import get_contract_factory, default_account
+from gltest import get_contract_factory, get_default_account
 
 def test_deployment():
     # Get the contract factory for your contract
@@ -262,7 +286,7 @@ def test_deployment():
     # Deploy the contract with constructor arguments
     contract = factory.deploy(
         args=["initial_value"],  # Constructor arguments
-        account=default_account,  # Account to deploy from
+        account=get_default_account(),  # Account to deploy from
         consensus_max_rotations=3,  # Optional: max consensus rotations
         leader_only=False,  # Optional: whether to run only on leader
     )
@@ -360,6 +384,102 @@ Both `tx_execution_succeeded` and `tx_execution_failed` accept the following par
 **Network Compatibility**: The stdout/stderr matching feature (`match_std_out` and `match_std_err` parameters) is only available when running on **studionet** and **localnet**. These features are not supported on testnet.
 
 For more example contracts, check out the [contracts directory](tests/examples/contracts) which contains various sample contracts demonstrating different features and use cases.
+
+### Test Fixtures
+
+The GenLayer Testing Suite provides reusable pytest fixtures in `gltest.fixtures` to simplify common testing operations. These fixtures can be imported and used in your test files to avoid repetitive setup code.
+
+#### Available Fixtures
+
+The following fixtures are available in `gltest.fixtures`:
+
+- **`gl_client`** (session scope) - GenLayer client instance for network operations
+- **`default_account`** (session scope) - Default account for testing and deployments
+- **`accounts`** (session scope) - List of test accounts for multi-account scenarios
+- **`setup_validators`** (function scope) - Function to create test validators for LLM operations
+
+##### 1. `gl_client` (session scope)
+Provides a GenLayer PY client instance that's created once per test session. This is useful for operations that interact directly with the GenLayer network.
+
+```python
+def test_client_operations(gl_client):
+    # Use the client for network operations
+    tx_hash = "0x1234..."
+    transaction = gl_client.get_transaction(tx_hash)
+```
+
+##### 2. `default_account` (session scope)
+Provides the default account used to execute transactions when no account is specified.
+
+```python
+def test_with_default_account(default_account):
+    # Use the default account for deployments
+    factory = get_contract_factory("MyContract")
+    contract = factory.deploy(account=default_account)
+```
+
+##### 3. `accounts` (session scope)
+Provides a list of account objects loaded from the private keys defined in `gltest.config.yaml` for the current network, or pre-created test accounts if no config is present
+
+```python
+def test_multiple_accounts(accounts):
+    # Get multiple accounts for testing
+    sender = accounts[0]
+    receiver = accounts[1]
+    
+    # Test transfers or multi-party interactions
+    contract.transfer(args=[receiver.address, 100], account=sender)
+```
+
+##### 4. `setup_validators` (function scope)
+Creates test validators for localnet environment. This fixture is particularly useful for testing LLM-based contract methods and consensus behavior. It yields a function that allows you to configure validators with custom settings.
+
+```python
+def test_with_validators(setup_validators):
+    # Setup validators with default configuration
+    setup_validators()
+    
+    # Or setup with custom mock responses for testing
+    mock_response = {"result": "mocked LLM response"}
+    setup_validators(mock_response=mock_response, n_validators=3)
+    
+    # Now test your LLM-based contract methods
+    contract = factory.deploy()
+    result = contract.llm_based_method()
+```
+
+Parameters for `setup_validators`:
+- `mock_response` (dict, optional): Mock validator response when using `--test-with-mocks` flag
+- `n_validators` (int, optional): Number of validators to create (default: 5)
+
+#### Using Fixtures in Your Tests
+
+To use these fixtures, simply import them and include them as parameters in your test functions:
+
+```python
+from gltest import get_contract_factory
+from gltest.assertions import tx_execution_succeeded
+
+def test_complete_workflow(gl_client, default_account, accounts, setup_validators):
+    # Setup validators for LLM operations
+    setup_validators()
+    
+    # Deploy contract with default account
+    factory = get_contract_factory("MyContract")
+    contract = factory.deploy(account=default_account)
+    
+    # Interact using other accounts
+    other_account = accounts[1]
+    tx_receipt = contract.some_method(args=["value"], account=other_account)
+    
+    assert tx_execution_succeeded(tx_receipt)
+```
+
+Fixtures help maintain clean, DRY test code by:
+- Eliminating repetitive setup code
+- Ensuring consistent test environments
+- Managing resource cleanup automatically
+- Providing appropriate scoping for performance
 
 ## 📝 Best Practices
 
