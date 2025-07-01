@@ -2,7 +2,8 @@ from gltest import get_contract_factory
 from gltest.assertions import tx_execution_succeeded
 
 
-def test_log_indexer():
+def test_log_indexer(setup_validators):
+    setup_validators()
     # Deploy Contract
     factory = get_contract_factory("LogIndexer")
     contract = factory.deploy(args=[])

@@ -15,14 +15,20 @@ INITIAL_STATE_USER_B = "user_b_initial_state"
 UPDATED_STATE_USER_B = "user_b_updated_state"
 
 
-def test_user_storage():
+def test_user_storage(setup_validators):
+    setup_validators()
     general_config = get_general_config()
     chain = general_config.get_chain()
 
     # Account Setup
     if chain.id == testnet_asimov.id:
-        from_account_a = get_accounts()[0]
-        from_account_b = get_accounts()[1]
+        accounts = get_accounts()
+        if len(accounts) < 2:
+            raise ValueError(
+                f"Test requires at least 2 accounts, but only {len(accounts)} available"
+            )
+        from_account_a = accounts[0]
+        from_account_b = accounts[1]
     else:
         from_account_a = get_default_account()
         from_account_b = create_account()
