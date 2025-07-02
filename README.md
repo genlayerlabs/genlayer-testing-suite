@@ -36,8 +36,8 @@ contract = factory.deploy(account=other_account)
 assert contract.account == other_account
 
 # Interact with the contract
-result = contract.get_value()  # Read method
-tx_receipt = contract.set_value(args=["new_value"])  # Write method
+result = contract.get_value().call()  # Read method
+tx_receipt = contract.set_value(args=["new_value"]).transact()  # Write method
 
 assert tx_execution_succeeded(tx_receipt)
 ```
@@ -297,7 +297,7 @@ def test_deployment():
 
 ### Read Methods
 
-Reading from the contract is straightforward:
+Reading from the contract requires calling `.call()` on the method:
 
 ```python
 from gltest import get_contract_factory
@@ -309,7 +309,7 @@ def test_read_methods():
     contract = factory.deploy()
 
     # Call a read-only method
-    result = contract.get_value(args=[])
+    result = contract.get_storage(args=[]).call()
     
     # Assert the result matches the initial value
     assert result == "initial_value"
@@ -317,7 +317,7 @@ def test_read_methods():
 
 ### Write Methods
 
-Writing to the contract requires transaction handling:
+Writing to the contract requires calling `.transact()` on the method. Method arguments are passed to the write method, while transaction parameters are passed to `.transact()`:
 
 ```python
 from gltest import get_contract_factory
@@ -331,6 +331,7 @@ def test_write_methods():
     # Call a write method with arguments
     tx_receipt = contract.update_storage(
         args=["new_value"],  # Method arguments
+    ).transact(
         value=0,  # Optional: amount of native currency to send
         consensus_max_rotations=3,  # Optional: max consensus rotations
         leader_only=False,  # Optional: whether to run only on leader
@@ -342,7 +343,7 @@ def test_write_methods():
     assert tx_execution_succeeded(tx_receipt)
     
     # Verify the value was updated
-    assert contract.get_storage() == "new_value"
+    assert contract.get_storage().call() == "new_value"
 ```
 
 ### Assertions
@@ -480,6 +481,50 @@ Fixtures help maintain clean, DRY test code by:
 - Ensuring consistent test environments
 - Managing resource cleanup automatically
 - Providing appropriate scoping for performance
+### Statistical Analysis with `.analyze()`
+
+The GenLayer Testing Suite provides a powerful `.analyze()` method for write operations that performs statistical analysis through multiple simulation runs. This is particularly useful for testing LLM-based contracts where outputs may vary:
+
+```python
+from gltest import get_contract_factory
+
+def test_analyze_method():
+    factory = get_contract_factory("LlmContract")
+    contract = factory.deploy()
+    
+    # Analyze a write method's behavior across multiple runs
+    analysis = contract.process_with_llm(args=["input_data"]).analyze(
+        provider="openai",           # LLM provider
+        model="gpt-4o",             # Model to use
+        runs=100,                   # Number of simulation runs (default: 100)
+        config=None,                # Optional: provider-specific config
+        plugin=None,                # Optional: plugin name
+        plugin_config=None,         # Optional: plugin configuration
+    )
+    
+    # Access analysis results
+    print(f"Method: {analysis.method}")
+    print(f"Success rate: {analysis.success_rate:.2f}%")
+    print(f"Reliability score: {analysis.reliability_score:.2f}%")
+    print(f"Unique states: {analysis.unique_states}")
+    print(f"Execution time: {analysis.execution_time:.1f}s")
+    
+    # The analysis returns a MethodStatsSummary object with:
+    # - method: The contract method name
+    # - args: Arguments passed to the method
+    # - total_runs: Total number of simulation runs
+    # - successful_runs: Number of successful executions
+    # - failed_runs: Number of failed executions
+    # - unique_states: Number of unique contract states observed
+    # - reliability_score: Percentage of runs with the most common state
+    # - execution_time: Total time for all simulations
+```
+
+The `.analyze()` method helps you:
+- Test non-deterministic contract methods
+- Measure consistency of LLM-based operations
+- Identify edge cases and failure patterns
+- Benchmark performance across multiple runs
 
 ## 📝 Best Practices
 
@@ -523,6 +568,7 @@ Fixtures help maintain clean, DRY test code by:
    ```python
    tx_receipt = contract.set_value(
        args=["new_value"],
+   ).transact(
        wait_interval=2,  # Increase wait interval between status checks
        wait_retries=20,  # Increase number of retry attempts
    )
