@@ -8,6 +8,8 @@ def test_help_message(pytester):
             "gltest:",
             "  --contracts-dir=CONTRACTS_DIR",
             "                        Path to directory containing contract files",
+            "  --artifacts-dir=ARTIFACTS_DIR",
+            "                        Path to directory for storing contract artifacts",
             "  --default-wait-interval=DEFAULT_WAIT_INTERVAL",
             "                        Default interval (ms) between transaction receipt checks",
             "  --default-wait-retries=DEFAULT_WAIT_RETRIES",
@@ -122,6 +124,82 @@ def test_network_testnet(pytester):
     result.stdout.fnmatch_lines(
         [
             "*::test_network PASSED*",
+        ]
+    )
+    assert result.ret == 0
+
+
+def test_artifacts_dir(pytester):
+    """Test that artifacts directory CLI parameter works correctly."""
+    pytester.makepyfile(
+        """
+        from gltest_cli.config.general import get_general_config
+        from pathlib import Path
+
+        def test_artifacts_dir():
+            general_config = get_general_config()
+            assert general_config.get_artifacts_dir() == Path("custom/artifacts")
+    """
+    )
+
+    result = pytester.runpytest("--artifacts-dir=custom/artifacts", "-v")
+
+    result.stdout.fnmatch_lines(
+        [
+            "*::test_artifacts_dir PASSED*",
+        ]
+    )
+    assert result.ret == 0
+
+
+def test_contracts_and_artifacts_dirs(pytester):
+    """Test that both contracts and artifacts directories can be set via CLI."""
+    pytester.makepyfile(
+        """
+        from gltest_cli.config.general import get_general_config
+        from pathlib import Path
+
+        def test_both_dirs():
+            general_config = get_general_config()
+            assert general_config.get_contracts_dir() == Path("src/contracts")
+            assert general_config.get_artifacts_dir() == Path("build/artifacts")
+    """
+    )
+
+    result = pytester.runpytest(
+        "--contracts-dir=src/contracts", "--artifacts-dir=build/artifacts", "-v"
+    )
+
+    result.stdout.fnmatch_lines(
+        [
+            "*::test_both_dirs PASSED*",
+        ]
+    )
+    assert result.ret == 0
+
+
+def test_artifacts_dir_default_fallback(pytester):
+    """Test that artifacts directory falls back to config file default when CLI not provided."""
+    pytester.makepyfile(
+        """
+        from gltest_cli.config.general import get_general_config
+        from pathlib import Path
+
+        def test_artifacts_default():
+            general_config = get_general_config()
+            # Should use the default from config
+            artifacts_dir = general_config.get_artifacts_dir()
+            assert isinstance(artifacts_dir, Path)
+            # Default should be 'artifacts' 
+            assert str(artifacts_dir) == "artifacts"
+    """
+    )
+
+    result = pytester.runpytest("-v")
+
+    result.stdout.fnmatch_lines(
+        [
+            "*::test_artifacts_default PASSED*",
         ]
     )
     assert result.ret == 0
