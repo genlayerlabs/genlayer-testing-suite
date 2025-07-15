@@ -2,6 +2,38 @@
 
 <!-- version list -->
 
+## v0.4.0 (2025-07-15)
+
+### Documentation
+
+- Added fixtures documentation
+  ([#31](https://github.com/genlayerlabs/genlayer-testing-suite/pull/31),
+  [`d80c88e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d80c88ed5d3ac56dee32dba235015795306afd9b))
+
+### Features
+
+- Add --test-with-mocks cli param and check local rpc function
+  ([#31](https://github.com/genlayerlabs/genlayer-testing-suite/pull/31),
+  [`d80c88e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d80c88ed5d3ac56dee32dba235015795306afd9b))
+
+- Added new fixtures ([#31](https://github.com/genlayerlabs/genlayer-testing-suite/pull/31),
+  [`d80c88e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d80c88ed5d3ac56dee32dba235015795306afd9b))
+
+- Mock llm responses in tests
+  ([#31](https://github.com/genlayerlabs/genlayer-testing-suite/pull/31),
+  [`d80c88e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d80c88ed5d3ac56dee32dba235015795306afd9b))
+
+### Testing
+
+- Update examples with genvm v0.1.3 syntax
+  ([#31](https://github.com/genlayerlabs/genlayer-testing-suite/pull/31),
+  [`d80c88e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d80c88ed5d3ac56dee32dba235015795306afd9b))
+
+- Update tests to use mocks and validator setup
+  ([#31](https://github.com/genlayerlabs/genlayer-testing-suite/pull/31),
+  [`d80c88e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d80c88ed5d3ac56dee32dba235015795306afd9b))
+
+
 ## v0.3.1 (2025-06-27)
 
 ### Bug Fixes
