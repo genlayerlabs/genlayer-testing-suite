@@ -1,6 +1,5 @@
 from typing import TypeVar, Callable, List, Any
 from dataclasses import dataclass
-from urllib.parse import urlparse
 from .take_snapshot import SnapshotRestorer, take_snapshot
 from gltest.exceptions import (
     FixtureSnapshotError,
@@ -8,8 +7,6 @@ from gltest.exceptions import (
     FixtureAnonymousFunctionError,
 )
 from gltest_cli.config.general import get_general_config
-
-SUPPORTED_RPC_DOMAINS = ["localhost", "127.0.0.1"]
 
 T = TypeVar("T")
 
@@ -35,9 +32,7 @@ def load_fixture(fixture: Callable[[], T]) -> T:
         raise FixtureAnonymousFunctionError("Fixtures must be named functions")
 
     general_config = get_general_config()
-    rpc_url = general_config.get_rpc_url()
-    domain = urlparse(rpc_url).netloc.split(":")[0]  # Extract domain without port
-    if domain not in SUPPORTED_RPC_DOMAINS:
+    if not general_config.check_local_rpc():
         return fixture()
 
     # Find existing snapshot for this fixture

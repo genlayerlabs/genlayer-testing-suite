@@ -4,7 +4,7 @@ from gltest_cli.config.general import get_general_config
 from genlayer_py.chains import testnet_asimov
 
 
-def test_multi_read_erc20():
+def test_multi_read_erc20(setup_validators):
     """
     This test verifies the functionality of a multi-read ERC20 contract. It deploys two separate ERC20 token contracts
     (referred to as 'doge' and 'shiba') and a multi-read ERC20 contract. The test aims to:
@@ -17,14 +17,20 @@ def test_multi_read_erc20():
 
     This test demonstrates the integration contract to contract reads
     """
+    setup_validators()
     general_config = get_general_config()
     chain = general_config.get_chain()
 
     TOKEN_TOTAL_SUPPLY = 1000
 
     if chain.id == testnet_asimov.id:
-        from_account_doge = get_accounts()[0]
-        from_account_shiba = get_accounts()[1]
+        accounts = get_accounts()
+        if len(accounts) < 2:
+            raise ValueError(
+                f"Test requires at least 2 accounts, but only {len(accounts)} available"
+            )
+        from_account_doge = accounts[0]
+        from_account_shiba = accounts[1]
     else:
         from_account_doge = create_account()
         from_account_shiba = create_account()

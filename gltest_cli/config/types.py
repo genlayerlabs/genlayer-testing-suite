@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from genlayer_py.chains import localnet, testnet_asimov
 from genlayer_py.types import GenLayerChain
+from urllib.parse import urlparse
 
 
 class NetworkConfig(str, Enum):
@@ -18,6 +19,7 @@ class PluginConfig:
     default_wait_interval: Optional[int] = None
     default_wait_retries: Optional[int] = None
     network_name: Optional[str] = None
+    test_with_mocks: bool = False
 
 
 @dataclass
@@ -135,3 +137,12 @@ class GeneralConfig:
         if self.plugin_config.network_name is not None:
             return self.plugin_config.network_name
         return self.user_config.default_network
+
+    def get_test_with_mocks(self) -> bool:
+        return self.plugin_config.test_with_mocks
+
+    def check_local_rpc(self) -> bool:
+        SUPPORTED_RPC_DOMAINS = ["localhost", "127.0.0.1"]
+        rpc_url = self.get_rpc_url()
+        domain = urlparse(rpc_url).netloc.split(":")[0]  # Extract domain without port
+        return domain in SUPPORTED_RPC_DOMAINS
