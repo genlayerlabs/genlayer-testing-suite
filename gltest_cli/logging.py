@@ -30,7 +30,7 @@ class ColoredFormatter(logging.Formatter):
 
 
 def setup_logger():
-    logger = logging.getLogger("gltest")
+    logger = logging.getLogger("gltest_cli")
     logger.setLevel(logging.DEBUG)
 
     if logger.handlers:

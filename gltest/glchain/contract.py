@@ -17,7 +17,7 @@ from gltest.types import CalldataEncodable, GenLayerTransaction, TransactionStat
 from typing import List, Any, Type, Optional, Dict, Callable
 import types
 from gltest_cli.config.general import get_general_config
-from gltest_cli.logging import logger
+from gltest.logging import logger
 
 
 @dataclass
