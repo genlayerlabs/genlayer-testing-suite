@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 from gltest_cli.logging import logger
 from gltest_cli.config.user import (
     user_config_exists,
@@ -9,6 +10,7 @@ from gltest_cli.config.general import (
     get_general_config,
 )
 from gltest_cli.config.types import PluginConfig
+from gltest_cli.config.pytest_context import _pytest_context
 
 
 def pytest_addoption(parser):
@@ -18,6 +20,13 @@ def pytest_addoption(parser):
         action="store",
         default=None,
         help="Path to directory containing contract files",
+    )
+
+    group.addoption(
+        "--artifacts-dir",
+        action="store",
+        default=None,
+        help="Path to directory for storing contract artifacts",
     )
 
     group.addoption(
@@ -76,6 +85,7 @@ def pytest_configure(config):
 
     # Handle plugin config from command line
     contracts_dir = config.getoption("--contracts-dir")
+    artifacts_dir = config.getoption("--artifacts-dir")
     default_wait_interval = config.getoption("--default-wait-interval")
     default_wait_retries = config.getoption("--default-wait-retries")
     rpc_url = config.getoption("--rpc-url")
@@ -85,6 +95,9 @@ def pytest_configure(config):
     plugin_config = PluginConfig()
     plugin_config.contracts_dir = (
         Path(contracts_dir) if contracts_dir is not None else None
+    )
+    plugin_config.artifacts_dir = (
+        Path(artifacts_dir) if artifacts_dir is not None else None
     )
     plugin_config.default_wait_interval = int(default_wait_interval)
     plugin_config.default_wait_retries = int(default_wait_retries)
@@ -97,6 +110,18 @@ def pytest_configure(config):
 
 def pytest_sessionstart(session):
     general_config = get_general_config()
+
+    artifacts_dir = general_config.get_artifacts_dir()
+    if artifacts_dir and artifacts_dir.exists():
+        logger.info(f"Clearing artifacts directory: {artifacts_dir}")
+        try:
+            shutil.rmtree(artifacts_dir)
+            artifacts_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logger.warning(f"Failed to clear artifacts directory: {e}")
+    elif artifacts_dir:
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+
     logger.info("Using the following configuration:")
     logger.info(f"  RPC URL: {general_config.get_rpc_url()}")
     logger.info(f"  Selected Network: {general_config.get_network_name()}")
@@ -104,12 +129,24 @@ def pytest_sessionstart(session):
         f"  Available networks: {list(general_config.user_config.networks.keys())}"
     )
     logger.info(f"  Contracts directory: {general_config.get_contracts_dir()}")
+    logger.info(f"  Artifacts directory: {general_config.get_artifacts_dir()}")
     logger.info(f"  Environment: {general_config.user_config.environment}")
     logger.info(
         f"  Default wait interval: {general_config.get_default_wait_interval()} ms"
     )
     logger.info(f"  Default wait retries: {general_config.get_default_wait_retries()}")
     logger.info(f"  Test with mocks: {general_config.get_test_with_mocks()}")
+
+
+def pytest_runtest_setup(item):
+    _pytest_context.current_item = item
+
+
+def pytest_runtest_teardown(item):
+    try:
+        del _pytest_context.current_item
+    except AttributeError:
+        pass
 
 
 pytest_plugins = ["gltest.fixtures"]

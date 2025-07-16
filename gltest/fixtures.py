@@ -4,12 +4,8 @@ These fixtures can be imported and used in test files.
 """
 
 import pytest
-from gltest.glchain import (
-    get_gl_client,
-    get_accounts,
-    get_default_account,
-    get_gl_provider,
-)
+from gltest.clients import get_gl_client, get_gl_provider
+from gltest.accounts import get_accounts, get_default_account
 from gltest_cli.config.general import get_general_config
 
 
