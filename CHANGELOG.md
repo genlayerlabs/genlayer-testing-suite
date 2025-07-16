@@ -2,6 +2,56 @@
 
 <!-- version list -->
 
+## v1.0.0 (2025-07-16)
+
+### Bug Fixes
+
+- Use default client as first option
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+### Chores
+
+- Add ci bot to bypass branch protection
+  ([#36](https://github.com/genlayerlabs/genlayer-testing-suite/pull/36),
+  [`6322da0`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/6322da023554b96fcd2a4801d273c7e79d0d2908))
+
+- Update genlayer-py to 0.7.1
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+### Documentation
+
+- Update with breaking changes
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+### Features
+
+- Redesign method wrapper to handle different cases (call, transact, stats)
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+- Statistical prompt testing ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+- **cli**: Implement artifacts management
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+### Refactoring
+
+- Delete glchain and improve modularity
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+### Testing
+
+- Update test examples and add cli tests
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+
 ## v0.4.1 (2025-07-16)
 
 ### Bug Fixes
