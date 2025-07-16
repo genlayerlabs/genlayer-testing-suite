@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.4.1 (2025-07-16)
+
+### Bug Fixes
+
+- Implement separated loggers for gltest and gltest cli
+  ([`3ffd6bd`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3ffd6bd92fbafdca70f10627d2b29e68159df4e8))
+
+
 ## v0.4.0 (2025-07-15)
 
 ### Documentation
