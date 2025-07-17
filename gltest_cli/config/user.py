@@ -17,7 +17,7 @@ from gltest_cli.config.constants import (
 from gltest_cli.config.types import UserConfig, NetworkConfigData, PathConfig
 
 VALID_ROOT_KEYS = ["networks", "paths", "environment"]
-VALID_NETWORK_KEYS = ["id", "url", "accounts", "from"]
+VALID_NETWORK_KEYS = ["id", "url", "accounts", "from", "leader_only"]
 VALID_PATHS_KEYS = ["contracts", "artifacts"]
 
 
@@ -33,6 +33,7 @@ def get_default_user_config() -> UserConfig:
                 url=DEFAULT_RPC_URL,
                 accounts=accounts_private_keys,
                 from_account=accounts_private_keys[0],
+                leader_only=False,
             ),
         },
         paths=PathConfig(
@@ -84,6 +85,10 @@ def validate_network_config(network_name: str, network_config: dict):
 
     if "from" in network_config and not isinstance(network_config["from"], str):
         raise ValueError(f"network {network_name} from must be a string")
+    if "leader_only" in network_config and not isinstance(
+        network_config["leader_only"], bool
+    ):
+        raise ValueError(f"network {network_name} leader_only must be a boolean")
 
     # For non-default networks, url and accounts are required
     if network_name != DEFAULT_NETWORK:
@@ -185,18 +190,23 @@ def _get_overridden_networks(raw_config: dict) -> tuple[dict, str]:
                 ]
             if "from" in network_config:
                 networks_config[network_name].from_account = network_config["from"]
+            if "leader_only" in network_config:
+                networks_config[network_name].leader_only = network_config[
+                    "leader_only"
+                ]
             continue
 
         url = network_config["url"]
         accounts = network_config["accounts"]
         from_account = network_config.get("from", accounts[0])
         network_id = network_config.get("id")
-
+        leader_only = network_config.get("leader_only", False)
         networks_config[network_name] = NetworkConfigData(
             id=network_id,
             url=url,
             accounts=accounts,
             from_account=from_account,
+            leader_only=leader_only,
         )
     return networks_config, user_default_network
 
