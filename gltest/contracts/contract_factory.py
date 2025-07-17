@@ -23,7 +23,6 @@ from gltest.exceptions import DeploymentError
 from gltest_cli.config.general import get_general_config
 
 
-
 @dataclass
 class ContractFactory:
     """
@@ -108,7 +107,6 @@ class ContractFactory:
         args: List[Any] = [],
         account: Optional[LocalAccount] = None,
         consensus_max_rotations: Optional[int] = None,
-        leader_only: bool = False,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
         wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
@@ -121,6 +119,11 @@ class ContractFactory:
             wait_interval = general_config.get_default_wait_interval()
         if wait_retries is None:
             wait_retries = general_config.get_default_wait_retries()
+        leader_only = (
+            general_config.get_leader_only()
+            if general_config.check_studio_based_rpc()
+            else False
+        )
 
         client = get_gl_client()
         try:
