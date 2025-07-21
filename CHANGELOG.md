@@ -2,6 +2,41 @@
 
 <!-- version list -->
 
+## v2.0.0 (2025-07-21)
+
+### Chores
+
+- **deps**: Update genlayer-py version to v0.7.2
+  ([#35](https://github.com/genlayerlabs/genlayer-testing-suite/pull/35),
+  [`298c0be`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/298c0be4ff70844c3ffbdbeff1e3dcdcb221df7d))
+
+### Documentation
+
+- Added leader only and update project structure
+  ([#34](https://github.com/genlayerlabs/genlayer-testing-suite/pull/34),
+  [`07c0d94`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/07c0d94b478b37a9566e6512b02517fcd0db5e51))
+
+### Features
+
+- Add leader only as a cli param and network config
+  ([#34](https://github.com/genlayerlabs/genlayer-testing-suite/pull/34),
+  [`07c0d94`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/07c0d94b478b37a9566e6512b02517fcd0db5e51))
+
+- Add leader only is now configurable outside tests
+  ([#34](https://github.com/genlayerlabs/genlayer-testing-suite/pull/34),
+  [`07c0d94`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/07c0d94b478b37a9566e6512b02517fcd0db5e51))
+
+- Remove leader only param from transact and deploy methods
+  ([#34](https://github.com/genlayerlabs/genlayer-testing-suite/pull/34),
+  [`07c0d94`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/07c0d94b478b37a9566e6512b02517fcd0db5e51))
+
+### Testing
+
+- **gltest_cli**: Added plugin and integration tests
+  ([#34](https://github.com/genlayerlabs/genlayer-testing-suite/pull/34),
+  [`07c0d94`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/07c0d94b478b37a9566e6512b02517fcd0db5e51))
+
+
 ## v1.0.0 (2025-07-16)
 
 ### Bug Fixes
