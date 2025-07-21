@@ -91,6 +91,7 @@ networks:
 
   localnet:  # Local development network configuration
     url: "http://127.0.0.1:4000/api"
+    leader_only: false  # Set to true to run all contracts in leader-only mode by default
 
   testnet_asimov:  # Test network configuration
     id: 4221
@@ -102,6 +103,7 @@ networks:
 
 paths:
   contracts: "contracts"  # Path to your contracts directory
+  artifacts: "artifacts" # Path to your artifacts directory
 
 environment: .env  # Path to your environment file containing private keys and other secrets
 ```
@@ -114,12 +116,14 @@ Key configuration sections:
      - `url`: The RPC endpoint for the network
      - `id`: Chain ID
      - `accounts`: List of account private keys (using environment variables)
+     - `leader_only`: Leader only mode
    - Special case for `localnet`:
      - If a network is named `localnet`, missing fields will be filled with default values
      - For all other network names, `id`, `url`, and `accounts` are required fields
 
 2. **Paths**: Define important directory paths
    - `contracts`: Location of your contract files
+   - `artifacts`: Location of your artifacts files (analysis results will be stored here)
 
 3. **Environment**: Path to your `.env` file containing sensitive information like private keys
 
@@ -208,6 +212,20 @@ def test_with_mocked_llm(setup_validators):
 
 Note: This feature is only available when running tests on localnet.
 
+11. Run tests with leader-only mode enabled
+```bash
+$ gltest --leader-only
+```
+The `--leader-only` flag configures all contract deployments and write operations to run only on the leader node. This is useful for:
+- Faster test execution by avoiding consensus
+- Testing specific leader-only scenarios
+- Development and debugging purposes
+- Reducing computational overhead in test environments
+
+When this flag is enabled, all contracts deployed and all write transactions will automatically use leader-only mode, regardless of individual method parameters.
+
+**Note:** Leader-only mode is only available for studio-based networks (localhost, 127.0.0.1, *.genlayer.com, *.genlayerlabs.com). When enabled on other networks, it will have no effect and a warning will be logged.
+
 ## 🚀 Key Features
 
 - **Pytest Integration** – Extends pytest to support intelligent contract testing, making it familiar and easy to adopt.
@@ -228,8 +246,9 @@ Before diving into the examples, let's understand the basic project structure:
 genlayer-example/
 ├── contracts/              # Contract definitions
 │   └── storage.py          # Example storage contract
-└── test/                   # Test files
-    └── test_contract.py    # Contract test cases
+├── test/                   # Test files
+│   └── test_contract.py    # Contract test cases
+└── gltest.config.yaml      # Configuration file
 ```
 
 ### Storage Contract Example
@@ -288,7 +307,6 @@ def test_deployment():
         args=["initial_value"],  # Constructor arguments
         account=get_default_account(),  # Account to deploy from
         consensus_max_rotations=3,  # Optional: max consensus rotations
-        leader_only=False,  # Optional: whether to run only on leader
     )
     
     # Contract is now deployed and ready to use
@@ -334,7 +352,6 @@ def test_write_methods():
     ).transact(
         value=0,  # Optional: amount of native currency to send
         consensus_max_rotations=3,  # Optional: max consensus rotations
-        leader_only=False,  # Optional: whether to run only on leader
         wait_interval=1,  # Optional: seconds between status checks
         wait_retries=10,  # Optional: max number of retries
     )
@@ -581,13 +598,11 @@ The `.analyze()` method helps you:
    # Try with increased consensus parameters
    contract = factory.deploy(
        consensus_max_rotations=5,  # Increase number of consensus rotations
-       leader_only=True,  # Try leader-only mode for faster execution
    )
    
    # For critical operations, use more conservative settings
    contract = factory.deploy(
        consensus_max_rotations=10,  # More rotations for better reliability
-       leader_only=False,  # Full consensus for better security
        wait_interval=3,  # Longer wait between checks
        wait_retries=30  # More retries for consensus
    )

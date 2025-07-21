@@ -20,7 +20,6 @@ class ContractFunction:
         self,
         value: int = 0,
         consensus_max_rotations: Optional[int] = None,
-        leader_only: bool = False,
         wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
@@ -32,7 +31,6 @@ class ContractFunction:
         return self.transact_method(
             value=value,
             consensus_max_rotations=consensus_max_rotations,
-            leader_only=leader_only,
             wait_transaction_status=wait_transaction_status,
             wait_interval=wait_interval,
             wait_retries=wait_retries,

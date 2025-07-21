@@ -64,6 +64,13 @@ def pytest_addoption(parser):
         help="Test with mocks",
     )
 
+    group.addoption(
+        "--leader-only",
+        action="store_true",
+        default=False,
+        help="Run contracts in leader-only mode",
+    )
+
 
 def pytest_configure(config):
     general_config = get_general_config()
@@ -91,6 +98,7 @@ def pytest_configure(config):
     rpc_url = config.getoption("--rpc-url")
     network = config.getoption("--network")
     test_with_mocks = config.getoption("--test-with-mocks")
+    leader_only = config.getoption("--leader-only")
 
     plugin_config = PluginConfig()
     plugin_config.contracts_dir = (
@@ -104,6 +112,7 @@ def pytest_configure(config):
     plugin_config.rpc_url = rpc_url
     plugin_config.network_name = network
     plugin_config.test_with_mocks = test_with_mocks
+    plugin_config.leader_only = leader_only
 
     general_config.plugin_config = plugin_config
 
@@ -136,6 +145,13 @@ def pytest_sessionstart(session):
     )
     logger.info(f"  Default wait retries: {general_config.get_default_wait_retries()}")
     logger.info(f"  Test with mocks: {general_config.get_test_with_mocks()}")
+
+    if general_config.get_leader_only() and not general_config.check_studio_based_rpc():
+        logger.warning(
+            "Leader only mode: True (enabled on non-studio network - will have no effect)"
+        )
+    else:
+        logger.info(f"  Leader only mode: {general_config.get_leader_only()}")
 
 
 def pytest_runtest_setup(item):

@@ -137,6 +137,11 @@ def test_validate_raw_user_config_invalid():
             {"networks": {"default": "localnet", "localnet": {"from": 123}}}
         )
 
+    with pytest.raises(ValueError, match="leader_only must be a boolean"):
+        validate_raw_user_config(
+            {"networks": {"default": "localnet", "localnet": {"leader_only": "true"}}}
+        )
+
     with pytest.raises(ValueError, match="paths must be a dictionary"):
         validate_raw_user_config({"paths": "not_a_dict"})
 
@@ -180,6 +185,11 @@ def test_validate_raw_user_config_invalid():
     with pytest.raises(ValueError, match="from must be a string"):
         validate_raw_user_config(
             {"networks": {"default": "localnet", "testnet": {"from": 123}}}
+        )
+
+    with pytest.raises(ValueError, match="leader_only must be a boolean"):
+        validate_raw_user_config(
+            {"networks": {"default": "localnet", "testnet": {"leader_only": "true"}}}
         )
 
     # Test required fields for non-default networks

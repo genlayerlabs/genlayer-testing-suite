@@ -46,7 +46,6 @@ def write_contract_wrapper(
     def transact_method(
         value: int = 0,
         consensus_max_rotations: Optional[int] = None,
-        leader_only: bool = False,
         wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
@@ -66,6 +65,11 @@ def write_contract_wrapper(
             wait_retries
             if wait_retries is not None
             else general_config.get_default_wait_retries()
+        )
+        leader_only = (
+            general_config.get_leader_only()
+            if general_config.check_studio_based_rpc()
+            else False
         )
         client = get_gl_client()
         tx_hash = client.write_contract(

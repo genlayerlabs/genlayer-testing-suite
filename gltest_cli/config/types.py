@@ -21,6 +21,7 @@ class PluginConfig:
     default_wait_retries: Optional[int] = None
     network_name: Optional[str] = None
     test_with_mocks: bool = False
+    leader_only: bool = False
 
 
 @dataclass
@@ -29,6 +30,7 @@ class NetworkConfigData:
     url: Optional[str] = None
     accounts: Optional[List[str]] = None
     from_account: Optional[str] = None
+    leader_only: bool = False
 
     def __post_init__(self):
         if self.id is not None and not isinstance(self.id, int):
@@ -157,8 +159,31 @@ class GeneralConfig:
     def get_test_with_mocks(self) -> bool:
         return self.plugin_config.test_with_mocks
 
+    def get_leader_only(self) -> bool:
+        if self.plugin_config.leader_only:
+            return True
+        network_name = self.get_network_name()
+        if network_name in self.user_config.networks:
+            network_config = self.user_config.networks[network_name]
+            return network_config.leader_only
+        return False
+
     def check_local_rpc(self) -> bool:
         SUPPORTED_RPC_DOMAINS = ["localhost", "127.0.0.1"]
         rpc_url = self.get_rpc_url()
         domain = urlparse(rpc_url).netloc.split(":")[0]  # Extract domain without port
         return domain in SUPPORTED_RPC_DOMAINS
+
+    def check_studio_based_rpc(self) -> bool:
+        SUPPORTED_RPC_DOMAINS = ["localhost", "127.0.0.1"]
+        rpc_url = self.get_rpc_url()
+        domain = urlparse(rpc_url).netloc.split(":")[0]  # Extract domain without port
+
+        if domain in SUPPORTED_RPC_DOMAINS:
+            return True
+
+        # Check .genlayer.com or .genlayerlabs.com subdomains
+        if domain.endswith(".genlayer.com") or domain.endswith(".genlayerlabs.com"):
+            return True
+
+        return False
