@@ -62,14 +62,19 @@ def get_default_user_config() -> UserConfig:
 
 def resolve_env_vars(obj):
     if isinstance(obj, str):
+
         def replace_env_var(m):
             try:
                 var_name = m.group(1)
                 if var_name is None:
-                    raise ValueError(f"Invalid environment variable pattern: {m.group(0)}")
+                    raise ValueError(
+                        f"Invalid environment variable pattern: {m.group(0)}"
+                    )
                 var_value = os.getenv(var_name)
                 if var_value is None:
-                    raise ValueError(f"Environment variable {var_name} is not set, please check your environment file")
+                    raise ValueError(
+                        f"Environment variable {var_name} is not set, please check your environment file"
+                    )
                 return var_value
             except IndexError as e:
                 raise ValueError(

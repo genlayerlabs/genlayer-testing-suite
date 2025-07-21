@@ -31,13 +31,14 @@ class ColoredFormatter(logging.Formatter):
 
 def setup_logger():
     logger = logging.getLogger("gltest_cli")
-    logger.setLevel(logging.DEBUG)
+    log_level = logging.INFO
+    logger.setLevel(log_level)
 
     if logger.handlers:
         return logger
 
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(log_level)
 
     formatter = ColoredFormatter("%(levelname)s: %(message)s")
     console_handler.setFormatter(formatter)
