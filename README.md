@@ -89,17 +89,29 @@ The GenLayer Testing Suite can be configured using an optional but recommended `
 networks:
   default: localnet  # Default network to use
 
-  localnet:  # Local development network configuration
+  localnet:  # Local development network configuration (pre-configured)
     url: "http://127.0.0.1:4000/api"
     leader_only: false  # Set to true to run all contracts in leader-only mode by default
 
-  testnet_asimov:  # Test network configuration
-    id: 4221
-    url: "http://34.32.169.58:9151"
+  studionet:  # Studio network configuration (pre-configured)
+    # Pre-configured network - accounts are automatically generated
+    # You can override any settings if needed
+
+  testnet_asimov:  # Test network configuration (pre-configured)
+    # Pre-configured network - requires accounts to be specified
     accounts:
       - "${ACCOUNT_PRIVATE_KEY_1}"
       - "${ACCOUNT_PRIVATE_KEY_2}"
       - "${ACCOUNT_PRIVATE_KEY_3}"
+    from: "${ACCOUNT_PRIVATE_KEY_2}"  # Optional: specify default account
+
+  custom_network:  # Custom network configuration
+    id: 1234
+    url: "http://custom.network:8545"
+    accounts:
+      - "${CUSTOM_ACCOUNT_1}"
+      - "${CUSTOM_ACCOUNT_2}"
+    from: "${CUSTOM_ACCOUNT_1}"  # Optional: specify default account
 
 paths:
   contracts: "contracts"  # Path to your contracts directory
@@ -112,14 +124,31 @@ Key configuration sections:
 
 1. **Networks**: Define different network environments
    - `default`: Specifies which network to use by default
+   - **Pre-configured Networks**:
+     - `localnet`: Local development network with auto-generated test accounts
+     - `studionet`: GenLayer Studio network with auto-generated test accounts
+     - `testnet_asimov`: Public testnet (requires account configuration)
    - Network configurations can include:
-     - `url`: The RPC endpoint for the network
-     - `id`: Chain ID
+     - `url`: The RPC endpoint for the network (optional for pre-configured networks)
+     - `id`: Chain ID (optional for pre-configured networks)
      - `accounts`: List of account private keys (using environment variables)
+     - `from`: Specify which account to use as the default for transactions (optional, defaults to first account)
      - `leader_only`: Leader only mode
-   - Special case for `localnet`:
-     - If a network is named `localnet`, missing fields will be filled with default values
-     - For all other network names, `id`, `url`, and `accounts` are required fields
+   - For custom networks (non-pre-configured), `id`, `url`, and `accounts` are required fields
+
+**Note on Environment Variables**: When using environment variables in your configuration (e.g., `${ACCOUNT_PRIVATE_KEY_1}`), ensure they are properly set in your `environment` file. If an environment variable is not found, the system will raise a clear error message indicating which variable is missing.
+
+**Default Account Selection**: The `from` field allows you to specify which account from the `accounts` list should be used as the default for deployments and transactions. If not specified, the first account in the list is used by default. This is useful when you want a specific account to be the primary account for your tests without having to specify it in every transaction.
+
+Example:
+```yaml
+testnet_asimov:
+  accounts:
+    - "${DEPLOYER_KEY}"      # accounts[0]
+    - "${USER_KEY}"          # accounts[1] 
+    - "${ADMIN_KEY}"         # accounts[2]
+  from: "${ADMIN_KEY}"       # Use ADMIN_KEY as default instead of DEPLOYER_KEY
+```
 
 2. **Paths**: Define important directory paths
    - `contracts`: Location of your contract files
@@ -168,10 +197,22 @@ $ gltest --contracts-dir <path_to_contracts>
 # Run tests on localnet (default)
 $ gltest --network localnet
 
-# Run tests on testnet
+# Run tests on studionet
+$ gltest --network studionet
+
+# Run tests on testnet (requires account configuration)
 $ gltest --network testnet_asimov
+
+# Run tests on a custom network
+$ gltest --network custom_network
 ```
 The `--network` flag allows you to specify which network configuration to use from your `gltest.config.yaml`. If not specified, it will use the `default` network defined in your config file.
+
+**Pre-configured Networks**:
+- `localnet` and `studionet`: Work out of the box with auto-generated test accounts
+- `testnet_asimov`: Requires account configuration in `gltest.config.yaml`
+
+When using `testnet_asimov` without proper account configuration, you'll receive a clear error message directing you to configure accounts in your config file.
 
 7. Run tests with a custom RPC url
 ```bash
