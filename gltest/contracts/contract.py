@@ -2,7 +2,12 @@ import types
 from eth_account.signers.local import LocalAccount
 from dataclasses import dataclass
 from gltest.clients import get_gl_client
-from gltest.types import CalldataEncodable, GenLayerTransaction, TransactionStatus
+from gltest.types import (
+    CalldataEncodable,
+    GenLayerTransaction,
+    TransactionStatus,
+    TransactionHashVariant,
+)
 from typing import List, Any, Optional, Dict, Callable
 from gltest_cli.config.general import get_general_config
 from .contract_functions import ContractFunction
@@ -18,13 +23,16 @@ def read_contract_wrapper(
     Wrapper to the contract read method.
     """
 
-    def call_method():
+    def call_method(
+        transaction_hash_variant: TransactionHashVariant = TransactionHashVariant.LATEST_NONFINAL,
+    ):
         client = get_gl_client()
         return client.read_contract(
             address=self.address,
             function_name=method_name,
             account=self.account,
             args=args,
+            transaction_hash_variant=transaction_hash_variant,
         )
 
     return ContractFunction(
@@ -46,11 +54,11 @@ def write_contract_wrapper(
     def transact_method(
         value: int = 0,
         consensus_max_rotations: Optional[int] = None,
-        wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
+        wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
-        wait_triggered_transactions: bool = True,
-        wait_triggered_transactions_status: TransactionStatus = TransactionStatus.FINALIZED,
+        wait_triggered_transactions: bool = False,
+        wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
     ):
         """
         Transact the contract method.

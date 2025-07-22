@@ -109,16 +109,24 @@ class ContractFactory:
         consensus_max_rotations: Optional[int] = None,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
-        wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
+        wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_triggered_transactions: bool = False,
+        wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
     ) -> Contract:
         """
         Deploy the contract
         """
         general_config = get_general_config()
-        if wait_interval is None:
-            wait_interval = general_config.get_default_wait_interval()
-        if wait_retries is None:
-            wait_retries = general_config.get_default_wait_retries()
+        actual_wait_interval = (
+            wait_interval
+            if wait_interval is not None
+            else general_config.get_default_wait_interval()
+        )
+        actual_wait_retries = (
+            wait_retries
+            if wait_retries is not None
+            else general_config.get_default_wait_retries()
+        )
         leader_only = (
             general_config.get_leader_only()
             if general_config.check_studio_based_rpc()
@@ -137,13 +145,23 @@ class ContractFactory:
             tx_receipt = client.wait_for_transaction_receipt(
                 transaction_hash=tx_hash,
                 status=wait_transaction_status,
-                interval=wait_interval,
-                retries=wait_retries,
+                interval=actual_wait_interval,
+                retries=actual_wait_retries,
             )
             if tx_execution_failed(tx_receipt):
                 raise ValueError(
                     f"Deployment transaction finalized with error: {tx_receipt}"
                 )
+
+            if wait_triggered_transactions:
+                triggered_transactions = tx_receipt["triggered_transactions"]
+                for triggered_transaction in triggered_transactions:
+                    client.wait_for_transaction_receipt(
+                        transaction_hash=triggered_transaction,
+                        status=wait_triggered_transactions_status,
+                        interval=actual_wait_interval,
+                        retries=actual_wait_retries,
+                    )
 
             if (
                 "tx_data_decoded" in tx_receipt

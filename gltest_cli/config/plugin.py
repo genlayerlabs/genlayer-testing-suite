@@ -32,14 +32,14 @@ def pytest_addoption(parser):
     group.addoption(
         "--default-wait-interval",
         action="store",
-        default=10000,
+        default=3000,
         help="Default interval (ms) between transaction receipt checks",
     )
 
     group.addoption(
         "--default-wait-retries",
         action="store",
-        default=15,
+        default=50,
         help="Default number of retries for transaction receipt checks",
     )
 
