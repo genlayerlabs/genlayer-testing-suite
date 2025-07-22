@@ -2,6 +2,29 @@
 
 <!-- version list -->
 
+## v2.1.0 (2025-07-22)
+
+### Bug Fixes
+
+- Update default wait values ([#39](https://github.com/genlayerlabs/genlayer-testing-suite/pull/39),
+  [`3c0e8ac`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3c0e8ac936a0ef3c96cbe3bd6f726792554a2521))
+
+### Features
+
+- Update call, transact and deploy methods
+  ([#39](https://github.com/genlayerlabs/genlayer-testing-suite/pull/39),
+  [`3c0e8ac`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3c0e8ac936a0ef3c96cbe3bd6f726792554a2521))
+
+- Update default behavior for tx status and triggered txs and align deploy method
+  ([#39](https://github.com/genlayerlabs/genlayer-testing-suite/pull/39),
+  [`3c0e8ac`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3c0e8ac936a0ef3c96cbe3bd6f726792554a2521))
+
+### Testing
+
+- Update oracle factory ([#39](https://github.com/genlayerlabs/genlayer-testing-suite/pull/39),
+  [`3c0e8ac`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3c0e8ac936a0ef3c96cbe3bd6f726792554a2521))
+
+
 ## v2.0.0 (2025-07-21)
 
 ### Chores
