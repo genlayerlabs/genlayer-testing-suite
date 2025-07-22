@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Callable, Optional, Dict, Any
-from gltest.types import TransactionStatus
+from gltest.types import TransactionStatus, TransactionHashVariant
 
 
 @dataclass
@@ -11,20 +11,23 @@ class ContractFunction:
     analyze_method: Optional[Callable] = None
     transact_method: Optional[Callable] = None
 
-    def call(self):
+    def call(
+        self,
+        transaction_hash_variant: TransactionHashVariant = TransactionHashVariant.LATEST_NONFINAL,
+    ):
         if not self.read_only:
             raise ValueError("call() not implemented for non-readonly method")
-        return self.call_method()
+        return self.call_method(transaction_hash_variant=transaction_hash_variant)
 
     def transact(
         self,
         value: int = 0,
         consensus_max_rotations: Optional[int] = None,
-        wait_transaction_status: TransactionStatus = TransactionStatus.FINALIZED,
+        wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
-        wait_triggered_transactions: bool = True,
-        wait_triggered_transactions_status: TransactionStatus = TransactionStatus.FINALIZED,
+        wait_triggered_transactions: bool = False,
+        wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
     ):
         if self.read_only:
             raise ValueError("Cannot transact read-only method")

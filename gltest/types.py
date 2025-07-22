@@ -4,4 +4,5 @@ from genlayer_py.types import (
     GenLayerTransaction,
     TransactionStatus,
     CalldataEncodable,
+    TransactionHashVariant,
 )
