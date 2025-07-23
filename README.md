@@ -50,6 +50,15 @@ assert tx_execution_succeeded(tx_receipt)
 - [Installation and Usage](#installation-and-usage)
 - [Key Features](#-key-features)
 - [Examples](#-examples)
+  - [Project Structure](#project-structure)
+  - [Storage Contract Example](#storage-contract-example)
+  - [Contract Deployment](#contract-deployment)
+  - [Read Methods](#read-methods)
+  - [Write Methods](#write-methods)
+  - [Assertions](#assertions)
+  - [Test Fixtures](#test-fixtures)
+  - [Statistical Analysis with `.analyze()`](#statistical-analysis-with-analyze)
+  - [Mock LLM Responses](#mock-llm-responses)
 - [Best Practices](#-best-practices)
 - [Troubleshooting](#-troubleshooting)
 - [Contributing](#-contributing)
@@ -583,6 +592,128 @@ The `.analyze()` method helps you:
 - Measure consistency of LLM-based operations
 - Identify edge cases and failure patterns
 - Benchmark performance across multiple runs
+
+### Mock LLM Responses
+
+The Mock LLM system allows you to simulate Large Language Model responses in GenLayer tests. This is essential for creating deterministic tests by providing predefined responses instead of relying on actual LLM calls.
+
+#### Basic Structure
+
+The mock system consists of a response dictionary that maps GenLayer methods to their mocked responses:
+
+```python
+mock_response = {
+    "response": {},                               # Optional: mocks gl.nondet.exec_prompt
+    "eq_principle_prompt_comparative": {},        # Optional: mocks gl.eq_principle.prompt_comparative
+    "eq_principle_prompt_non_comparative": {}     # Optional: mocks gl.eq_principle.prompt_non_comparative
+}
+
+setup_validators(mock_response)
+```
+
+#### Method Mappings
+
+| Mock Key | GenLayer Method |
+|----------|----------------|
+| `"response"` | `gl.nondet.exec_prompt` |
+| `"eq_principle_prompt_comparative"` | `gl.eq_principle.prompt_comparative` |
+| `"eq_principle_prompt_non_comparative"` | `gl.eq_principle.prompt_non_comparative` |
+
+#### How It Works
+
+The mock system works by pattern matching against the user message that gets built internally. When a GenLayer method is called:
+
+1. A user message is constructed internally (`<user_message>`)
+2. The mock system searches for strings within that message
+3. If a matching string is found in the mock dictionary, the associated response is returned
+
+##### String Matching Rules
+
+The system performs **substring matching** on the user message. The key in your mock dictionary must be contained within the actual user message.
+
+#### Examples
+
+##### Basic Example
+
+```python
+# Mock setup
+mock_response = {
+    "eq_principle_prompt_comparative": {
+        "The value of give_coin has to match": True
+    }
+}
+setup_validators(mock_response)
+
+# In your contract
+result = gl.eq_principle.prompt_comparative(
+    get_wizard_answer, 
+    "The value of give_coin has to match"  # This string will be matched
+)
+# result will be True
+```
+
+##### Substring Matching Examples
+
+✅ **Will work** - Partial match:
+```python
+"eq_principle_prompt_comparative": {
+    "The value of give_coin": True  # Substring of the full message
+}
+```
+
+❌ **Won't work** - Extra words break the match:
+```python
+"eq_principle_prompt_comparative": {
+    "The good value of give_coin": True  # "good" is not in the actual message
+}
+```
+
+##### Complete Example
+
+```python
+from gltest import get_contract_factory
+from gltest.fixtures import setup_validators
+
+def test_with_mocked_llm(setup_validators):
+    # Define mock responses
+    mock_response = {
+        "response": {
+            "What is the weather?": "It's sunny today",
+            "Calculate 2+2": "4"
+        },
+        "eq_principle_prompt_comparative": {
+            "values must be equal": True,
+            "amounts should match": False
+        },
+        "eq_principle_prompt_non_comparative": {
+            "Is this valid?": True
+        }
+    }
+    
+    # Initialize the mock system
+    setup_validators(mock_response)
+    
+    # Deploy and test your contract
+    factory = get_contract_factory("MyLLMContract")
+    contract = factory.deploy()
+    
+    # Your LLM methods will use the mocked responses
+    result = contract.check_weather()  # Uses mocked response
+```
+
+#### Best Practices
+
+1. **Be specific with match strings**: Use unique substrings that won't accidentally match other prompts
+2. **Test your matches**: Verify that your mock strings actually appear in the generated user messages
+3. **Keep mocks simple**: Mock responses should be minimal and focused on the test case
+4. **Document your mocks**: Comment why specific responses are mocked for future reference
+5. **Use with `--test-with-mocks` flag**: Enable mocking when running tests: `gltest --test-with-mocks`
+
+#### Notes
+
+- Mock responses are only available when running tests on localnet
+- The `setup_validators` fixture handles the mock setup when provided with a mock_response
+- Mocking is particularly useful for CI/CD pipelines where deterministic results are required
 
 ## 📝 Best Practices
 
