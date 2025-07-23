@@ -2,6 +2,37 @@
 
 <!-- version list -->
 
+## v2.2.0 (2025-07-23)
+
+### Bug Fixes
+
+- **gltest_cli**: Improve error handling
+  ([#38](https://github.com/genlayerlabs/genlayer-testing-suite/pull/38),
+  [`656410b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/656410be6bbaf0e3c389dc00e7578afd80e1285d))
+
+### Documentation
+
+- Update network configuration
+  ([#38](https://github.com/genlayerlabs/genlayer-testing-suite/pull/38),
+  [`656410b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/656410be6bbaf0e3c389dc00e7578afd80e1285d))
+
+### Features
+
+- Add studionet and testnet_asimov as pre configured networks
+  ([#38](https://github.com/genlayerlabs/genlayer-testing-suite/pull/38),
+  [`656410b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/656410be6bbaf0e3c389dc00e7578afd80e1285d))
+
+- Handle pre defined networks (localnet, studionet, testnet_asimov)
+  ([#38](https://github.com/genlayerlabs/genlayer-testing-suite/pull/38),
+  [`656410b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/656410be6bbaf0e3c389dc00e7578afd80e1285d))
+
+### Testing
+
+- Testnet asimov without configuration case
+  ([#38](https://github.com/genlayerlabs/genlayer-testing-suite/pull/38),
+  [`656410b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/656410be6bbaf0e3c389dc00e7578afd80e1285d))
+
+
 ## v2.1.0 (2025-07-22)
 
 ### Bug Fixes
