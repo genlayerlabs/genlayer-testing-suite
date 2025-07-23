@@ -123,12 +123,8 @@ def test_network_testnet(pytester):
         "--network=testnet_asimov", "--rpc-url=http://test.example.com:9151", "-v"
     )
 
-    result.stdout.fnmatch_lines(
-        [
-            "*::test_network PASSED*",
-        ]
-    )
-    assert result.ret == 0
+    # The test should exit with an error code when testnet_asimov is used without accounts
+    assert result.ret != 0
 
 
 def test_artifacts_dir(pytester):

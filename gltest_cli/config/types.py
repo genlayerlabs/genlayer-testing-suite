@@ -2,14 +2,10 @@ from enum import Enum
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
-from genlayer_py.chains import localnet, testnet_asimov
+from genlayer_py.chains import localnet, studionet, testnet_asimov
 from genlayer_py.types import GenLayerChain
 from urllib.parse import urlparse
-
-
-class NetworkConfig(str, Enum):
-    LOCALNET = "localnet"
-    TESTNET_ASIMOV = "testnet_asimov"
+from gltest_cli.config.constants import PRECONFIGURED_NETWORKS
 
 
 @dataclass
@@ -111,10 +107,17 @@ class GeneralConfig:
         artifacts_dir = self.get_artifacts_dir()
         return artifacts_dir / "analysis"
 
+    def get_networks_keys(self) -> List[str]:
+        return list(self.user_config.networks.keys())
+
     def get_rpc_url(self) -> str:
         if self.plugin_config.rpc_url is not None:
             return self.plugin_config.rpc_url
         network_name = self.get_network_name()
+        if network_name not in self.user_config.networks:
+            raise ValueError(
+                f"Unknown network: {network_name}, possible values: {self.get_networks_keys()}"
+            )
         return self.user_config.networks[network_name].url
 
     def get_default_account_key(self, network_name: Optional[str] = None) -> str:
@@ -128,16 +131,37 @@ class GeneralConfig:
         return self.user_config.networks[self.user_config.default_network].accounts
 
     def get_chain(self) -> GenLayerChain:
+        network_name = self.get_network_name()
+        if network_name not in self.user_config.networks:
+            raise ValueError(
+                f"Unknown network: {network_name}, possible values: {self.get_networks_keys()}"
+            )
+
+        # Reserved network names
+        chain_map_by_name = {
+            "localnet": localnet,
+            "studionet": studionet,
+            "testnet_asimov": testnet_asimov,
+        }
+
+        if network_name in chain_map_by_name:
+            return chain_map_by_name[network_name]
+
+        if network_name in PRECONFIGURED_NETWORKS:
+            raise ValueError(
+                f"Network {network_name} should be handled by reserved mapping"
+            )
+
+        # Custom networks
         chain_map_by_id = {
             61999: localnet,
             4221: testnet_asimov,
         }
-        network_name = self.get_network_name()
         network_id = self.user_config.networks[network_name].id
         if network_id not in chain_map_by_id:
             known = ", ".join(map(str, chain_map_by_id.keys()))
             raise ValueError(
-                f"Unknown network: {network_name}, possible values: {known}"
+                f"Unknown network id: {network_id}, possible values: {known}"
             )
         return chain_map_by_id[network_id]
 

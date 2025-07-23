@@ -6,6 +6,10 @@ networks:
     url: "http://127.0.0.1:4000/api"
     leader_only: false
 
+  studionet:
+    url: "https://studio.genlayer.com/api"
+    leader_only: false
+
   testnet_asimov:
     id: 4221
     url: "http://34.32.169.58:9151"

@@ -8,12 +8,12 @@ from gltest.accounts import create_accounts
 from gltest_cli.config.constants import (
     GLTEST_CONFIG_FILE,
     DEFAULT_NETWORK,
-    DEFAULT_RPC_URL,
     DEFAULT_ENVIRONMENT,
     DEFAULT_CONTRACTS_DIR,
     DEFAULT_ARTIFACTS_DIR,
-    DEFAULT_NETWORK_ID,
+    PRECONFIGURED_NETWORKS,
 )
+from genlayer_py.chains import localnet, studionet, testnet_asimov
 from gltest_cli.config.types import UserConfig, NetworkConfigData, PathConfig
 
 VALID_ROOT_KEYS = ["networks", "paths", "environment"]
@@ -26,16 +26,32 @@ def get_default_user_config() -> UserConfig:
     accounts = create_accounts(n_accounts=10)
     accounts_private_keys = [account.key.hex() for account in accounts]
 
+    networks = {
+        "localnet": NetworkConfigData(
+            id=localnet.id,
+            url=localnet.rpc_urls["default"]["http"][0],
+            accounts=accounts_private_keys,
+            from_account=accounts_private_keys[0],
+            leader_only=False,
+        ),
+        "studionet": NetworkConfigData(
+            id=studionet.id,
+            url=studionet.rpc_urls["default"]["http"][0],
+            accounts=accounts_private_keys,
+            from_account=accounts_private_keys[0],
+            leader_only=False,
+        ),
+        "testnet_asimov": NetworkConfigData(
+            id=testnet_asimov.id,
+            url=testnet_asimov.rpc_urls["default"]["http"][0],
+            accounts=None,
+            from_account=None,
+            leader_only=False,
+        ),
+    }
+
     return UserConfig(
-        networks={
-            DEFAULT_NETWORK: NetworkConfigData(
-                id=DEFAULT_NETWORK_ID,
-                url=DEFAULT_RPC_URL,
-                accounts=accounts_private_keys,
-                from_account=accounts_private_keys[0],
-                leader_only=False,
-            ),
-        },
+        networks=networks,
         paths=PathConfig(
             contracts=DEFAULT_CONTRACTS_DIR, artifacts=DEFAULT_ARTIFACTS_DIR
         ),
@@ -46,11 +62,26 @@ def get_default_user_config() -> UserConfig:
 
 def resolve_env_vars(obj):
     if isinstance(obj, str):
-        return re.sub(
-            r"\${(\w+)}",
-            lambda m: os.getenv(m.group(1), f"<UNSET:{m.group(1)}>"),
-            obj,
-        )
+
+        def replace_env_var(m):
+            try:
+                var_name = m.group(1)
+                if var_name is None:
+                    raise ValueError(
+                        f"Invalid environment variable pattern: {m.group(0)}"
+                    )
+                var_value = os.getenv(var_name)
+                if var_value is None:
+                    raise ValueError(
+                        f"Environment variable {var_name} is not set, please check your environment file"
+                    )
+                return var_value
+            except IndexError as e:
+                raise ValueError(
+                    f"Invalid environment variable pattern: {m.group(0)}"
+                ) from e
+
+        return re.sub(r"\${(\w+)}", replace_env_var, obj)
     elif isinstance(obj, dict):
         return {k: resolve_env_vars(v) for k, v in obj.items()}
     elif isinstance(obj, list):
@@ -90,8 +121,8 @@ def validate_network_config(network_name: str, network_config: dict):
     ):
         raise ValueError(f"network {network_name} leader_only must be a boolean")
 
-    # For non-default networks, url and accounts are required
-    if network_name != DEFAULT_NETWORK:
+    # For non-preconfigured networks, url and accounts are required
+    if network_name not in PRECONFIGURED_NETWORKS:
         if "id" not in network_config:
             raise ValueError(f"network {network_name} must have an id")
         if "url" not in network_config:
@@ -139,7 +170,6 @@ def validate_raw_user_config(config: dict):
 def load_user_config(path: str) -> UserConfig:
     with open(path, "r") as f:
         raw_config = yaml.safe_load(f) or {}
-
     validate_raw_user_config(raw_config)
     load_dotenv(
         dotenv_path=raw_config.get("environment", DEFAULT_ENVIRONMENT), override=True
@@ -176,8 +206,8 @@ def _get_overridden_networks(raw_config: dict) -> tuple[dict, str]:
 
     networks_config = {}
     for network_name, network_config in networks.items():
-        if network_name == DEFAULT_NETWORK:
-            networks_config[network_name] = default_config.networks[DEFAULT_NETWORK]
+        if network_name in PRECONFIGURED_NETWORKS:
+            networks_config[network_name] = default_config.networks[network_name]
             if network_config is None:
                 continue
 
