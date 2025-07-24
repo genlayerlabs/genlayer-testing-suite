@@ -154,7 +154,7 @@ class ContractFactory:
                 )
 
             if wait_triggered_transactions:
-                triggered_transactions = tx_receipt["triggered_transactions"]
+                triggered_transactions = tx_receipt.get("triggered_transactions", [])
                 for triggered_transaction in triggered_transactions:
                     client.wait_for_transaction_receipt(
                         transaction_hash=triggered_transaction,
