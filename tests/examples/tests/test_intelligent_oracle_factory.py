@@ -111,6 +111,7 @@ def test_intelligent_oracle_factory_pattern(setup_validators):
                 market_data["earliest_resolution_date"],
             ],
         ).transact(
+            wait_transaction_status=TransactionStatus.FINALIZED,
             wait_triggered_transactions=True,
             wait_triggered_transactions_status=TransactionStatus.ACCEPTED,
         )
