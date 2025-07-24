@@ -96,7 +96,7 @@ def write_contract_wrapper(
             retries=actual_wait_retries,
         )
         if wait_triggered_transactions:
-            triggered_transactions = receipt["triggered_transactions"]
+            triggered_transactions = receipt.get("triggered_transactions", [])
             for triggered_transaction in triggered_transactions:
                 client.wait_for_transaction_receipt(
                     transaction_hash=triggered_transaction,
