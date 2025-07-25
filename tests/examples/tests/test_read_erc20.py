@@ -18,7 +18,7 @@ def test_read_erc20(setup_validators):
     llm_erc20_factory = get_contract_factory("LlmErc20")
 
     # Deploy Contract
-    llm_erc20_contract = llm_erc20_factory.deploy(args=[TOKEN_TOTAL_SUPPLY])
+    llm_erc20_contract = llm_erc20_factory.deploy_contract(args=[TOKEN_TOTAL_SUPPLY])
     last_contract_address = llm_erc20_contract.address
 
     # Read ERC20
@@ -28,7 +28,9 @@ def test_read_erc20(setup_validators):
         print(f"Deploying contract, iteration {i}")
 
         # deploy contract
-        read_erc20_contract = read_erc20_factory.deploy(args=[last_contract_address])
+        read_erc20_contract = read_erc20_factory.deploy_contract(
+            args=[last_contract_address]
+        )
         last_contract_address = read_erc20_contract.address
 
         # check balance

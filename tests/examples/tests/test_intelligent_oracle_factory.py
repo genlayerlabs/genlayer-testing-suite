@@ -92,7 +92,7 @@ def test_intelligent_oracle_factory_pattern(setup_validators):
 
     # Deploy the Registry contract with the IntelligentOracle code
     registry_factory = get_contract_factory("Registry")
-    registry_contract = registry_factory.deploy(
+    registry_contract = registry_factory.deploy_contract(
         args=[intelligent_oracle_factory.contract_code]
     )
 
@@ -111,6 +111,7 @@ def test_intelligent_oracle_factory_pattern(setup_validators):
                 market_data["earliest_resolution_date"],
             ],
         ).transact(
+            wait_transaction_status=TransactionStatus.FINALIZED,
             wait_triggered_transactions=True,
             wait_triggered_transactions_status=TransactionStatus.ACCEPTED,
         )

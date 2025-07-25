@@ -9,7 +9,7 @@ UPDATED_STATE = "b"
 def test_storage(setup_validators):
     setup_validators()
     factory = get_contract_factory("Storage")
-    contract = factory.deploy(args=[INITIAL_STATE], wait_retries=40)
+    contract = factory.deploy_contract(args=[INITIAL_STATE], wait_retries=40)
 
     # Get initial state
     contract_state_1 = contract.get_storage(args=[]).call()

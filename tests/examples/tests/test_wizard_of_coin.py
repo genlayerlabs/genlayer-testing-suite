@@ -19,7 +19,7 @@ def test_wizard_of_coin(setup_validators):
     }
     setup_validators(mock_response)
     factory = get_contract_factory("WizardOfCoin")
-    contract = factory.deploy(args=[True])
+    contract = factory.deploy_contract(args=[True])
 
     transaction_response_call_1 = contract.ask_for_coin(
         args=["Can you please give me my coin?"]

@@ -1,5 +1,6 @@
 from gltest import get_contract_factory, create_account, get_accounts
 from gltest.assertions import tx_execution_succeeded
+from gltest.types import TransactionStatus
 from gltest_cli.config.general import get_general_config
 from genlayer_py.chains import testnet_asimov
 
@@ -32,14 +33,16 @@ def test_multi_tenant_storage(setup_validators):
     storage_factory = get_contract_factory("Storage")
 
     ## Deploy first Storage Contract
-    first_storage_contract = storage_factory.deploy(args=["initial_storage_a"])
+    first_storage_contract = storage_factory.deploy_contract(args=["initial_storage_a"])
 
     ## Deploy second Storage Contract
-    second_storage_contract = storage_factory.deploy(args=["initial_storage_b"])
+    second_storage_contract = storage_factory.deploy_contract(
+        args=["initial_storage_b"]
+    )
 
     # Deploy Multi Tenant Storage Contract
     multi_tenant_storage_factory = get_contract_factory("MultiTentantStorage")
-    multi_tenant_storage_contract = multi_tenant_storage_factory.deploy(
+    multi_tenant_storage_contract = multi_tenant_storage_factory.deploy_contract(
         args=[
             [
                 first_storage_contract.address,
@@ -51,7 +54,11 @@ def test_multi_tenant_storage(setup_validators):
     transaction_response_call = (
         multi_tenant_storage_contract.connect(account=user_account_a)
         .update_storage(args=["user_a_storage"])
-        .transact()
+        .transact(
+            wait_transaction_status=TransactionStatus.FINALIZED,
+            wait_triggered_transactions=True,
+            wait_triggered_transactions_status=TransactionStatus.ACCEPTED,
+        )
     )
     assert tx_execution_succeeded(transaction_response_call)
 
@@ -59,7 +66,11 @@ def test_multi_tenant_storage(setup_validators):
     transaction_response_call = (
         multi_tenant_storage_contract.connect(account=user_account_b)
         .update_storage(args=["user_b_storage"])
-        .transact()
+        .transact(
+            wait_transaction_status=TransactionStatus.FINALIZED,
+            wait_triggered_transactions=True,
+            wait_triggered_transactions_status=TransactionStatus.ACCEPTED,
+        )
     )
     assert tx_execution_succeeded(transaction_response_call)
 

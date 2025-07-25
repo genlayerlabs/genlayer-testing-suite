@@ -39,19 +39,19 @@ def test_multi_read_erc20(setup_validators):
     llm_erc20_factory = get_contract_factory("LlmErc20")
 
     ## Deploy first LLM ERC20 Contract
-    doge_contract = llm_erc20_factory.deploy(
+    doge_contract = llm_erc20_factory.deploy_contract(
         args=[TOKEN_TOTAL_SUPPLY], account=from_account_doge
     )
 
     ## Deploy second LLM ERC20 Contract
-    shiba_contract = llm_erc20_factory.deploy(
+    shiba_contract = llm_erc20_factory.deploy_contract(
         args=[TOKEN_TOTAL_SUPPLY], account=from_account_shiba
     )
 
     # Deploy Multi Read ERC20 Contract
     multi_read_erc20_factory = get_contract_factory("multi_read_erc20")
 
-    multi_read_contract = multi_read_erc20_factory.deploy(
+    multi_read_contract = multi_read_erc20_factory.deploy_contract(
         args=[], account=from_account_doge
     )
 

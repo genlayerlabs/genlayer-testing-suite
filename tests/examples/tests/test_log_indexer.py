@@ -6,7 +6,7 @@ def test_log_indexer(setup_validators):
     setup_validators()
     # Deploy Contract
     factory = get_contract_factory("LogIndexer")
-    contract = factory.deploy(args=[])
+    contract = factory.deploy_contract(args=[])
 
     # Get closest vector when empty
     closest_vector_log_0 = contract.get_closest_vector(args=["I like mango"]).call()

@@ -24,7 +24,7 @@ def test_football_prediction_market(setup_validators):
 
     # Deploy Contract
     factory = get_contract_factory("PredictionMarket")
-    contract = factory.deploy(args=["2024-06-26", "Georgia", "Portugal"])
+    contract = factory.deploy_contract(args=["2024-06-26", "Georgia", "Portugal"])
 
     # Resolve match
     transaction_response_call_1 = contract.resolve(args=[]).transact()

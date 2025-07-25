@@ -34,7 +34,7 @@ def test_user_storage(setup_validators):
         from_account_b = create_account()
 
     factory = get_contract_factory("UserStorage")
-    contract = factory.deploy()
+    contract = factory.deploy_contract()
 
     # GET Initial State
     contract_state_1 = contract.get_complete_storage(args=[]).call()
