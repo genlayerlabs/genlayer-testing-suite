@@ -17,10 +17,11 @@ from gltest.clients import (
 )
 from .contract import Contract
 from gltest.logging import logger
-from gltest.types import TransactionStatus
+from gltest.types import TransactionStatus, GenLayerTransaction
 from gltest.assertions import tx_execution_failed
 from gltest.exceptions import DeploymentError
 from gltest_cli.config.general import get_general_config
+from gltest.utils import extract_contract_address
 
 
 @dataclass
@@ -112,9 +113,12 @@ class ContractFactory:
         wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
-    ) -> Contract:
+    ) -> GenLayerTransaction:
         """
-        Deploy the contract
+        Deploy the contract and return the transaction receipt.
+
+        This method now returns a receipt for consistency with transact().
+        Use deploy_contract() for the old behavior that returns a Contract instance.
         """
         general_config = get_general_config()
         actual_wait_interval = (
@@ -148,13 +152,8 @@ class ContractFactory:
                 interval=actual_wait_interval,
                 retries=actual_wait_retries,
             )
-            if tx_execution_failed(tx_receipt):
-                raise ValueError(
-                    f"Deployment transaction finalized with error: {tx_receipt}"
-                )
-
             if wait_triggered_transactions:
-                triggered_transactions = tx_receipt["triggered_transactions"]
+                triggered_transactions = tx_receipt.get("triggered_transactions", [])
                 for triggered_transaction in triggered_transactions:
                     client.wait_for_transaction_receipt(
                         transaction_hash=triggered_transaction,
@@ -162,30 +161,45 @@ class ContractFactory:
                         interval=actual_wait_interval,
                         retries=actual_wait_retries,
                     )
-
-            if (
-                "tx_data_decoded" in tx_receipt
-                and "contract_address" in tx_receipt["tx_data_decoded"]
-            ):
-                contract_address = tx_receipt["tx_data_decoded"]["contract_address"]
-            elif "data" in tx_receipt and "contract_address" in tx_receipt["data"]:
-                contract_address = tx_receipt["data"]["contract_address"]
-            else:
-                raise ValueError("Transaction receipt missing contract address")
-
-            schema = self._get_schema_with_fallback()
-            if schema is None:
-                raise ValueError(
-                    "Failed to get schema from all clients (default, hosted studio, and local)"
-                )
-
-            return Contract.new(
-                address=contract_address, schema=schema, account=account
-            )
+            return tx_receipt
         except Exception as e:
             raise DeploymentError(
                 f"Failed to deploy contract {self.contract_name}: {str(e)}"
             ) from e
+
+    def deploy_contract(
+        self,
+        args: List[Any] = [],
+        account: Optional[LocalAccount] = None,
+        consensus_max_rotations: Optional[int] = None,
+        wait_interval: Optional[int] = None,
+        wait_retries: Optional[int] = None,
+        wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_triggered_transactions: bool = False,
+        wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+    ) -> Contract:
+        """
+        Deploy the contract and return a Contract instance (convenience method).
+
+        This is a convenience method that handles receipt validation
+        and contract instantiation automatically.
+        """
+        tx_receipt = self.deploy(
+            args=args,
+            account=account,
+            consensus_max_rotations=consensus_max_rotations,
+            wait_interval=wait_interval,
+            wait_retries=wait_retries,
+            wait_transaction_status=wait_transaction_status,
+            wait_triggered_transactions=wait_triggered_transactions,
+            wait_triggered_transactions_status=wait_triggered_transactions_status,
+        )
+
+        if tx_execution_failed(tx_receipt):
+            raise DeploymentError(f"Deployment transaction failed: {tx_receipt}")
+
+        contract_address = extract_contract_address(tx_receipt)
+        return self.build_contract(contract_address=contract_address, account=account)
 
 
 def get_contract_factory(
