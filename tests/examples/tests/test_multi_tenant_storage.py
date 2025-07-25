@@ -32,14 +32,14 @@ def test_multi_tenant_storage(setup_validators):
     storage_factory = get_contract_factory("Storage")
 
     ## Deploy first Storage Contract
-    first_storage_contract = storage_factory.deploy(args=["initial_storage_a"])
+    first_storage_contract = storage_factory.deploy_contract(args=["initial_storage_a"])
 
     ## Deploy second Storage Contract
-    second_storage_contract = storage_factory.deploy(args=["initial_storage_b"])
+    second_storage_contract = storage_factory.deploy_contract(args=["initial_storage_b"])
 
     # Deploy Multi Tenant Storage Contract
     multi_tenant_storage_factory = get_contract_factory("MultiTentantStorage")
-    multi_tenant_storage_contract = multi_tenant_storage_factory.deploy(
+    multi_tenant_storage_contract = multi_tenant_storage_factory.deploy_contract(
         args=[
             [
                 first_storage_contract.address,

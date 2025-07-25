@@ -7,7 +7,7 @@ def test_multi_file_contract(setup_validators):
     # Deploy Contract, it will deploy other.py as well
     setup_validators()
     factory = get_contract_factory("MultiFileContract")
-    contract = factory.deploy(args=[])
+    contract = factory.deploy_contract(args=[])
 
     wait_response = contract.wait(args=[]).transact()
     assert tx_execution_succeeded(wait_response)

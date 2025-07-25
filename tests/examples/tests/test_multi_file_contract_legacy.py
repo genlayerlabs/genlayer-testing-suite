@@ -7,7 +7,7 @@ def test_multi_file_contract_legacy(setup_validators):
     # Deploy Contract, it will deploy other.gpy as well
     setup_validators()
     factory = get_contract_factory("MultiFileContractLegacy")
-    contract = factory.deploy(args=[])
+    contract = factory.deploy_contract(args=[])
 
     wait_response = contract.wait(args=[]).transact()
     assert tx_execution_succeeded(wait_response)

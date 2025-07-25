@@ -31,7 +31,7 @@ def test_llm_erc20(setup_validators):
 
     # Deploy Contract
     factory = get_contract_factory("LlmErc20")
-    contract = factory.deploy(args=[TOKEN_TOTAL_SUPPLY])
+    contract = factory.deploy_contract(args=[TOKEN_TOTAL_SUPPLY])
 
     # Get Initial State
     contract_state_1 = contract.get_balances(args=[]).call()

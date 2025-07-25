@@ -92,7 +92,7 @@ def test_intelligent_oracle_factory_pattern(setup_validators):
 
     # Deploy the Registry contract with the IntelligentOracle code
     registry_factory = get_contract_factory("Registry")
-    registry_contract = registry_factory.deploy(
+    registry_contract = registry_factory.deploy_contract(
         args=[intelligent_oracle_factory.contract_code]
     )
 
