@@ -2,6 +2,121 @@
 
 <!-- version list -->
 
+## v0.5.0 (2025-07-30)
+
+### Bug Fixes
+
+- Rollback to 0.4.1 and prevent major version updates
+  ([#42](https://github.com/genlayerlabs/genlayer-testing-suite/pull/42),
+  [`f59a3fe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/f59a3fe9a9af8f497b89c90df2037cb54c701d6a))
+
+- Update default wait values ([#39](https://github.com/genlayerlabs/genlayer-testing-suite/pull/39),
+  [`3c0e8ac`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3c0e8ac936a0ef3c96cbe3bd6f726792554a2521))
+
+- Use default client as first option
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+- **gltest_cli**: Improve error handling
+  ([#38](https://github.com/genlayerlabs/genlayer-testing-suite/pull/38),
+  [`656410b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/656410be6bbaf0e3c389dc00e7578afd80e1285d))
+
+### Chores
+
+- Add ci bot to bypass branch protection
+  ([#36](https://github.com/genlayerlabs/genlayer-testing-suite/pull/36),
+  [`6322da0`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/6322da023554b96fcd2a4801d273c7e79d0d2908))
+
+- Update genlayer-py to 0.7.1
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+- **deps**: Update genlayer-py version to v0.7.2
+  ([#35](https://github.com/genlayerlabs/genlayer-testing-suite/pull/35),
+  [`298c0be`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/298c0be4ff70844c3ffbdbeff1e3dcdcb221df7d))
+
+### Documentation
+
+- Added leader only and update project structure
+  ([#34](https://github.com/genlayerlabs/genlayer-testing-suite/pull/34),
+  [`07c0d94`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/07c0d94b478b37a9566e6512b02517fcd0db5e51))
+
+- Mock llm responses ([#40](https://github.com/genlayerlabs/genlayer-testing-suite/pull/40),
+  [`a3d947f`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/a3d947f0fa1d11d6f287b2dd2d5eb2a76a5289b3))
+
+- Update network configuration
+  ([#38](https://github.com/genlayerlabs/genlayer-testing-suite/pull/38),
+  [`656410b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/656410be6bbaf0e3c389dc00e7578afd80e1285d))
+
+- Update with breaking changes
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+### Features
+
+- Add leader only as a cli param and network config
+  ([#34](https://github.com/genlayerlabs/genlayer-testing-suite/pull/34),
+  [`07c0d94`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/07c0d94b478b37a9566e6512b02517fcd0db5e51))
+
+- Add leader only is now configurable outside tests
+  ([#34](https://github.com/genlayerlabs/genlayer-testing-suite/pull/34),
+  [`07c0d94`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/07c0d94b478b37a9566e6512b02517fcd0db5e51))
+
+- Add studionet and testnet_asimov as pre configured networks
+  ([#38](https://github.com/genlayerlabs/genlayer-testing-suite/pull/38),
+  [`656410b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/656410be6bbaf0e3c389dc00e7578afd80e1285d))
+
+- Handle pre defined networks (localnet, studionet, testnet_asimov)
+  ([#38](https://github.com/genlayerlabs/genlayer-testing-suite/pull/38),
+  [`656410b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/656410be6bbaf0e3c389dc00e7578afd80e1285d))
+
+- Redesign method wrapper to handle different cases (call, transact, stats)
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+- Remove leader only param from transact and deploy methods
+  ([#34](https://github.com/genlayerlabs/genlayer-testing-suite/pull/34),
+  [`07c0d94`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/07c0d94b478b37a9566e6512b02517fcd0db5e51))
+
+- Statistical prompt testing ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+- Update call, transact and deploy methods
+  ([#39](https://github.com/genlayerlabs/genlayer-testing-suite/pull/39),
+  [`3c0e8ac`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3c0e8ac936a0ef3c96cbe3bd6f726792554a2521))
+
+- Update default behavior for tx status and triggered txs and align deploy method
+  ([#39](https://github.com/genlayerlabs/genlayer-testing-suite/pull/39),
+  [`3c0e8ac`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3c0e8ac936a0ef3c96cbe3bd6f726792554a2521))
+
+- **cli**: Implement artifacts management
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+### Refactoring
+
+- Delete glchain and improve modularity
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+### Testing
+
+- Testnet asimov without configuration case
+  ([#38](https://github.com/genlayerlabs/genlayer-testing-suite/pull/38),
+  [`656410b`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/656410be6bbaf0e3c389dc00e7578afd80e1285d))
+
+- Update oracle factory ([#39](https://github.com/genlayerlabs/genlayer-testing-suite/pull/39),
+  [`3c0e8ac`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3c0e8ac936a0ef3c96cbe3bd6f726792554a2521))
+
+- Update test examples and add cli tests
+  ([#32](https://github.com/genlayerlabs/genlayer-testing-suite/pull/32),
+  [`d5b6cbe`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d5b6cbe1eb3b25715f90bd7cd3d9263c41bf5b79))
+
+- **gltest_cli**: Added plugin and integration tests
+  ([#34](https://github.com/genlayerlabs/genlayer-testing-suite/pull/34),
+  [`07c0d94`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/07c0d94b478b37a9566e6512b02517fcd0db5e51))
+
+
 ## v2.2.0 (2025-07-23)
 
 ### Bug Fixes
