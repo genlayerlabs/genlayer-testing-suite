@@ -12,6 +12,7 @@ class MultiFileContract(gl.Contract):
             args=["123"],
             salt_nonce=u256(1),
             value=u256(0),
+            on="accepted",
         )
 
     @gl.public.write

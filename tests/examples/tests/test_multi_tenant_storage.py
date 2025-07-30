@@ -51,7 +51,9 @@ def test_multi_tenant_storage(setup_validators):
     transaction_response_call = (
         multi_tenant_storage_contract.connect(account=user_account_a)
         .update_storage(args=["user_a_storage"])
-        .transact()
+        .transact(
+            wait_triggered_transactions=True,
+        )
     )
     assert tx_execution_succeeded(transaction_response_call)
 
@@ -59,7 +61,9 @@ def test_multi_tenant_storage(setup_validators):
     transaction_response_call = (
         multi_tenant_storage_contract.connect(account=user_account_b)
         .update_storage(args=["user_b_storage"])
-        .transact()
+        .transact(
+            wait_triggered_transactions=True,
+        )
     )
     assert tx_execution_succeeded(transaction_response_call)
 
