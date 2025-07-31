@@ -2,6 +2,37 @@
 
 <!-- version list -->
 
+## v0.5.1 (2025-07-31)
+
+### Bug Fixes
+
+- Filter problematic fields in tx receipt by default
+  ([#41](https://github.com/genlayerlabs/genlayer-testing-suite/pull/41),
+  [`e524a39`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/e524a3943893f17f5c4176b9e801b68944a0b93e))
+
+- Triggered transactions is not in the response
+  ([#41](https://github.com/genlayerlabs/genlayer-testing-suite/pull/41),
+  [`e524a39`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/e524a3943893f17f5c4176b9e801b68944a0b93e))
+
+### Chores
+
+- Update genlayer-py to v0.8.1
+  ([#41](https://github.com/genlayerlabs/genlayer-testing-suite/pull/41),
+  [`e524a39`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/e524a3943893f17f5c4176b9e801b68944a0b93e))
+
+### Refactoring
+
+- Remove depecrated legacy contract examples
+  ([#41](https://github.com/genlayerlabs/genlayer-testing-suite/pull/41),
+  [`e524a39`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/e524a3943893f17f5c4176b9e801b68944a0b93e))
+
+### Testing
+
+- Update with latest tx status behavior
+  ([#41](https://github.com/genlayerlabs/genlayer-testing-suite/pull/41),
+  [`e524a39`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/e524a3943893f17f5c4176b9e801b68944a0b93e))
+
+
 ## v0.5.0 (2025-07-30)
 
 ### Bug Fixes
