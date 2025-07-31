@@ -1,5 +1,4 @@
 import json
-from gltest.types import TransactionStatus
 
 from gltest import get_contract_factory
 from gltest.assertions import tx_execution_succeeded
@@ -112,7 +111,6 @@ def test_intelligent_oracle_factory_pattern(setup_validators):
             ],
         ).transact(
             wait_triggered_transactions=True,
-            wait_triggered_transactions_status=TransactionStatus.ACCEPTED,
         )
         assert tx_execution_succeeded(create_result)
 

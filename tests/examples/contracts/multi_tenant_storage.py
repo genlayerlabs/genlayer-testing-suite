@@ -46,4 +46,6 @@ class MultiTentantStorage(gl.Contract):
             self.available_storage_contracts.pop()
 
         contract_to_use = self.mappings[gl.message.sender_address]
-        gl.get_contract_at(contract_to_use).emit().update_storage(new_storage)
+        gl.get_contract_at(contract_to_use).emit(on="accepted").update_storage(
+            new_storage
+        )
