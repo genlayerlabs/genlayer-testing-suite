@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v0.6.0 (2025-08-01)
+
+### Documentation
+
+- Deploy_contract_tx and extract_contract_address methods
+  ([#43](https://github.com/genlayerlabs/genlayer-testing-suite/pull/43),
+  [`d10a233`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d10a2330bef1ab4cc769917306248b5d18e16b83))
+
+### Features
+
+- Implement deploy_contract_tx and extract_contract_address
+  ([#43](https://github.com/genlayerlabs/genlayer-testing-suite/pull/43),
+  [`d10a233`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d10a2330bef1ab4cc769917306248b5d18e16b83))
+
+### Testing
+
+- Invalid deploy ([#43](https://github.com/genlayerlabs/genlayer-testing-suite/pull/43),
+  [`d10a233`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d10a2330bef1ab4cc769917306248b5d18e16b83))
+
+
 ## v0.5.1 (2025-07-31)
 
 ### Bug Fixes
