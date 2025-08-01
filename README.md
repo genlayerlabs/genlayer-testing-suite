@@ -342,17 +342,24 @@ Key features demonstrated in this contract:
 
 ### Contract Deployment
 
+The GenLayer Testing Suite provides two methods for deploying contracts:
+
+1. **`deploy()`** - Returns the deployed contract instance (recommended for most use cases)
+2. **`deploy_contract_tx()`** - Returns only the transaction receipt
+
 Here's how to deploy the Storage contract:
 
 ```python
 from gltest import get_contract_factory, get_default_account
+from gltest.assertions import tx_execution_succeeded
+from gltest.utils import extract_contract_address
 
 def test_deployment():
     # Get the contract factory for your contract
     # it will search in the contracts directory
     factory = get_contract_factory("Storage")
     
-    # Deploy the contract with constructor arguments
+    # Method 1: Deploy the contract with constructor arguments (recommended)
     contract = factory.deploy(
         args=["initial_value"],  # Constructor arguments
         account=get_default_account(),  # Account to deploy from
@@ -361,6 +368,18 @@ def test_deployment():
     
     # Contract is now deployed and ready to use
     assert contract.address is not None
+    
+    # Method 2: Deploy and get only the receipt
+    receipt = factory.deploy_contract_tx(
+        args=["initial_value"],
+        account=get_default_account(),
+    )
+    
+    # Verify deployment succeeded
+    assert tx_execution_succeeded(receipt)
+
+    # Get the contract address
+    contract_address = extract_contract_address(receipt)
 ```
 
 ### Read Methods
