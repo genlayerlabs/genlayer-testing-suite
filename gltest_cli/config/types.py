@@ -27,6 +27,10 @@ class NetworkConfigData:
     accounts: Optional[List[str]] = None
     from_account: Optional[str] = None
     leader_only: bool = False
+    default_wait_interval: Optional[int] = None
+    default_wait_retries: Optional[int] = None
+    test_with_mocks: bool = False
+    chain: Optional[str] = None
 
     def __post_init__(self):
         if self.id is not None and not isinstance(self.id, int):
@@ -40,6 +44,20 @@ class NetworkConfigData:
                 raise ValueError("accounts must be strings")
         if self.from_account is not None and not isinstance(self.from_account, str):
             raise ValueError("from_account must be a string")
+        if self.default_wait_interval is not None and not isinstance(
+            self.default_wait_interval, int
+        ):
+            raise ValueError("default_wait_interval must be an integer")
+        if self.default_wait_retries is not None and not isinstance(
+            self.default_wait_retries, int
+        ):
+            raise ValueError("default_wait_retries must be an integer")
+        if not isinstance(self.test_with_mocks, bool):
+            raise ValueError("test_with_mocks must be a boolean")
+        if self.chain is not None:
+            valid_chains = ["localnet", "studionet", "testnet_asimov"]
+            if self.chain not in valid_chains:
+                raise ValueError(f"chain must be one of {valid_chains}")
 
 
 @dataclass
@@ -168,12 +186,22 @@ class GeneralConfig:
     def get_default_wait_interval(self) -> int:
         if self.plugin_config.default_wait_interval is not None:
             return self.plugin_config.default_wait_interval
-        raise ValueError("default_wait_interval is not set")
+        network_name = self.get_network_name()
+        if network_name in self.user_config.networks:
+            network_config = self.user_config.networks[network_name]
+            if network_config.default_wait_interval is not None:
+                return network_config.default_wait_interval
+        return 3000
 
     def get_default_wait_retries(self) -> int:
         if self.plugin_config.default_wait_retries is not None:
             return self.plugin_config.default_wait_retries
-        raise ValueError("default_wait_retries is not set")
+        network_name = self.get_network_name()
+        if network_name in self.user_config.networks:
+            network_config = self.user_config.networks[network_name]
+            if network_config.default_wait_retries is not None:
+                return network_config.default_wait_retries
+        return 50
 
     def get_network_name(self) -> str:
         if self.plugin_config.network_name is not None:
@@ -181,7 +209,13 @@ class GeneralConfig:
         return self.user_config.default_network
 
     def get_test_with_mocks(self) -> bool:
-        return self.plugin_config.test_with_mocks
+        if self.plugin_config.test_with_mocks:
+            return True
+        network_name = self.get_network_name()
+        if network_name in self.user_config.networks:
+            network_config = self.user_config.networks[network_name]
+            return network_config.test_with_mocks
+        return False
 
     def get_leader_only(self) -> bool:
         if self.plugin_config.leader_only:
@@ -191,6 +225,14 @@ class GeneralConfig:
             network_config = self.user_config.networks[network_name]
             return network_config.leader_only
         return False
+
+    def get_chain_name(self) -> str:
+        network_name = self.get_network_name()
+        if network_name in self.user_config.networks:
+            network_config = self.user_config.networks[network_name]
+            if network_config.chain is not None:
+                return network_config.chain
+        return network_name
 
     def check_local_rpc(self) -> bool:
         SUPPORTED_RPC_DOMAINS = ["localhost", "127.0.0.1"]
