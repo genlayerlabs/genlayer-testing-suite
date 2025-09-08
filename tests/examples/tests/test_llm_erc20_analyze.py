@@ -1,4 +1,5 @@
 from gltest import get_contract_factory, get_default_account, create_account
+from datetime import datetime, timezone
 
 
 TOKEN_TOTAL_SUPPLY = 1000
@@ -21,7 +22,10 @@ def test_llm_erc20_analyze(setup_validators):
 
     # Transfer from User A to User B
     stats = contract.transfer(args=[TRANSFER_AMOUNT, from_account_b.address]).analyze(
-        provider="openai", model="gpt-4o", runs=3
+        provider="openai",
+        model="gpt-4o",
+        runs=3,
+        genvm_datetime=datetime.now(timezone.utc).isoformat(),
     )
 
     # Verify it's a MethodStatsSummary object
