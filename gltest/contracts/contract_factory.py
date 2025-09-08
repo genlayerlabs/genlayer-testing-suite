@@ -15,6 +15,7 @@ from gltest.clients import (
     get_gl_hosted_studio_client,
     get_local_client,
 )
+from genlayer_py.types import SimConfig
 from .contract import Contract
 from gltest.logging import logger
 from gltest.types import TransactionStatus, GenLayerTransaction, CalldataEncodable
@@ -22,6 +23,7 @@ from gltest.assertions import tx_execution_failed
 from gltest.exceptions import DeploymentError
 from gltest_cli.config.general import get_general_config
 from gltest.utils import extract_contract_address
+from gltest.types import TransactionContext
 
 
 @dataclass
@@ -113,6 +115,7 @@ class ContractFactory:
         wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        transaction_context: Optional[TransactionContext] = None,
     ) -> Contract:
         """
         Deploy the contract and return a Contract instance (convenience method).
@@ -129,6 +132,7 @@ class ContractFactory:
             wait_transaction_status=wait_transaction_status,
             wait_triggered_transactions=wait_triggered_transactions,
             wait_triggered_transactions_status=wait_triggered_transactions_status,
+            transaction_context=transaction_context,
         )
 
         if tx_execution_failed(receipt):
@@ -147,6 +151,7 @@ class ContractFactory:
         wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        transaction_context: Optional[TransactionContext] = None,
     ) -> GenLayerTransaction:
         """
         Deploy the contract and return the transaction receipt.
@@ -170,12 +175,21 @@ class ContractFactory:
 
         client = get_gl_client()
         try:
+            sim_config = None
+            if transaction_context:
+                try:
+                    sim_config = SimConfig(**transaction_context)
+                except TypeError as e:
+                    raise ValueError(
+                        f"Invalid transaction_context keys: {sorted(transaction_context.keys())}"
+                    ) from e
             tx_hash = client.deploy_contract(
                 code=self.contract_code,
                 args=args,
                 account=account,
                 consensus_max_rotations=consensus_max_rotations,
                 leader_only=leader_only,
+                sim_config=sim_config,
             )
             tx_receipt = client.wait_for_transaction_receipt(
                 transaction_hash=tx_hash,

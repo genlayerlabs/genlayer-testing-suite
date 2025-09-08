@@ -7,7 +7,9 @@ from gltest.types import (
     GenLayerTransaction,
     TransactionStatus,
     TransactionHashVariant,
+    TransactionContext,
 )
+from genlayer_py.types import SimConfig
 from typing import List, Any, Optional, Dict, Callable
 from gltest_cli.config.general import get_general_config
 from .contract_functions import ContractFunction
@@ -25,14 +27,24 @@ def read_contract_wrapper(
 
     def call_method(
         transaction_hash_variant: TransactionHashVariant = TransactionHashVariant.LATEST_NONFINAL,
+        transaction_context: Optional[TransactionContext] = None,
     ):
         client = get_gl_client()
+        sim_config = None
+        if transaction_context:
+            try:
+                sim_config = SimConfig(**transaction_context)
+            except TypeError as e:
+                raise ValueError(
+                    f"Invalid transaction_context keys: {sorted(transaction_context.keys())}"
+                ) from e
         return client.read_contract(
             address=self.address,
             function_name=method_name,
             account=self.account,
             args=args,
             transaction_hash_variant=transaction_hash_variant,
+            sim_config=sim_config,
         )
 
     return ContractFunction(
@@ -59,6 +71,7 @@ def write_contract_wrapper(
         wait_retries: Optional[int] = None,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        transaction_context: Optional[TransactionContext] = None,
     ):
         """
         Transact the contract method.
@@ -80,6 +93,14 @@ def write_contract_wrapper(
             else False
         )
         client = get_gl_client()
+        sim_config = None
+        if transaction_context:
+            try:
+                sim_config = SimConfig(**transaction_context)
+            except TypeError as e:
+                raise ValueError(
+                    f"Invalid transaction_context keys: {sorted(transaction_context.keys())}"
+                ) from e
         tx_hash = client.write_contract(
             address=self.address,
             function_name=method_name,
@@ -88,6 +109,7 @@ def write_contract_wrapper(
             consensus_max_rotations=consensus_max_rotations,
             leader_only=leader_only,
             args=args,
+            sim_config=sim_config,
         )
         receipt = client.wait_for_transaction_receipt(
             transaction_hash=tx_hash,
@@ -113,6 +135,7 @@ def write_contract_wrapper(
         plugin: Optional[str] = None,
         plugin_config: Optional[Dict[str, Any]] = None,
         runs: int = 100,
+        genvm_datetime: Optional[str] = None,
     ):
         """
         Analyze the contract method using StatsCollector.
@@ -129,6 +152,7 @@ def write_contract_wrapper(
             config=config,
             plugin=plugin,
             plugin_config=plugin_config,
+            genvm_datetime=genvm_datetime,
         )
         sim_results = collector.run_simulations(sim_config, runs)
         return collector.analyze_results(sim_results, runs, sim_config)

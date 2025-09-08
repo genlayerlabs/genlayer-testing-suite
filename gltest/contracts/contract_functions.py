@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Callable, Optional, Dict, Any
-from gltest.types import TransactionStatus, TransactionHashVariant
+from gltest.types import TransactionStatus, TransactionHashVariant, TransactionContext
 
 
 @dataclass
@@ -14,10 +14,14 @@ class ContractFunction:
     def call(
         self,
         transaction_hash_variant: TransactionHashVariant = TransactionHashVariant.LATEST_NONFINAL,
+        transaction_context: Optional[TransactionContext] = None,
     ):
         if not self.read_only:
             raise ValueError("call() not implemented for non-readonly method")
-        return self.call_method(transaction_hash_variant=transaction_hash_variant)
+        return self.call_method(
+            transaction_hash_variant=transaction_hash_variant,
+            transaction_context=transaction_context,
+        )
 
     def transact(
         self,
@@ -28,6 +32,7 @@ class ContractFunction:
         wait_retries: Optional[int] = None,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        transaction_context: Optional[TransactionContext] = None,
     ):
         if self.read_only:
             raise ValueError("Cannot transact read-only method")
@@ -39,6 +44,7 @@ class ContractFunction:
             wait_retries=wait_retries,
             wait_triggered_transactions=wait_triggered_transactions,
             wait_triggered_transactions_status=wait_triggered_transactions_status,
+            transaction_context=transaction_context,
         )
 
     def analyze(
@@ -49,6 +55,7 @@ class ContractFunction:
         plugin: Optional[str] = None,
         plugin_config: Optional[Dict[str, Any]] = None,
         runs: int = 100,
+        genvm_datetime: Optional[str] = None,
     ):
         if self.read_only:
             raise ValueError("Cannot analyze read-only method")
@@ -59,4 +66,5 @@ class ContractFunction:
             plugin=plugin,
             plugin_config=plugin_config,
             runs=runs,
+            genvm_datetime=genvm_datetime,
         )

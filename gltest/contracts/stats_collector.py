@@ -29,6 +29,7 @@ class SimulationConfig:
     config: Optional[Dict[str, Any]] = None
     plugin: Optional[str] = None
     plugin_config: Optional[Dict[str, Any]] = None
+    genvm_datetime: Optional[str] = None
 
 
 @dataclass
@@ -103,7 +104,12 @@ class StatsCollector:
         self, sim_config: SimulationConfig
     ) -> Dict[str, Any]:
         """Execute a single simulation."""
-        config_dict = {
+        config_dict = {}
+
+        if sim_config.genvm_datetime is not None:
+            config_dict["genvm_datetime"] = sim_config.genvm_datetime
+
+        validator_info = {
             "provider": sim_config.provider,
             "model": sim_config.model,
         }
@@ -113,9 +119,10 @@ class StatsCollector:
             and sim_config.plugin is not None
             and sim_config.plugin_config is not None
         ):
-            config_dict["config"] = sim_config.config
-            config_dict["plugin"] = sim_config.plugin
-            config_dict["plugin_config"] = sim_config.plugin_config
+            validator_info["config"] = sim_config.config
+            validator_info["plugin"] = sim_config.plugin
+            validator_info["plugin_config"] = sim_config.plugin_config
+        config_dict["validators"] = [validator_info]
 
         return self.client.simulate_write_contract(
             address=self.contract_address,
