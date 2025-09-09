@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v0.7.0 (2025-09-09)
+
+### Features
+
+- Add consensus context field to transact and call methods, add genvm_datetime to analyze method
+  ([#48](https://github.com/genlayerlabs/genlayer-testing-suite/pull/48),
+  [`bcb3ab7`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/bcb3ab7a822d9d7109e577096e64016dac888caa))
+
+- Virtual validators and custom genvm in transaction execution
+  ([#48](https://github.com/genlayerlabs/genlayer-testing-suite/pull/48),
+  [`bcb3ab7`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/bcb3ab7a822d9d7109e577096e64016dac888caa))
+
+### Testing
+
+- Custom genvm datetime ([#48](https://github.com/genlayerlabs/genlayer-testing-suite/pull/48),
+  [`bcb3ab7`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/bcb3ab7a822d9d7109e577096e64016dac888caa))
+
+
 ## v0.6.0 (2025-08-01)
 
 ### Documentation
