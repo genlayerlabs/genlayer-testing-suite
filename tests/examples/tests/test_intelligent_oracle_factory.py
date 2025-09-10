@@ -52,7 +52,7 @@ def create_mock_response(markets_data):
     }
 
 
-def test_intelligent_oracle_factory_pattern(setup_validators):
+def test_intelligent_oracle_factory_pattern():
     markets_data = [
         {
             "prediction_market_id": "marathon2024",
@@ -81,10 +81,6 @@ def test_intelligent_oracle_factory_pattern(setup_validators):
             "evidence_urls": "https://www.bbc.com/news/election/2024/us/results",
         },
     ]
-
-    mock_response = create_mock_response(markets_data)
-
-    setup_validators(mock_response)
 
     # Get the intelligent oracle factory
     intelligent_oracle_factory = get_contract_factory("IntelligentOracle")

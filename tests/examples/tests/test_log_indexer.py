@@ -2,11 +2,20 @@ from gltest import get_contract_factory
 from gltest.assertions import tx_execution_succeeded
 
 
-def test_log_indexer(setup_validators):
-    setup_validators()
+def test_log_indexer():
     # Deploy Contract
     factory = get_contract_factory("LogIndexer")
-    contract = factory.deploy(args=[])
+    validator_config = {
+        "provider": "openai",
+        "model": "gpt-4o",
+        "config": {"temperature": 0.75},
+        "plugin": "openai-compatible",
+        "plugin_config": {"api_key_env_var": "OPENAIKEY"},
+    }
+    contract = factory.deploy(
+        args=[],
+        transaction_context={"validators": [validator_config]},
+    )
 
     # Get closest vector when empty
     closest_vector_log_0 = contract.get_closest_vector(args=["I like mango"]).call()

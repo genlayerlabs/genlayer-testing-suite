@@ -4,7 +4,7 @@ from gltest_cli.config.general import get_general_config
 from genlayer_py.chains import testnet_asimov
 
 
-def test_multi_tenant_storage(setup_validators):
+def test_multi_tenant_storage():
     """
     This test verifies the functionality of a multi-tenant storage contract. It deploys two separate storage contracts
     and a multi-tenant storage contract that manages them. The test aims to:
@@ -17,7 +17,6 @@ def test_multi_tenant_storage(setup_validators):
 
     This test demonstrates contract-to-contract interactions and multi-tenant data management.
     """
-    setup_validators()
     general_config = get_general_config()
     chain = general_config.get_chain()
 

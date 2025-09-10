@@ -58,7 +58,7 @@ assert tx_execution_succeeded(tx_receipt)
   - [Assertions](#assertions)
   - [Test Fixtures](#test-fixtures)
   - [Statistical Analysis with `.analyze()`](#statistical-analysis-with-analyze)
-  - [Mock LLM Responses](#mock-llm-responses)
+  - [Transaction Context](#transaction-context)
 - [Best Practices](#-best-practices)
 - [Troubleshooting](#-troubleshooting)
 - [Contributing](#-contributing)
@@ -238,29 +238,28 @@ $ gltest --default-wait-interval <default_wait_interval>
 $ gltest --default-wait-retries <default_wait_retries>
 ```
 
-10. Run tests with mocked LLM responses (localnet only)
-```bash
-$ gltest --test-with-mocks
-```
-The `--test-with-mocks` flag enables mocking of LLM responses when creating validators. This is particularly useful for:
-- Testing without actual LLM API calls
-- Ensuring deterministic test results
-- Faster test execution
-- Testing specific edge cases with controlled responses
-
-When using this flag with the `setup_validators` fixture, you can provide custom mock responses:
+10. Use validators via transaction context
 ```python
-def test_with_mocked_llm(setup_validators):
-    # Setup validators with a specific mock response
-    mock_response = {"result": "This is a mocked LLM response"}
-    setup_validators(mock_response=mock_response)
-    
-    # Your LLM-based contract will receive the mocked response
-    contract = factory.deploy()
-    result = contract.llm_method()  # Will use the mocked response
-```
+# Create a validator configuration
+validator_config = {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "config": {"temperature": 0.75},
+    "plugin": "openai-compatible",
+    "plugin_config": {"api_key_env_var": "OPENAIKEY"}
+}
 
-Note: This feature is only available when running tests on localnet.
+# Use it in contract deployment
+contract = factory.deploy(
+    args=["initial_value"],
+    transaction_context={"validators": [validator_config]}
+)
+
+# Or in method calls
+result = contract.method().call(
+    transaction_context={"validators": [validator_config]}
+)
+```
 
 11. Run tests with leader-only mode enabled
 ```bash
@@ -468,6 +467,39 @@ Both `tx_execution_succeeded` and `tx_execution_failed` accept the following par
 - `match_std_out` (optional): String or regex pattern to match in stdout
 - `match_std_err` (optional): String or regex pattern to match in stderr
 
+### Transaction Context for Validators
+
+Use transaction context to pass validator configuration at deployment or call time.
+
+```python
+from gltest import get_contract_factory
+
+factory = get_contract_factory("MyContract")
+
+validator_config = {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "config": {"temperature": 0.75},
+    "plugin": "openai-compatible",
+    "plugin_config": {"api_key_env_var": "OPENAIKEY"},
+}
+
+# Use in contract deployment
+contract = factory.deploy(
+    args=["initial_value"],
+    transaction_context={"validators": [validator_config]},
+)
+
+# Or in method calls
+result = contract.some_method().call(
+    transaction_context={"validators": [validator_config]},
+)
+
+# For write methods
+tx_receipt = contract.update_something(args=["value"]).transact(
+    transaction_context={"validators": [validator_config]},
+)
+```
 **Network Compatibility**: The stdout/stderr matching feature (`match_std_out` and `match_std_err` parameters) is only available when running on **studionet** and **localnet**. These features are not supported on testnet.
 
 For more example contracts, check out the [contracts directory](tests/examples/contracts) which contains various sample contracts demonstrating different features and use cases.
@@ -483,7 +515,6 @@ The following fixtures are available in `gltest.fixtures`:
 - **`gl_client`** (session scope) - GenLayer client instance for network operations
 - **`default_account`** (session scope) - Default account for testing and deployments
 - **`accounts`** (session scope) - List of test accounts for multi-account scenarios
-- **`setup_validators`** (function scope) - Function to create test validators for LLM operations
 
 ##### 1. `gl_client` (session scope)
 Provides a GenLayer PY client instance that's created once per test session. This is useful for operations that interact directly with the GenLayer network.
@@ -518,26 +549,21 @@ def test_multiple_accounts(accounts):
     contract.transfer(args=[receiver.address, 100], account=sender)
 ```
 
-##### 4. `setup_validators` (function scope)
-Creates test validators for localnet environment. This fixture is particularly useful for testing LLM-based contract methods and consensus behavior. It yields a function that allows you to configure validators with custom settings.
-
+##### 4. Transaction Context
+Pass validator configuration per-transaction using the transaction_context parameter.
 ```python
-def test_with_validators(setup_validators):
-    # Setup validators with default configuration
-    setup_validators()
-    
-    # Or setup with custom mock responses for testing
-    mock_response = {"result": "mocked LLM response"}
-    setup_validators(mock_response=mock_response, n_validators=3)
-    
-    # Now test your LLM-based contract methods
-    contract = factory.deploy()
-    result = contract.llm_based_method()
-```
+validator_config = {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "config": {"temperature": 0.75},
+    "plugin": "openai-compatible",
+    "plugin_config": {"api_key_env_var": "OPENAIKEY"}
+}
 
-Parameters for `setup_validators`:
-- `mock_response` (dict, optional): Mock validator response when using `--test-with-mocks` flag
-- `n_validators` (int, optional): Number of validators to create (default: 5)
+factory = get_contract_factory("MyContract")
+contract = factory.deploy(transaction_context={"validators": [validator_config]})
+result = contract.some_method().call(transaction_context={"validators": [validator_config]})
+```
 
 #### Using Fixtures in Your Tests
 
@@ -547,9 +573,7 @@ To use these fixtures, simply import them and include them as parameters in your
 from gltest import get_contract_factory
 from gltest.assertions import tx_execution_succeeded
 
-def test_complete_workflow(gl_client, default_account, accounts, setup_validators):
-    # Setup validators for LLM operations
-    setup_validators()
+def test_complete_workflow(gl_client, default_account, accounts):
     
     # Deploy contract with default account
     factory = get_contract_factory("MyContract")
@@ -691,12 +715,15 @@ result = gl.eq_principle.prompt_comparative(
 
 ```python
 from gltest import get_contract_factory
-from gltest.fixtures import setup_validators
 
-def test_with_mocked_llm(setup_validators):
-    # Define mock responses
-    mock_response = {
-        "response": {
+def test_with_validators_via_context():
+    validator_config = {
+        "provider": "openai",
+        "model": "gpt-4o",
+        "config": {"temperature": 0.75},
+        "plugin": "openai-compatible",
+        "plugin_config": {"api_key_env_var": "OPENAIKEY"}
+    }
             "What is the weather?": "It's sunny today",
             "Calculate 2+2": "4"
         },
@@ -726,7 +753,6 @@ def test_with_mocked_llm(setup_validators):
 2. **Test your matches**: Verify that your mock strings actually appear in the generated user messages
 3. **Keep mocks simple**: Mock responses should be minimal and focused on the test case
 4. **Document your mocks**: Comment why specific responses are mocked for future reference
-5. **Use with `--test-with-mocks` flag**: Enable mocking when running tests: `gltest --test-with-mocks`
 
 #### Notes
 

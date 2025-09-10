@@ -17,7 +17,6 @@ def test_help_message(pytester):
             "  --rpc-url=RPC_URL     RPC endpoint URL for the GenLayer network",
             "  --network=NETWORK     Target network (defaults to 'localnet' if no config",
             "                        file)",
-            "  --test-with-mocks     Test with mocks",
             "  --leader-only         Run contracts in leader-only mode",
         ]
     )
@@ -171,50 +170,6 @@ def test_contracts_and_artifacts_dirs(pytester):
     result.stdout.fnmatch_lines(
         [
             "*::test_both_dirs PASSED*",
-        ]
-    )
-    assert result.ret == 0
-
-
-def test_test_with_mocks_true(pytester):
-    pytester.makepyfile(
-        """
-        from gltest_cli.config.general import get_general_config
-
-        def test_test_with_mocks():
-            general_config = get_general_config()
-            assert general_config.get_test_with_mocks() == True
-    """
-    )
-
-    result = pytester.runpytest("--test-with-mocks", "-v")
-
-    result.stdout.fnmatch_lines(
-        [
-            "*::test_test_with_mocks PASSED*",
-        ]
-    )
-    assert result.ret == 0
-
-
-def test_test_with_mocks_false(pytester):
-    pytester.makepyfile(
-        """
-        from gltest_cli.config.general import get_general_config
-
-        def test_test_with_mocks():
-            general_config = get_general_config()
-            assert general_config.get_test_with_mocks() == False
-            "*::test_test_with_mocks PASSED*",
-
-    """
-    )
-
-    result = pytester.runpytest("-v")
-
-    result.stdout.fnmatch_lines(
-        [
-            "*::test_test_with_mocks PASSED*",
         ]
     )
     assert result.ret == 0

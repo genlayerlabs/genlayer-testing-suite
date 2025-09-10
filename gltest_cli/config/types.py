@@ -16,7 +16,6 @@ class PluginConfig:
     default_wait_interval: Optional[int] = None
     default_wait_retries: Optional[int] = None
     network_name: Optional[str] = None
-    test_with_mocks: bool = False
     leader_only: bool = False
 
 
@@ -179,9 +178,6 @@ class GeneralConfig:
         if self.plugin_config.network_name is not None:
             return self.plugin_config.network_name
         return self.user_config.default_network
-
-    def get_test_with_mocks(self) -> bool:
-        return self.plugin_config.test_with_mocks
 
     def get_leader_only(self) -> bool:
         if self.plugin_config.leader_only:
