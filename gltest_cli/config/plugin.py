@@ -12,6 +12,12 @@ from gltest_cli.config.general import (
 )
 from gltest_cli.config.types import PluginConfig
 from gltest_cli.config.pytest_context import _pytest_context
+from gltest_cli.config.constants import (
+    DEFAULT_WAIT_INTERVAL,
+    DEFAULT_WAIT_RETRIES,
+    DEFAULT_LEADER_ONLY,
+    CHAINS,
+)
 
 
 def pytest_addoption(parser):
@@ -33,14 +39,14 @@ def pytest_addoption(parser):
     group.addoption(
         "--default-wait-interval",
         action="store",
-        default=3000,
+        default=DEFAULT_WAIT_INTERVAL,
         help="Default interval (ms) between transaction receipt checks",
     )
 
     group.addoption(
         "--default-wait-retries",
         action="store",
-        default=50,
+        default=DEFAULT_WAIT_RETRIES,
         help="Default number of retries for transaction receipt checks",
     )
 
@@ -59,17 +65,17 @@ def pytest_addoption(parser):
     )
 
     group.addoption(
-        "--test-with-mocks",
+        "--leader-only",
         action="store_true",
-        default=False,
-        help="Test with mocks",
+        default=DEFAULT_LEADER_ONLY,
+        help="Run contracts in leader-only mode",
     )
 
     group.addoption(
-        "--leader-only",
-        action="store_true",
-        default=False,
-        help="Run contracts in leader-only mode",
+        "--chain",
+        action="store",
+        default=None,
+        help=f"Chain name (possible values: {', '.join(CHAINS)})",
     )
 
 
@@ -106,8 +112,8 @@ def pytest_configure(config):
         default_wait_retries = config.getoption("--default-wait-retries")
         rpc_url = config.getoption("--rpc-url")
         network = config.getoption("--network")
-        test_with_mocks = config.getoption("--test-with-mocks")
         leader_only = config.getoption("--leader-only")
+        chain = config.getoption("--chain")
 
         plugin_config = PluginConfig()
         plugin_config.contracts_dir = (
@@ -120,8 +126,8 @@ def pytest_configure(config):
         plugin_config.default_wait_retries = int(default_wait_retries)
         plugin_config.rpc_url = rpc_url
         plugin_config.network_name = network
-        plugin_config.test_with_mocks = test_with_mocks
         plugin_config.leader_only = leader_only
+        plugin_config.chain = chain
 
         general_config.plugin_config = plugin_config
     except Exception as e:
@@ -148,6 +154,8 @@ def pytest_sessionstart(session):
         # Show available networks including preconfigured ones
         all_networks = general_config.get_networks_keys()
         logger.info(f"  Available networks: {all_networks}")
+        logger.info(f"  Chain: {general_config.get_chain_name()}")
+        logger.info(f"  Available chains: {', '.join(CHAINS)}")
         logger.info(f"  Contracts directory: {general_config.get_contracts_dir()}")
         logger.info(f"  Artifacts directory: {general_config.get_artifacts_dir()}")
         logger.info(f"  Environment: {general_config.user_config.environment}")
@@ -157,7 +165,6 @@ def pytest_sessionstart(session):
         logger.info(
             f"  Default wait retries: {general_config.get_default_wait_retries()}"
         )
-        logger.info(f"  Test with mocks: {general_config.get_test_with_mocks()}")
 
         if (
             general_config.get_leader_only()

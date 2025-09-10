@@ -58,7 +58,7 @@ assert tx_execution_succeeded(tx_receipt)
   - [Assertions](#assertions)
   - [Test Fixtures](#test-fixtures)
   - [Statistical Analysis with `.analyze()`](#statistical-analysis-with-analyze)
-  - [Mock LLM Responses](#mock-llm-responses)
+  - [Transaction Context](#transaction-context)
 - [Best Practices](#-best-practices)
 - [Troubleshooting](#-troubleshooting)
 - [Contributing](#-contributing)
@@ -117,6 +117,7 @@ networks:
   custom_network:  # Custom network configuration
     id: 1234
     url: "http://custom.network:8545"
+    chain: "localnet"  # Required for custom networks: localnet, studionet, or testnet_asimov
     accounts:
       - "${CUSTOM_ACCOUNT_1}"
       - "${CUSTOM_ACCOUNT_2}"
@@ -140,10 +141,11 @@ Key configuration sections:
    - Network configurations can include:
      - `url`: The RPC endpoint for the network (optional for pre-configured networks)
      - `id`: Chain ID (optional for pre-configured networks)
+     - `chain`: Chain type - one of: `localnet`, `studionet`, or `testnet_asimov` (required for custom networks)
      - `accounts`: List of account private keys (using environment variables)
      - `from`: Specify which account to use as the default for transactions (optional, defaults to first account)
      - `leader_only`: Leader only mode
-   - For custom networks (non-pre-configured), `id`, `url`, and `accounts` are required fields
+   - For custom networks (non-pre-configured), `id`, `url`, `chain`, and `accounts` are required fields
 
 **Note on Environment Variables**: When using environment variables in your configuration (e.g., `${ACCOUNT_PRIVATE_KEY_1}`), ensure they are properly set in your `environment` file. If an environment variable is not found, the system will raise a clear error message indicating which variable is missing.
 
@@ -158,6 +160,13 @@ testnet_asimov:
     - "${ADMIN_KEY}"         # accounts[2]
   from: "${ADMIN_KEY}"       # Use ADMIN_KEY as default instead of DEPLOYER_KEY
 ```
+
+**Chain vs Network**: 
+- **Network**: Defines the connection details (URL, accounts, etc.) for a specific environment
+- **Chain**: Defines the genlayer chain type and its associated behaviors (localnet, studionet, or testnet_asimov)
+- Pre-configured networks automatically have the correct chain type set
+- Custom networks must specify the chain type explicitly
+- The `--chain` CLI flag can override the chain type for any network, allowing you to test different chain behaviors with the same network configuration
 
 2. **Paths**: Define important directory paths
    - `contracts`: Location of your contract files
@@ -238,29 +247,28 @@ $ gltest --default-wait-interval <default_wait_interval>
 $ gltest --default-wait-retries <default_wait_retries>
 ```
 
-10. Run tests with mocked LLM responses (localnet only)
-```bash
-$ gltest --test-with-mocks
-```
-The `--test-with-mocks` flag enables mocking of LLM responses when creating validators. This is particularly useful for:
-- Testing without actual LLM API calls
-- Ensuring deterministic test results
-- Faster test execution
-- Testing specific edge cases with controlled responses
-
-When using this flag with the `setup_validators` fixture, you can provide custom mock responses:
+10. Use validators via transaction context
 ```python
-def test_with_mocked_llm(setup_validators):
-    # Setup validators with a specific mock response
-    mock_response = {"result": "This is a mocked LLM response"}
-    setup_validators(mock_response=mock_response)
-    
-    # Your LLM-based contract will receive the mocked response
-    contract = factory.deploy()
-    result = contract.llm_method()  # Will use the mocked response
-```
+# Create a validator configuration
+validator_config = {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "config": {"temperature": 0.75},
+    "plugin": "openai-compatible",
+    "plugin_config": {"api_key_env_var": "OPENAIKEY"}
+}
 
-Note: This feature is only available when running tests on localnet.
+# Use it in contract deployment
+contract = factory.deploy(
+    args=["initial_value"],
+    transaction_context={"validators": [validator_config]}
+)
+
+# Or in method calls
+result = contract.method().call(
+    transaction_context={"validators": [validator_config]}
+)
+```
 
 11. Run tests with leader-only mode enabled
 ```bash
@@ -275,6 +283,24 @@ The `--leader-only` flag configures all contract deployments and write operation
 When this flag is enabled, all contracts deployed and all write transactions will automatically use leader-only mode, regardless of individual method parameters.
 
 **Note:** Leader-only mode is only available for studio-based networks (localhost, 127.0.0.1, *.genlayer.com, *.genlayerlabs.com). When enabled on other networks, it will have no effect and a warning will be logged.
+
+12. Override the chain type
+```bash
+$ gltest --chain localnet
+$ gltest --chain studionet
+$ gltest --chain testnet_asimov
+```
+The `--chain` flag allows you to override the chain type configured for the network. This is useful when:
+- Testing different chain behaviors without changing network configuration
+- Switching between chain types for testing purposes
+- Using a custom network URL with a specific chain type
+
+Available chain types:
+- `localnet`: Local development chain
+- `studionet`: Studio-based chain
+- `testnet_asimov`: Testnet Asimov chain
+
+The chain type determines various behaviors including RPC endpoints, consensus mechanisms, and available features. When specified, this flag overrides the chain type configured in your network settings.
 
 ## 🚀 Key Features
 
@@ -473,6 +499,39 @@ Both `tx_execution_succeeded` and `tx_execution_failed` accept the following par
 - `match_std_out` (optional): String or regex pattern to match in stdout
 - `match_std_err` (optional): String or regex pattern to match in stderr
 
+### Transaction Context for Validators
+
+Use transaction context to pass validator configuration at deployment or call time.
+
+```python
+from gltest import get_contract_factory
+
+factory = get_contract_factory("MyContract")
+
+validator_config = {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "config": {"temperature": 0.75},
+    "plugin": "openai-compatible",
+    "plugin_config": {"api_key_env_var": "OPENAIKEY"},
+}
+
+# Use in contract deployment
+contract = factory.deploy(
+    args=["initial_value"],
+    transaction_context={"validators": [validator_config]},
+)
+
+# Or in method calls
+result = contract.some_method().call(
+    transaction_context={"validators": [validator_config]},
+)
+
+# For write methods
+tx_receipt = contract.update_something(args=["value"]).transact(
+    transaction_context={"validators": [validator_config]},
+)
+```
 **Network Compatibility**: The stdout/stderr matching feature (`match_std_out` and `match_std_err` parameters) is only available when running on **studionet** and **localnet**. These features are not supported on testnet.
 
 For more example contracts, check out the [contracts directory](tests/examples/contracts) which contains various sample contracts demonstrating different features and use cases.
@@ -488,7 +547,6 @@ The following fixtures are available in `gltest.fixtures`:
 - **`gl_client`** (session scope) - GenLayer client instance for network operations
 - **`default_account`** (session scope) - Default account for testing and deployments
 - **`accounts`** (session scope) - List of test accounts for multi-account scenarios
-- **`setup_validators`** (function scope) - Function to create test validators for LLM operations
 
 ##### 1. `gl_client` (session scope)
 Provides a GenLayer PY client instance that's created once per test session. This is useful for operations that interact directly with the GenLayer network.
@@ -523,26 +581,21 @@ def test_multiple_accounts(accounts):
     contract.transfer(args=[receiver.address, 100], account=sender)
 ```
 
-##### 4. `setup_validators` (function scope)
-Creates test validators for localnet environment. This fixture is particularly useful for testing LLM-based contract methods and consensus behavior. It yields a function that allows you to configure validators with custom settings.
-
+##### 4. Transaction Context
+Pass validator configuration per-transaction using the transaction_context parameter.
 ```python
-def test_with_validators(setup_validators):
-    # Setup validators with default configuration
-    setup_validators()
-    
-    # Or setup with custom mock responses for testing
-    mock_response = {"result": "mocked LLM response"}
-    setup_validators(mock_response=mock_response, n_validators=3)
-    
-    # Now test your LLM-based contract methods
-    contract = factory.deploy()
-    result = contract.llm_based_method()
-```
+validator_config = {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "config": {"temperature": 0.75},
+    "plugin": "openai-compatible",
+    "plugin_config": {"api_key_env_var": "OPENAIKEY"}
+}
 
-Parameters for `setup_validators`:
-- `mock_response` (dict, optional): Mock validator response when using `--test-with-mocks` flag
-- `n_validators` (int, optional): Number of validators to create (default: 5)
+factory = get_contract_factory("MyContract")
+contract = factory.deploy(transaction_context={"validators": [validator_config]})
+result = contract.some_method().call(transaction_context={"validators": [validator_config]})
+```
 
 #### Using Fixtures in Your Tests
 
@@ -552,9 +605,7 @@ To use these fixtures, simply import them and include them as parameters in your
 from gltest import get_contract_factory
 from gltest.assertions import tx_execution_succeeded
 
-def test_complete_workflow(gl_client, default_account, accounts, setup_validators):
-    # Setup validators for LLM operations
-    setup_validators()
+def test_complete_workflow(gl_client, default_account, accounts):
     
     # Deploy contract with default account
     factory = get_contract_factory("MyContract")
@@ -633,7 +684,6 @@ mock_response = {
     "eq_principle_prompt_non_comparative": {}     # Optional: mocks gl.eq_principle.prompt_non_comparative
 }
 
-setup_validators(mock_response)
 ```
 
 #### Method Mappings
@@ -667,7 +717,6 @@ mock_response = {
         "The value of give_coin has to match": True
     }
 }
-setup_validators(mock_response)
 
 # In your contract
 result = gl.eq_principle.prompt_comparative(
@@ -697,12 +746,15 @@ result = gl.eq_principle.prompt_comparative(
 
 ```python
 from gltest import get_contract_factory
-from gltest.fixtures import setup_validators
 
-def test_with_mocked_llm(setup_validators):
-    # Define mock responses
-    mock_response = {
-        "response": {
+def test_with_validators_via_context():
+    validator_config = {
+        "provider": "openai",
+        "model": "gpt-4o",
+        "config": {"temperature": 0.75},
+        "plugin": "openai-compatible",
+        "plugin_config": {"api_key_env_var": "OPENAIKEY"}
+    }
             "What is the weather?": "It's sunny today",
             "Calculate 2+2": "4"
         },
@@ -716,8 +768,7 @@ def test_with_mocked_llm(setup_validators):
     }
     
     # Initialize the mock system
-    setup_validators(mock_response)
-    
+        
     # Deploy and test your contract
     factory = get_contract_factory("MyLLMContract")
     contract = factory.deploy()
@@ -732,12 +783,10 @@ def test_with_mocked_llm(setup_validators):
 2. **Test your matches**: Verify that your mock strings actually appear in the generated user messages
 3. **Keep mocks simple**: Mock responses should be minimal and focused on the test case
 4. **Document your mocks**: Comment why specific responses are mocked for future reference
-5. **Use with `--test-with-mocks` flag**: Enable mocking when running tests: `gltest --test-with-mocks`
 
 #### Notes
 
 - Mock responses are only available when running tests on localnet
-- The `setup_validators` fixture handles the mock setup when provided with a mock_response
 - Mocking is particularly useful for CI/CD pipelines where deterministic results are required
 
 ### Custom Transaction Context

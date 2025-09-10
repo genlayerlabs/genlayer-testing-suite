@@ -6,8 +6,7 @@ TOKEN_TOTAL_SUPPLY = 1000
 TRANSFER_AMOUNT = 100
 
 
-def test_llm_erc20_analyze(setup_validators):
-    setup_validators()
+def test_llm_erc20_analyze():
     # Account Setup
     from_account_a = get_default_account()
     from_account_b = create_account()

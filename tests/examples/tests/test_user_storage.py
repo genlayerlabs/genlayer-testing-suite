@@ -15,8 +15,7 @@ INITIAL_STATE_USER_B = "user_b_initial_state"
 UPDATED_STATE_USER_B = "user_b_updated_state"
 
 
-def test_user_storage(setup_validators):
-    setup_validators()
+def test_user_storage():
     general_config = get_general_config()
     chain = general_config.get_chain()
 
