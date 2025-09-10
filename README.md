@@ -285,6 +285,7 @@ When this flag is enabled, all contracts deployed and all write transactions wil
 - **State Injection & Consensus Simulation** – Modify contract states dynamically and simulate consensus scenarios for advanced testing.
 - **Prompt Testing & Statistical Analysis** – Evaluate and statistically test prompts for AI-driven contract execution.
 - **Scalability to Security & Audit Tools** – Designed to extend into security testing and smart contract auditing.
+- **Custom Transaction Context** – Set custom validators with specific LLM providers and models, and configure GenVM datetime for deterministic testing scenarios.
 
 ## 📚 Examples
 
@@ -364,6 +365,7 @@ def test_deployment():
         args=["initial_value"],  # Constructor arguments
         account=get_default_account(),  # Account to deploy from
         consensus_max_rotations=3,  # Optional: max consensus rotations
+        transaction_context=None,  # Optional: custom transaction context
     )
     
     # Contract is now deployed and ready to use
@@ -396,7 +398,9 @@ def test_read_methods():
     contract = factory.deploy()
 
     # Call a read-only method
-    result = contract.get_storage(args=[]).call()
+    result = contract.get_storage(args=[]).call(
+        transaction_context=None,  # Optional: custom transaction context
+    )
     
     # Assert the result matches the initial value
     assert result == "initial_value"
@@ -423,6 +427,7 @@ def test_write_methods():
         consensus_max_rotations=3,  # Optional: max consensus rotations
         wait_interval=1,  # Optional: seconds between status checks
         wait_retries=10,  # Optional: max number of retries
+        transaction_context=None,  # Optional: custom transaction context
     )
     
     # Verify the transaction was successful
@@ -586,6 +591,7 @@ def test_analyze_method():
         config=None,                # Optional: provider-specific config
         plugin=None,                # Optional: plugin name
         plugin_config=None,         # Optional: plugin configuration
+        genvm_datetime="2024-01-15T10:30:00Z",  # Optional: GenVM datetime in ISO format
     )
     
     # Access analysis results
@@ -733,6 +739,214 @@ def test_with_mocked_llm(setup_validators):
 - Mock responses are only available when running tests on localnet
 - The `setup_validators` fixture handles the mock setup when provided with a mock_response
 - Mocking is particularly useful for CI/CD pipelines where deterministic results are required
+
+### Custom Transaction Context
+
+The GenLayer Testing Suite allows you to customize the transaction execution environment by providing a `transaction_context` parameter with custom validators and GenVM datetime settings.
+
+#### Using Transaction Context
+
+Set custom validators and GenVM datetime for deterministic testing:
+
+```python
+from gltest import get_contract_factory, get_validator_factory
+
+def test_with_custom_transaction_context():
+    factory = get_contract_factory("MyContract")
+    validator_factory = get_validator_factory()
+    
+    # Create custom validators
+    validators = validator_factory.batch_create_validators(
+        count=3,
+        stake=10,
+        provider="openai",
+        model="gpt-4o",
+        config={"temperature": 0.7, "max_tokens": 1000},
+        plugin="openai-compatible",
+        plugin_config={"api_key_env_var": "OPENAI_API_KEY"}
+    )
+    
+    # Create transaction context with custom validators and datetime
+    transaction_context = {
+        "validators": [v.to_dict() for v in validators],
+        "genvm_datetime": "2024-03-15T14:30:00Z"  # ISO format datetime
+    }
+    
+    # Deploy with custom context
+    contract = factory.deploy(
+        args=["initial_value"],
+        transaction_context=transaction_context
+    )
+    
+    # Call methods with custom context
+    result = contract.read_method().call(
+        transaction_context=transaction_context
+    )
+    
+    # Write operations with custom context
+    tx_receipt = contract.write_method(args=["value"]).transact(
+        transaction_context=transaction_context
+    )
+```
+
+#### Mock Validators with Transaction Context
+
+Combine mock validators with custom datetime for fully deterministic tests:
+
+```python
+def test_with_mocked_context():
+    factory = get_contract_factory("LLMContract")
+    validator_factory = get_validator_factory()
+    
+    # Define mock LLM responses
+    mock_response = {
+        "nondet_exec_prompt": {
+            "analyze this": "positive sentiment"
+        },
+        "eq_principle_prompt_comparative": {
+            "values match": True
+        }
+    }
+    
+    # Create mock validators
+    mock_validators = validator_factory.batch_create_mock_validators(
+        count=5,
+        mock_llm_response=mock_response
+    )
+    
+    # Set up deterministic context
+    transaction_context = {
+        "validators": [v.to_dict() for v in mock_validators],
+        "genvm_datetime": "2024-01-01T00:00:00Z"  # Fixed datetime for reproducibility
+    }
+    
+    # Deploy and test with deterministic context
+    contract = factory.deploy(transaction_context=transaction_context)
+    
+    # All operations will use the same mocked validators and datetime
+    result = contract.analyze_text(args=["analyze this"]).transact(
+        transaction_context=transaction_context
+    )
+    # Result will consistently return "positive sentiment"
+```
+
+### Custom Validators
+
+The GenLayer Testing Suite includes a `get_validator_factory()` function that allows you to create custom validators with specific configurations for testing different LLM providers and consensus scenarios.
+
+#### Creating Custom Validators
+
+```python
+from gltest import get_validator_factory
+
+def test_with_custom_validators():
+    factory = get_validator_factory()
+    
+    # Create validators with different LLM providers
+    openai_validator = factory.create_validator(
+        stake=10,
+        provider="openai",
+        model="gpt-4o",
+        config={"temperature": 0.8, "max_tokens": 2000},
+        plugin="openai-compatible",
+        plugin_config={"api_key_env_var": "OPENAI_API_KEY"}
+    )
+    
+    ollama_validator = factory.create_validator(
+        stake=8,
+        provider="ollama",
+        model="mistral",
+        config={"temperature": 0.5},
+        plugin="ollama",
+        plugin_config={"api_url": "http://localhost:11434"}
+    )
+    
+    # Use validators in your tests
+    validators = [openai_validator, ollama_validator]
+    # Configure your test environment with these validators
+```
+
+#### Batch Creation
+
+Create multiple validators with the same configuration:
+
+```python
+def test_batch_validators():
+    factory = get_validator_factory()
+    
+    # Create 5 validators with identical configuration
+    validators = factory.batch_create_validators(
+        count=5,
+        stake=8,
+        provider="openai",
+        model="gpt-4o",
+        config={"temperature": 0.7, "max_tokens": 1000},
+        plugin="openai-compatible",
+        plugin_config={"api_key_env_var": "OPENAI_API_KEY"}
+    )
+```
+
+#### Mock Validators
+
+For deterministic testing, create mock validators that return predefined responses:
+
+```python
+def test_with_mock_validators():
+    factory = get_validator_factory()
+    
+    # Define mock responses
+    mock_response = {
+        "nondet_exec_prompt": {
+            "What is 2+2?": "4",
+            "Explain quantum physics": "It's complicated"
+        },
+        "eq_principle_prompt_comparative": {
+            "values must match": True
+        },
+        "eq_principle_prompt_non_comparative": {
+            "Is this valid?": True
+        }
+    }
+    
+    # Create a single mock validator
+    mock_validator = factory.create_mock_validator(mock_response)
+    
+    # Create multiple mock validators
+    mock_validators = factory.batch_create_mock_validators(
+        count=5,
+        mock_llm_response=mock_response
+    )
+```
+
+#### Validator Methods
+
+Each validator object provides useful methods:
+- `to_dict()`: Convert validator to dictionary format for API calls
+- `clone()`: Create an identical copy of the validator
+- `batch_clone(count)`: Create multiple identical copies
+
+Example:
+```python
+def test_validator_cloning():
+    factory = get_validator_factory()
+    
+    # Create a base validator
+    base_validator = factory.create_validator(
+        stake=10,
+        provider="openai",
+        model="gpt-4o",
+        config={"temperature": 0.7},
+        plugin="openai-compatible",
+        plugin_config={"api_key_env_var": "OPENAI_API_KEY"}
+    )
+    
+    # Clone it to create identical validators
+    cloned = base_validator.clone()
+    multiple_clones = base_validator.batch_clone(3)
+    
+    # Convert to dictionary for API usage
+    validator_dict = base_validator.to_dict()
+```
 
 ## 📝 Best Practices
 

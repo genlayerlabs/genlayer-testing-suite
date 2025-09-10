@@ -9,6 +9,17 @@ from genlayer_py.types import (
 from typing import List, TypedDict, Dict, Any
 
 
+class MockedLLMResponse(TypedDict):
+    """Maps prompts to responses"""
+
+    # Prompt -> raw JSON string response
+    nondet_exec_prompt: Dict[str, str]
+
+    # Principle -> expected boolean
+    eq_principle_prompt_comparative: Dict[str, bool]
+    eq_principle_prompt_non_comparative: Dict[str, bool]
+
+
 class ValidatorConfig(TypedDict):
     """Validator information."""
 
@@ -20,7 +31,7 @@ class ValidatorConfig(TypedDict):
 
 
 class TransactionContext(TypedDict, total=False):
-    """Context for consensus operations."""
+    """Context for transaction operations."""
 
     validators: List[ValidatorConfig]  # List to create virtual validators
     genvm_datetime: str  # ISO format datetime string
