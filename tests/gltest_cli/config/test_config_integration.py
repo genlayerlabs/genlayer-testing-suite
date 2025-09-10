@@ -236,7 +236,7 @@ def test_multiple_networks_config(pytester):
         def test_multiple_networks():
             general_config = get_general_config()
             # Default should be testnet
-            assert general_config.get_network_name() == "testnet"
+            assert general_config.get_network_name() == "testnet_asimov_custom"
             rpc_url = general_config.get_rpc_url()
             assert rpc_url == "https://testnet.example.com"
     """
@@ -244,20 +244,21 @@ def test_multiple_networks_config(pytester):
 
     config_content = """
 networks:
-  default: testnet
+  default: testnet_asimov_custom
   localnet:
     id: 61999
     url: "http://127.0.0.1:4000/api"
     accounts:
       - "local_account1"
       - "local_account2"
-  testnet:
-    id: 5555
+  testnet_asimov_custom:
+    id: 55554
     url: "https://testnet.example.com"
     accounts:
       - "testnet_account1"
       - "testnet_account2"
     leader_only: true
+    chain: "testnet_asimov"
 
 paths:
   contracts: "contracts"
@@ -376,6 +377,7 @@ networks:
     url: "https://testnet.example.com"
     accounts:
       - "testnet_account1"
+    chain: "testnet_asimov"
 
 paths:
   contracts: "contracts"

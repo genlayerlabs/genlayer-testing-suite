@@ -192,18 +192,49 @@ def test_validate_raw_user_config_invalid():
             {"networks": {"default": "localnet", "testnet": {"leader_only": "true"}}}
         )
 
-    # Test required fields for non-default networks
-    with pytest.raises(ValueError, match="network testnet must have an id"):
+    # Test new configuration fields validation
+    with pytest.raises(ValueError, match="default_wait_interval must be an integer"):
         validate_raw_user_config(
-            {"networks": {"default": "localnet", "testnet": {"accounts": ["0x123"]}}}
+            {
+                "networks": {
+                    "default": "localnet",
+                    "testnet": {"default_wait_interval": "3000"},
+                }
+            }
         )
 
+    with pytest.raises(ValueError, match="default_wait_retries must be an integer"):
+        validate_raw_user_config(
+            {
+                "networks": {
+                    "default": "localnet",
+                    "testnet": {"default_wait_retries": "50"},
+                }
+            }
+        )
+
+    with pytest.raises(ValueError, match="test_with_mocks must be a boolean"):
+        validate_raw_user_config(
+            {
+                "networks": {
+                    "default": "localnet",
+                    "testnet": {"test_with_mocks": "false"},
+                }
+            }
+        )
+
+    with pytest.raises(ValueError, match="chain must be a string"):
+        validate_raw_user_config(
+            {"networks": {"default": "localnet", "testnet": {"chain": 123}}}
+        )
+
+    # Test required fields for non-default networks
     with pytest.raises(ValueError, match="network testnet must have a url"):
         validate_raw_user_config(
             {
                 "networks": {
                     "default": "localnet",
-                    "testnet": {"id": 4221, "accounts": ["0x123"]},
+                    "testnet": {"accounts": ["0x123"], "id": 123},
                 }
             }
         )
@@ -213,7 +244,21 @@ def test_validate_raw_user_config_invalid():
             {
                 "networks": {
                     "default": "localnet",
-                    "testnet": {"id": 4221, "url": "http://testnet:8545"},
+                    "testnet": {"url": "http://testnet:8545", "id": 123},
+                }
+            }
+        )
+
+    with pytest.raises(ValueError, match="network testnet must have a chain type"):
+        validate_raw_user_config(
+            {
+                "networks": {
+                    "default": "localnet",
+                    "testnet": {
+                        "url": "http://testnet:8545",
+                        "accounts": ["0x123"],
+                        "id": 123,
+                    },
                 }
             }
         )
@@ -223,9 +268,10 @@ def test_validate_raw_user_config_invalid():
         "networks": {
             "default": "localnet",
             "testnet": {
-                "id": 4221,
+                "id": 123,
                 "url": "http://testnet:8545",
                 "accounts": ["0x123", "0x456"],
+                "chain": "localnet",
             },
         }
     }
@@ -301,11 +347,26 @@ def test_transform_raw_to_user_config_with_defaults():
         "networks": {
             "default": "localnet",
             "localnet": {"url": "http://localhost:8545"},
-            "testnet": {"url": "http://testnet:8545", "accounts": ["0x123", "0x456"]},
+            "studio_rally": {
+                "url": "http://studionet:8545",
+                "accounts": ["0x123", "0x456"],
+                "chain": "studionet",
+            },
+            "studio_main": {
+                "url": "http://studionet:8545",
+                "accounts": ["0x123", "0x456"],
+                "chain": "studionet",
+            },
+            "testnet": {
+                "url": "http://testnet:8545",
+                "accounts": ["0x123", "0x456"],
+                "chain": "testnet_asimov",
+            },
             "mainnet": {
                 "url": "http://mainnet:8545",
                 "accounts": ["0xabc", "0x789"],
                 "from": "0x789",  # Already set
+                "chain": "testnet_asimov",
             },
         }
     }
