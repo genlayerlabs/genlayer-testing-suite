@@ -9,6 +9,7 @@ from gltest_cli.config.constants import (
     DEFAULT_WAIT_RETRIES,
     DEFAULT_TEST_WITH_MOCKS,
     DEFAULT_LEADER_ONLY,
+    CHAINS,
 )
 
 
@@ -22,6 +23,7 @@ class PluginConfig:
     network_name: Optional[str] = None
     test_with_mocks: bool = False
     leader_only: bool = False
+    chain: Optional[str] = None
 
 
 @dataclass
@@ -153,16 +155,20 @@ class GeneralConfig:
         return self.user_config.networks[self.user_config.default_network].accounts
 
     def get_chain_name(self) -> str:
+        # If chain is explicitly set via CLI, use it
+        if self.plugin_config.chain is not None:
+            if self.plugin_config.chain not in CHAINS:
+                raise ValueError(
+                    f"Unknown chain type: {self.plugin_config.chain}. "
+                    f"Valid values: {', '.join(CHAINS)}"
+                )
+            return self.plugin_config.chain
+
         network_name = self.get_network_name()
         if network_name not in self.user_config.networks:
             raise ValueError(
                 f"Unknown network: {network_name}, possible values: {self.get_networks_keys()}"
             )
-        chain_map = {
-            "localnet": localnet,
-            "studionet": studionet,
-            "testnet_asimov": testnet_asimov,
-        }
         network_config = self.user_config.networks[network_name]
         # For preconfigured networks, use its chain type
         if network_name in PRECONFIGURED_NETWORKS:
@@ -173,13 +179,13 @@ class GeneralConfig:
             if not chain_name:
                 raise ValueError(
                     f"Custom network {network_name} must specify a 'chain' field. "
-                    f"Valid values: {', '.join(chain_map.keys())}"
+                    f"Valid values: {', '.join(CHAINS)}"
                 )
 
-        if chain_name not in chain_map:
+        if chain_name not in CHAINS:
             raise ValueError(
                 f"Unknown chain type: {chain_name}. "
-                f"Valid values: {', '.join(chain_map.keys())}"
+                f"Valid values: {', '.join(CHAINS)}"
             )
         return chain_name
 
