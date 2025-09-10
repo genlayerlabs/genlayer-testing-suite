@@ -12,6 +12,12 @@ from gltest_cli.config.general import (
 )
 from gltest_cli.config.types import PluginConfig
 from gltest_cli.config.pytest_context import _pytest_context
+from gltest_cli.config.constants import (
+    DEFAULT_WAIT_INTERVAL,
+    DEFAULT_WAIT_RETRIES,
+    DEFAULT_TEST_WITH_MOCKS,
+    DEFAULT_LEADER_ONLY,
+)
 
 
 def pytest_addoption(parser):
@@ -33,14 +39,14 @@ def pytest_addoption(parser):
     group.addoption(
         "--default-wait-interval",
         action="store",
-        default=3000,
+        default=DEFAULT_WAIT_INTERVAL,
         help="Default interval (ms) between transaction receipt checks",
     )
 
     group.addoption(
         "--default-wait-retries",
         action="store",
-        default=50,
+        default=DEFAULT_WAIT_RETRIES,
         help="Default number of retries for transaction receipt checks",
     )
 
@@ -61,14 +67,14 @@ def pytest_addoption(parser):
     group.addoption(
         "--test-with-mocks",
         action="store_true",
-        default=False,
+        default=DEFAULT_TEST_WITH_MOCKS,
         help="Test with mocks",
     )
 
     group.addoption(
         "--leader-only",
         action="store_true",
-        default=False,
+        default=DEFAULT_LEADER_ONLY,
         help="Run contracts in leader-only mode",
     )
 
