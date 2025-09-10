@@ -17,6 +17,7 @@ from gltest_cli.config.constants import (
     DEFAULT_WAIT_RETRIES,
     DEFAULT_TEST_WITH_MOCKS,
     DEFAULT_LEADER_ONLY,
+    CHAINS,
 )
 
 
@@ -78,6 +79,13 @@ def pytest_addoption(parser):
         help="Run contracts in leader-only mode",
     )
 
+    group.addoption(
+        "--chain",
+        action="store",
+        default=None,
+        help=f"Chain name (possible values: {', '.join(CHAINS)})",
+    )
+
 
 def pytest_configure(config):
     try:
@@ -114,6 +122,7 @@ def pytest_configure(config):
         network = config.getoption("--network")
         test_with_mocks = config.getoption("--test-with-mocks")
         leader_only = config.getoption("--leader-only")
+        chain = config.getoption("--chain")
 
         plugin_config = PluginConfig()
         plugin_config.contracts_dir = (
@@ -128,6 +137,7 @@ def pytest_configure(config):
         plugin_config.network_name = network
         plugin_config.test_with_mocks = test_with_mocks
         plugin_config.leader_only = leader_only
+        plugin_config.chain = chain
 
         general_config.plugin_config = plugin_config
     except Exception as e:
@@ -154,6 +164,8 @@ def pytest_sessionstart(session):
         # Show available networks including preconfigured ones
         all_networks = general_config.get_networks_keys()
         logger.info(f"  Available networks: {all_networks}")
+        logger.info(f"  Chain: {general_config.get_chain_name()}")
+        logger.info(f"  Available chains: {', '.join(CHAINS)}")
         logger.info(f"  Contracts directory: {general_config.get_contracts_dir()}")
         logger.info(f"  Artifacts directory: {general_config.get_artifacts_dir()}")
         logger.info(f"  Environment: {general_config.user_config.environment}")
