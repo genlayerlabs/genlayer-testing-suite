@@ -31,6 +31,7 @@ classifiers = [
 
 [tool.setuptools.packages.find]
 where = ["."]
+exclude = ["tests*", "scripts*"]
 
 [project.entry-points.pytest11]
 gltest = "gltest_cli.config.plugin"
