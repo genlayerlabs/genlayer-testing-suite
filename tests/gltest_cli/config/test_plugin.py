@@ -19,7 +19,8 @@ def test_help_message(pytester):
             "                        file)",
             "  --test-with-mocks     Test with mocks",
             "  --leader-only         Run contracts in leader-only mode",
-            "  --chain=CHAIN         Chain name (possible values: localnet, studionet,",
+            "  --chain-type=CHAIN_TYPE",
+            "                        Chain type (possible values: localnet, studionet,",
             "                        testnet_asimov)",
         ]
     )
@@ -300,11 +301,11 @@ def test_chain_localnet(pytester):
 
         def test_chain():
             general_config = get_general_config()
-            assert general_config.get_chain_name() == "localnet"
+            assert general_config.get_chain_type() == "localnet"
     """
     )
 
-    result = pytester.runpytest("--chain=localnet", "-v")
+    result = pytester.runpytest("--chain-type=localnet", "-v")
 
     result.stdout.fnmatch_lines(
         [
@@ -322,11 +323,11 @@ def test_chain_studionet(pytester):
 
         def test_chain():
             general_config = get_general_config()
-            assert general_config.get_chain_name() == "studionet"
+            assert general_config.get_chain_type() == "studionet"
     """
     )
 
-    result = pytester.runpytest("--chain=studionet", "-v")
+    result = pytester.runpytest("--chain-type=studionet", "-v")
 
     result.stdout.fnmatch_lines(
         [
@@ -342,17 +343,17 @@ def test_chain_testnet_asimov(pytester):
         """
         from gltest_cli.config.general import get_general_config
 
-        def test_chain():
+        def test_chain_type():
             general_config = get_general_config()
-            assert general_config.get_chain_name() == "testnet_asimov"
+            assert general_config.get_chain_type() == "testnet_asimov"
     """
     )
 
-    result = pytester.runpytest("--chain=testnet_asimov", "-v")
+    result = pytester.runpytest("--chain-type=testnet_asimov", "-v")
 
     result.stdout.fnmatch_lines(
         [
-            "*::test_chain PASSED*",
+            "*::test_chain_type PASSED*",
         ]
     )
     assert result.ret == 0
@@ -365,14 +366,14 @@ def test_chain_invalid(pytester):
         import pytest
         from gltest_cli.config.general import get_general_config
 
-        def test_chain():
+        def test_chain_type():
             general_config = get_general_config()
             with pytest.raises(ValueError, match="Unknown chain type"):
-                general_config.get_chain_name()
+                general_config.get_chain_type()
     """
     )
 
-    result = pytester.runpytest("--chain=invalid_chain", "-v")
+    result = pytester.runpytest("--chain-type=invalid_chain", "-v")
 
     # The test should fail because of the invalid chain
     assert result.ret != 0
@@ -384,13 +385,13 @@ def test_chain_none_default(pytester):
         """
         from gltest_cli.config.general import get_general_config
 
-        def test_chain():
+        def test_chain_type():
             general_config = get_general_config()
             # Should use network's default chain
-            assert general_config.plugin_config.chain is None
-            # get_chain_name should still work using network config
-            chain_name = general_config.get_chain_name()
-            assert chain_name in ["localnet", "studionet", "testnet_asimov"]
+            assert general_config.plugin_config.chain_type is None
+            # get_chain_type should still work using network config
+            chain_type = general_config.get_chain_type()
+            assert chain_type in ["localnet", "studionet", "testnet_asimov"]
     """
     )
 
@@ -398,7 +399,7 @@ def test_chain_none_default(pytester):
 
     result.stdout.fnmatch_lines(
         [
-            "*::test_chain PASSED*",
+            "*::test_chain_type PASSED*",
         ]
     )
     assert result.ret == 0
@@ -414,11 +415,11 @@ def test_chain_overrides_network_config(pytester):
             general_config = get_general_config()
             # Even though network is localnet, chain should be studionet
             assert general_config.get_network_name() == "localnet"
-            assert general_config.get_chain_name() == "studionet"
+            assert general_config.get_chain_type() == "studionet"
     """
     )
 
-    result = pytester.runpytest("--network=localnet", "--chain=studionet", "-v")
+    result = pytester.runpytest("--network=localnet", "--chain-type=studionet", "-v")
 
     result.stdout.fnmatch_lines(
         [

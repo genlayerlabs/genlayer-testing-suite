@@ -227,9 +227,9 @@ def test_general_config_leader_only_network_not_found():
 
 
 def test_check_local_rpc_with_localnet():
-    """Test check_local_rpc when chain=localnet."""
+    """Test check_local_rpc when chain_type=localnet."""
     user_config = UserConfig(
-        networks={"localnet": NetworkConfigData(chain="localnet")},
+        networks={"localnet": NetworkConfigData(chain_type="localnet")},
         default_network="localnet",
     )
 
@@ -242,7 +242,7 @@ def test_check_local_rpc_with_localnet():
 def test_check_local_rpc_with_non_localnet():
     """Test check_local_rpc when chain!=localnet."""
     user_config = UserConfig(
-        networks={"localnet": NetworkConfigData(chain="studionet")},
+        networks={"localnet": NetworkConfigData(chain_type="studionet")},
         default_network="localnet",
     )
 
@@ -256,7 +256,9 @@ def test_check_local_rpc_with_plugin_override():
     """Test check_local_rpc with plugin config RPC URL override."""
     user_config = UserConfig(
         networks={
-            "localnet": NetworkConfigData(url="https://external.com", chain="localnet")
+            "localnet": NetworkConfigData(
+                url="https://external.com", chain_type="localnet"
+            )
         },
         default_network="localnet",
     )
@@ -269,9 +271,9 @@ def test_check_local_rpc_with_plugin_override():
 
 
 def test_check_studio_based_rpc_with_studionet():
-    """Test check_studio_based_rpc when chain=studionet."""
+    """Test check_studio_based_rpc when chain_type=studionet."""
     user_config = UserConfig(
-        networks={"studionet": NetworkConfigData(chain="studionet")},
+        networks={"studionet": NetworkConfigData(chain_type="studionet")},
         default_network="studionet",
     )
 
@@ -284,7 +286,7 @@ def test_check_studio_based_rpc_with_studionet():
 def test_check_studio_based_rpc_with_non_studionet():
     """Test check_studio_based_rpc when chain!=studionet."""
     user_config = UserConfig(
-        networks={"studionet": NetworkConfigData(chain="localnet")},
+        networks={"studionet": NetworkConfigData(chain_type="localnet")},
         default_network="studionet",
     )
 
@@ -300,7 +302,7 @@ def test_check_studio_based_rpc_with_plugin_override():
     user_config = UserConfig(
         networks={
             "studionet": NetworkConfigData(
-                url="https://external.com", chain="studionet"
+                url="https://external.com", chain_type="studionet"
             )
         },
         default_network="studionet",
@@ -316,7 +318,7 @@ def test_check_studio_based_rpc_with_plugin_override():
     user_config2 = UserConfig(
         networks={
             "testnet": NetworkConfigData(
-                url="https://api.genlayer.com", chain="testnet_asimov"
+                url="https://api.genlayer.com", chain_type="testnet_asimov"
             )
         },
         default_network="testnet",
@@ -331,58 +333,64 @@ def test_check_studio_based_rpc_with_plugin_override():
     assert general_config2.check_studio_based_rpc() is False
 
 
-def test_general_config_get_chain_name_with_plugin_override():
+def test_general_config_get_chain_type_with_plugin_override():
     """Test that plugin chain overrides network config chain."""
-    # Set up user config with localnet network (which has chain="localnet" by default)
+    # Set up user config with localnet network (which has chain_type="localnet" by default)
     user_config = UserConfig(
         networks={
-            "localnet": NetworkConfigData(url="http://localhost:8545", chain="localnet")
+            "localnet": NetworkConfigData(
+                url="http://localhost:8545", chain_type="localnet"
+            )
         },
         default_network="localnet",
     )
 
     # Plugin config with chain override
-    plugin_config = PluginConfig(chain="studionet")
+    plugin_config = PluginConfig(chain_type="studionet")
     general_config = GeneralConfig(user_config=user_config, plugin_config=plugin_config)
 
     # Chain should be overridden by plugin config
-    assert general_config.get_chain_name() == "studionet"
+    assert general_config.get_chain_type() == "studionet"
     assert general_config.get_network_name() == "localnet"
 
 
-def test_general_config_get_chain_name_without_plugin_override():
-    """Test that get_chain_name uses network config when plugin chain is None."""
+def test_general_config_get_chain_type_without_plugin_override():
+    """Test that get_chain_type uses network config when plugin chain is None."""
     user_config = UserConfig(
         networks={
-            "localnet": NetworkConfigData(url="http://localhost:8545", chain="localnet")
+            "localnet": NetworkConfigData(
+                url="http://localhost:8545", chain_type="localnet"
+            )
         },
         default_network="localnet",
     )
 
     # Plugin config without chain override
-    plugin_config = PluginConfig(chain=None)
+    plugin_config = PluginConfig(chain_type=None)
     general_config = GeneralConfig(user_config=user_config, plugin_config=plugin_config)
 
     # Should use network's chain
-    assert general_config.get_chain_name() == "localnet"
+    assert general_config.get_chain_type() == "localnet"
 
 
-def test_general_config_get_chain_name_invalid_plugin_chain():
-    """Test that invalid plugin chain raises ValueError."""
+def test_general_config_get_chain_type_invalid_plugin_chain():
+    """Test that invalid plugin chain_type raises ValueError."""
     user_config = UserConfig(
         networks={
-            "localnet": NetworkConfigData(url="http://localhost:8545", chain="localnet")
+            "localnet": NetworkConfigData(
+                url="http://localhost:8545", chain_type="localnet"
+            )
         },
         default_network="localnet",
     )
 
     # Plugin config with invalid chain
-    plugin_config = PluginConfig(chain="invalid_chain")
+    plugin_config = PluginConfig(chain_type="invalid_chain")
     general_config = GeneralConfig(user_config=user_config, plugin_config=plugin_config)
 
     # Should raise ValueError for invalid chain
     with pytest.raises(ValueError, match="Unknown chain type: invalid_chain"):
-        general_config.get_chain_name()
+        general_config.get_chain_type()
 
 
 def test_general_config_get_chain_with_plugin_override():
@@ -391,13 +399,15 @@ def test_general_config_get_chain_with_plugin_override():
 
     user_config = UserConfig(
         networks={
-            "localnet": NetworkConfigData(url="http://localhost:8545", chain="localnet")
+            "localnet": NetworkConfigData(
+                url="http://localhost:8545", chain_type="localnet"
+            )
         },
         default_network="localnet",
     )
 
     # Plugin config overrides to studionet
-    plugin_config = PluginConfig(chain="studionet")
+    plugin_config = PluginConfig(chain_type="studionet")
     general_config = GeneralConfig(user_config=user_config, plugin_config=plugin_config)
 
     # Should return studionet chain object
@@ -409,14 +419,14 @@ def test_general_config_chain_methods_compatibility():
     user_config = UserConfig(
         networks={
             "testnet": NetworkConfigData(
-                url="http://testnet:8545", chain="testnet_asimov"
+                url="http://testnet:8545", chain_type="testnet_asimov"
             )
         },
         default_network="testnet",
     )
 
     # Override to localnet via plugin
-    plugin_config = PluginConfig(chain="localnet")
+    plugin_config = PluginConfig(chain_type="localnet")
     general_config = GeneralConfig(user_config=user_config, plugin_config=plugin_config)
 
     # Should report as local RPC even though network is testnet
@@ -424,7 +434,7 @@ def test_general_config_chain_methods_compatibility():
     assert general_config.check_studio_based_rpc() is False
 
     # Override to studionet
-    plugin_config2 = PluginConfig(chain="studionet")
+    plugin_config2 = PluginConfig(chain_type="studionet")
     general_config2 = GeneralConfig(
         user_config=user_config, plugin_config=plugin_config2
     )

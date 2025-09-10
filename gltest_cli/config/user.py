@@ -32,7 +32,7 @@ VALID_NETWORK_KEYS = [
     "default_wait_interval",
     "default_wait_retries",
     "test_with_mocks",
-    "chain",
+    "chain_type",
 ]
 VALID_PATHS_KEYS = ["contracts", "artifacts"]
 
@@ -52,7 +52,7 @@ def get_default_user_config() -> UserConfig:
             default_wait_interval=DEFAULT_WAIT_INTERVAL,
             default_wait_retries=DEFAULT_WAIT_RETRIES,
             test_with_mocks=DEFAULT_TEST_WITH_MOCKS,
-            chain="localnet",
+            chain_type="localnet",
         ),
         "studionet": NetworkConfigData(
             id=studionet.id,
@@ -63,7 +63,7 @@ def get_default_user_config() -> UserConfig:
             default_wait_interval=DEFAULT_WAIT_INTERVAL,
             default_wait_retries=DEFAULT_WAIT_RETRIES,
             test_with_mocks=DEFAULT_TEST_WITH_MOCKS,
-            chain="studionet",
+            chain_type="studionet",
         ),
         "testnet_asimov": NetworkConfigData(
             id=testnet_asimov.id,
@@ -74,7 +74,7 @@ def get_default_user_config() -> UserConfig:
             default_wait_interval=DEFAULT_WAIT_INTERVAL,
             default_wait_retries=DEFAULT_WAIT_RETRIES,
             test_with_mocks=DEFAULT_TEST_WITH_MOCKS,
-            chain="testnet_asimov",
+            chain_type="testnet_asimov",
         ),
     }
 
@@ -168,12 +168,12 @@ def validate_network_config(network_name: str, network_config: dict):
     ):
         raise ValueError(f"network {network_name} test_with_mocks must be a boolean")
 
-    if "chain" in network_config:
-        if not isinstance(network_config["chain"], str):
-            raise ValueError(f"network {network_name} chain must be a string")
-        if network_config["chain"] not in CHAINS:
+    if "chain_type" in network_config:
+        if not isinstance(network_config["chain_type"], str):
+            raise ValueError(f"network {network_name} chain_type must be a string")
+        if network_config["chain_type"] not in CHAINS:
             raise ValueError(
-                f"network {network_name} chain must be one of: {', '.join(CHAINS)}"
+                f"network {network_name} chain_type must be one of: {', '.join(CHAINS)}"
             )
 
     # For non-preconfigured networks, url, accounts, and chain are required
@@ -184,9 +184,9 @@ def validate_network_config(network_name: str, network_config: dict):
             raise ValueError(f"network {network_name} must have a url")
         if "accounts" not in network_config:
             raise ValueError(f"network {network_name} must have accounts")
-        if "chain" not in network_config:
+        if "chain_type" not in network_config:
             raise ValueError(
-                f"network {network_name} must have a chain type. Valid values: localnet, studionet, testnet_asimov"
+                f"network {network_name} must have a chain_type. Valid values: localnet, studionet, testnet_asimov"
             )
 
 
@@ -298,8 +298,8 @@ def _get_overridden_networks(raw_config: dict) -> tuple[dict, str]:
                 networks_config[network_name].test_with_mocks = network_config[
                     "test_with_mocks"
                 ]
-            if "chain" in network_config:
-                networks_config[network_name].chain = network_config["chain"]
+            if "chain_type" in network_config:
+                networks_config[network_name].chain_type = network_config["chain_type"]
             continue
 
         url = network_config["url"]
@@ -314,7 +314,7 @@ def _get_overridden_networks(raw_config: dict) -> tuple[dict, str]:
             "default_wait_retries", DEFAULT_WAIT_RETRIES
         )
         test_with_mocks = network_config.get("test_with_mocks", DEFAULT_TEST_WITH_MOCKS)
-        chain = network_config["chain"]  # Required for custom networks
+        chain_type = network_config["chain_type"]  # Required for custom networks
         networks_config[network_name] = NetworkConfigData(
             id=network_id,
             url=url,
@@ -324,7 +324,7 @@ def _get_overridden_networks(raw_config: dict) -> tuple[dict, str]:
             default_wait_interval=default_wait_interval,
             default_wait_retries=default_wait_retries,
             test_with_mocks=test_with_mocks,
-            chain=chain,
+            chain_type=chain_type,
         )
     return networks_config, user_default_network
 

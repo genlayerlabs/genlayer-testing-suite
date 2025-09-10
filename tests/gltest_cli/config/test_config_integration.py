@@ -258,7 +258,7 @@ networks:
       - "testnet_account1"
       - "testnet_account2"
     leader_only: true
-    chain: "testnet_asimov"
+    chain_type: "testnet_asimov"
 
 paths:
   contracts: "contracts"
@@ -377,7 +377,7 @@ networks:
     url: "https://testnet.example.com"
     accounts:
       - "testnet_account1"
-    chain: "testnet_asimov"
+    chain_type: "testnet_asimov"
 
 paths:
   contracts: "contracts"

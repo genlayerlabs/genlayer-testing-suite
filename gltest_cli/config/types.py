@@ -23,7 +23,7 @@ class PluginConfig:
     network_name: Optional[str] = None
     test_with_mocks: bool = False
     leader_only: bool = False
-    chain: Optional[str] = None
+    chain_type: Optional[str] = None
 
 
 @dataclass
@@ -36,7 +36,7 @@ class NetworkConfigData:
     default_wait_interval: Optional[int] = None
     default_wait_retries: Optional[int] = None
     test_with_mocks: bool = False
-    chain: Optional[str] = None
+    chain_type: Optional[str] = None
 
     def __post_init__(self):
         if self.id is not None and not isinstance(self.id, int):
@@ -62,8 +62,8 @@ class NetworkConfigData:
             raise ValueError("default_wait_retries must be an integer")
         if not isinstance(self.test_with_mocks, bool):
             raise TypeError("test_with_mocks must be a boolean")
-        if self.chain is not None and not isinstance(self.chain, str):
-            raise ValueError("chain must be a string")
+        if self.chain_type is not None and not isinstance(self.chain_type, str):
+            raise ValueError("chain_type must be a string")
 
 
 @dataclass
@@ -154,15 +154,15 @@ class GeneralConfig:
             return self.user_config.networks[network_name].accounts
         return self.user_config.networks[self.user_config.default_network].accounts
 
-    def get_chain_name(self) -> str:
-        # If chain is explicitly set via CLI, use it
-        if self.plugin_config.chain is not None:
-            if self.plugin_config.chain not in CHAINS:
+    def get_chain_type(self) -> str:
+        # If chain_type is explicitly set via CLI, use it
+        if self.plugin_config.chain_type is not None:
+            if self.plugin_config.chain_type not in CHAINS:
                 raise ValueError(
-                    f"Unknown chain type: {self.plugin_config.chain}. "
+                    f"Unknown chain type: {self.plugin_config.chain_type}. "
                     f"Valid values: {', '.join(CHAINS)}"
                 )
-            return self.plugin_config.chain
+            return self.plugin_config.chain_type
 
         network_name = self.get_network_name()
         if network_name not in self.user_config.networks:
@@ -172,22 +172,22 @@ class GeneralConfig:
         network_config = self.user_config.networks[network_name]
         # For preconfigured networks, use its chain type
         if network_name in PRECONFIGURED_NETWORKS:
-            chain_name = network_config.chain
+            chain_type = network_config.chain_type
         else:
-            # For custom networks, chain field is required
-            chain_name = network_config.chain
-            if not chain_name:
+            # For custom networks, chain_type field is required
+            chain_type = network_config.chain_type
+            if not chain_type:
                 raise ValueError(
-                    f"Custom network {network_name} must specify a 'chain' field. "
+                    f"Custom network {network_name} must specify a 'chain_type' field. "
                     f"Valid values: {', '.join(CHAINS)}"
                 )
 
-        if chain_name not in CHAINS:
+        if chain_type not in CHAINS:
             raise ValueError(
-                f"Unknown chain type: {chain_name}. "
+                f"Unknown chain type: {chain_type}. "
                 f"Valid values: {', '.join(CHAINS)}"
             )
-        return chain_name
+        return chain_type
 
     def get_chain(self) -> GenLayerChain:
         chain_map = {
@@ -195,8 +195,8 @@ class GeneralConfig:
             "studionet": studionet,
             "testnet_asimov": testnet_asimov,
         }
-        chain_name = self.get_chain_name()
-        return chain_map[chain_name]
+        chain_type = self.get_chain_type()
+        return chain_map[chain_type]
 
     def get_default_wait_interval(self) -> int:
         if self.plugin_config.default_wait_interval is not None:
@@ -242,7 +242,7 @@ class GeneralConfig:
         return DEFAULT_LEADER_ONLY
 
     def check_local_rpc(self) -> bool:
-        return self.get_chain_name() == "localnet"
+        return self.get_chain_type() == "localnet"
 
     def check_studio_based_rpc(self) -> bool:
-        return self.get_chain_name() == "studionet"
+        return self.get_chain_type() == "studionet"

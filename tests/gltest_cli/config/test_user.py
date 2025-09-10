@@ -223,9 +223,9 @@ def test_validate_raw_user_config_invalid():
             }
         )
 
-    with pytest.raises(ValueError, match="chain must be a string"):
+    with pytest.raises(ValueError, match="chain_type must be a string"):
         validate_raw_user_config(
-            {"networks": {"default": "localnet", "testnet": {"chain": 123}}}
+            {"networks": {"default": "localnet", "testnet": {"chain_type": 123}}}
         )
 
     # Test required fields for non-default networks
@@ -249,7 +249,7 @@ def test_validate_raw_user_config_invalid():
             }
         )
 
-    with pytest.raises(ValueError, match="network testnet must have a chain type"):
+    with pytest.raises(ValueError, match="network testnet must have a chain_type"):
         validate_raw_user_config(
             {
                 "networks": {
@@ -271,7 +271,7 @@ def test_validate_raw_user_config_invalid():
                 "id": 123,
                 "url": "http://testnet:8545",
                 "accounts": ["0x123", "0x456"],
-                "chain": "localnet",
+                "chain_type": "localnet",
             },
         }
     }
@@ -350,23 +350,23 @@ def test_transform_raw_to_user_config_with_defaults():
             "studio_rally": {
                 "url": "http://studionet:8545",
                 "accounts": ["0x123", "0x456"],
-                "chain": "studionet",
+                "chain_type": "studionet",
             },
             "studio_main": {
                 "url": "http://studionet:8545",
                 "accounts": ["0x123", "0x456"],
-                "chain": "studionet",
+                "chain_type": "studionet",
             },
             "testnet": {
                 "url": "http://testnet:8545",
                 "accounts": ["0x123", "0x456"],
-                "chain": "testnet_asimov",
+                "chain_type": "testnet_asimov",
             },
             "mainnet": {
                 "url": "http://mainnet:8545",
                 "accounts": ["0xabc", "0x789"],
                 "from": "0x789",  # Already set
-                "chain": "testnet_asimov",
+                "chain_type": "testnet_asimov",
             },
         }
     }

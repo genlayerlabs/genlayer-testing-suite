@@ -117,7 +117,7 @@ networks:
   custom_network:  # Custom network configuration
     id: 1234
     url: "http://custom.network:8545"
-    chain: "localnet"  # Required for custom networks: localnet, studionet, or testnet_asimov
+    chain_type: "localnet"  # Required for custom networks: localnet, studionet, or testnet_asimov
     accounts:
       - "${CUSTOM_ACCOUNT_1}"
       - "${CUSTOM_ACCOUNT_2}"
@@ -141,11 +141,11 @@ Key configuration sections:
    - Network configurations can include:
      - `url`: The RPC endpoint for the network (optional for pre-configured networks)
      - `id`: Chain ID (optional for pre-configured networks)
-     - `chain`: Chain type - one of: `localnet`, `studionet`, or `testnet_asimov` (required for custom networks)
+     - `chain_type`: Chain type - one of: `localnet`, `studionet`, or `testnet_asimov` (required for custom networks)
      - `accounts`: List of account private keys (using environment variables)
      - `from`: Specify which account to use as the default for transactions (optional, defaults to first account)
      - `leader_only`: Leader only mode
-   - For custom networks (non-pre-configured), `id`, `url`, `chain`, and `accounts` are required fields
+   - For custom networks (non-pre-configured), `id`, `url`, `chain_type`, and `accounts` are required fields
 
 **Note on Environment Variables**: When using environment variables in your configuration (e.g., `${ACCOUNT_PRIVATE_KEY_1}`), ensure they are properly set in your `environment` file. If an environment variable is not found, the system will raise a clear error message indicating which variable is missing.
 
@@ -166,7 +166,7 @@ testnet_asimov:
 - **Chain**: Defines the genlayer chain type and its associated behaviors (localnet, studionet, or testnet_asimov)
 - Pre-configured networks automatically have the correct chain type set
 - Custom networks must specify the chain type explicitly
-- The `--chain` CLI flag can override the chain type for any network, allowing you to test different chain behaviors with the same network configuration
+- The `--chain-type` CLI flag can override the chain type for any network, allowing you to test different chain behaviors with the same network configuration
 
 2. **Paths**: Define important directory paths
    - `contracts`: Location of your contract files
@@ -287,11 +287,11 @@ When this flag is enabled, all contracts deployed and all write transactions wil
 
 12. Override the chain type
 ```bash
-$ gltest --chain localnet
-$ gltest --chain studionet
-$ gltest --chain testnet_asimov
+$ gltest --chain-type localnet
+$ gltest --chain-type studionet
+$ gltest --chain-type testnet_asimov
 ```
-The `--chain` flag allows you to override the chain type configured for the network. This is useful when:
+The `--chain-type` flag allows you to override the chain type configured for the network. This is useful when:
 - Testing different chain behaviors without changing network configuration
 - Switching between chain types for testing purposes
 - Using a custom network URL with a specific chain type
