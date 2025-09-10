@@ -651,7 +651,6 @@ mock_response = {
     "eq_principle_prompt_non_comparative": {}     # Optional: mocks gl.eq_principle.prompt_non_comparative
 }
 
-setup_validators(mock_response)
 ```
 
 #### Method Mappings
@@ -685,7 +684,6 @@ mock_response = {
         "The value of give_coin has to match": True
     }
 }
-setup_validators(mock_response)
 
 # In your contract
 result = gl.eq_principle.prompt_comparative(
@@ -737,8 +735,7 @@ def test_with_validators_via_context():
     }
     
     # Initialize the mock system
-    setup_validators(mock_response)
-    
+        
     # Deploy and test your contract
     factory = get_contract_factory("MyLLMContract")
     contract = factory.deploy()
@@ -757,7 +754,6 @@ def test_with_validators_via_context():
 #### Notes
 
 - Mock responses are only available when running tests on localnet
-- The `setup_validators` fixture handles the mock setup when provided with a mock_response
 - Mocking is particularly useful for CI/CD pipelines where deterministic results are required
 
 ## 📝 Best Practices
