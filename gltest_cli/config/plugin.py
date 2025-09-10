@@ -12,6 +12,12 @@ from gltest_cli.config.general import (
 )
 from gltest_cli.config.types import PluginConfig
 from gltest_cli.config.pytest_context import _pytest_context
+from gltest_cli.config.constants import (
+    DEFAULT_WAIT_INTERVAL,
+    DEFAULT_WAIT_RETRIES,
+    DEFAULT_LEADER_ONLY,
+    CHAINS,
+)
 
 
 def pytest_addoption(parser):
@@ -33,14 +39,14 @@ def pytest_addoption(parser):
     group.addoption(
         "--default-wait-interval",
         action="store",
-        default=3000,
+        default=DEFAULT_WAIT_INTERVAL,
         help="Default interval (ms) between transaction receipt checks",
     )
 
     group.addoption(
         "--default-wait-retries",
         action="store",
-        default=50,
+        default=DEFAULT_WAIT_RETRIES,
         help="Default number of retries for transaction receipt checks",
     )
 
@@ -61,8 +67,15 @@ def pytest_addoption(parser):
     group.addoption(
         "--leader-only",
         action="store_true",
-        default=False,
+        default=DEFAULT_LEADER_ONLY,
         help="Run contracts in leader-only mode",
+    )
+
+    group.addoption(
+        "--chain",
+        action="store",
+        default=None,
+        help=f"Chain name (possible values: {', '.join(CHAINS)})",
     )
 
 
@@ -100,6 +113,7 @@ def pytest_configure(config):
         rpc_url = config.getoption("--rpc-url")
         network = config.getoption("--network")
         leader_only = config.getoption("--leader-only")
+        chain = config.getoption("--chain")
 
         plugin_config = PluginConfig()
         plugin_config.contracts_dir = (
@@ -113,6 +127,7 @@ def pytest_configure(config):
         plugin_config.rpc_url = rpc_url
         plugin_config.network_name = network
         plugin_config.leader_only = leader_only
+        plugin_config.chain = chain
 
         general_config.plugin_config = plugin_config
     except Exception as e:
@@ -139,6 +154,8 @@ def pytest_sessionstart(session):
         # Show available networks including preconfigured ones
         all_networks = general_config.get_networks_keys()
         logger.info(f"  Available networks: {all_networks}")
+        logger.info(f"  Chain: {general_config.get_chain_name()}")
+        logger.info(f"  Available chains: {', '.join(CHAINS)}")
         logger.info(f"  Contracts directory: {general_config.get_contracts_dir()}")
         logger.info(f"  Artifacts directory: {general_config.get_artifacts_dir()}")
         logger.info(f"  Environment: {general_config.user_config.environment}")

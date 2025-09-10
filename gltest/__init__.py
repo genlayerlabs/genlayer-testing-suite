@@ -8,6 +8,8 @@ from gltest.clients import (
     get_gl_client,
 )
 from gltest.contracts import get_contract_factory
+from gltest.validators import get_validator_factory
+
 
 __all__ = [
     "create_account",
@@ -16,4 +18,5 @@ __all__ = [
     "get_gl_client",
     "get_accounts",
     "get_default_account",
+    "get_validator_factory",
 ]

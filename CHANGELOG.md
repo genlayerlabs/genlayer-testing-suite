@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.8.0 (2025-09-10)
+
+### Features
+
+- Implement validator factory
+  ([#49](https://github.com/genlayerlabs/genlayer-testing-suite/pull/49),
+  [`56830f5`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/56830f54adc2558f4f2fc47218c405ca1051e32e))
+
+
 ## v0.7.0 (2025-09-09)
 
 ### Features
