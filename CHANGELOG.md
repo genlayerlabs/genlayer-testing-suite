@@ -2,6 +2,40 @@
 
 <!-- version list -->
 
+## v0.9.0 (2025-09-11)
+
+### Documentation
+
+- New per network fields and chain CLI param
+  ([#52](https://github.com/genlayerlabs/genlayer-testing-suite/pull/52),
+  [`85d3323`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/85d3323a3ec895f9f9efabf98f78cb3517670069))
+
+### Features
+
+- Add chain to CLI ([#52](https://github.com/genlayerlabs/genlayer-testing-suite/pull/52),
+  [`85d3323`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/85d3323a3ec895f9f9efabf98f78cb3517670069))
+
+- Add more fields to manage in per network configuration (default wait retries, default wait
+  intervals, test with mocks and chain)
+  ([#52](https://github.com/genlayerlabs/genlayer-testing-suite/pull/52),
+  [`85d3323`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/85d3323a3ec895f9f9efabf98f78cb3517670069))
+
+- Remove limitation on custom network ids in code
+  ([#52](https://github.com/genlayerlabs/genlayer-testing-suite/pull/52),
+  [`85d3323`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/85d3323a3ec895f9f9efabf98f78cb3517670069))
+
+### Performance Improvements
+
+- Exclude directories from build
+  ([#52](https://github.com/genlayerlabs/genlayer-testing-suite/pull/52),
+  [`85d3323`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/85d3323a3ec895f9f9efabf98f78cb3517670069))
+
+### Refactoring
+
+- Chain to chain_type ([#52](https://github.com/genlayerlabs/genlayer-testing-suite/pull/52),
+  [`85d3323`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/85d3323a3ec895f9f9efabf98f78cb3517670069))
+
+
 ## v0.8.0 (2025-09-10)
 
 ### Features
