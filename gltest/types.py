@@ -20,6 +20,20 @@ class MockedLLMResponse(TypedDict):
     eq_principle_prompt_non_comparative: Dict[str, bool]
 
 
+class WebResponse(TypedDict):
+    """Web response"""
+
+    method: str  # GET, POST, PUT, DELETE, etc.
+    status: int  # status code of the response
+    body: str  # body of the response
+
+
+class MockedWebRequest(TypedDict):
+    """Maps urls to responses"""
+
+    nondet_web_request: Dict[str, WebResponse]
+
+
 class ValidatorConfig(TypedDict):
     """Validator information."""
 
