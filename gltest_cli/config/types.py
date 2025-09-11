@@ -1,11 +1,16 @@
-from enum import Enum
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 from genlayer_py.chains import localnet, studionet, testnet_asimov
 from genlayer_py.types import GenLayerChain
-from urllib.parse import urlparse
 from gltest_cli.config.constants import PRECONFIGURED_NETWORKS
+from gltest_cli.config.constants import (
+    DEFAULT_WAIT_INTERVAL,
+    DEFAULT_WAIT_RETRIES,
+    DEFAULT_TEST_WITH_MOCKS,
+    DEFAULT_LEADER_ONLY,
+    CHAINS,
+)
 
 
 @dataclass
@@ -18,6 +23,7 @@ class PluginConfig:
     network_name: Optional[str] = None
     test_with_mocks: bool = False
     leader_only: bool = False
+    chain_type: Optional[str] = None
 
 
 @dataclass
@@ -27,6 +33,10 @@ class NetworkConfigData:
     accounts: Optional[List[str]] = None
     from_account: Optional[str] = None
     leader_only: bool = False
+    default_wait_interval: Optional[int] = None
+    default_wait_retries: Optional[int] = None
+    test_with_mocks: bool = False
+    chain_type: Optional[str] = None
 
     def __post_init__(self):
         if self.id is not None and not isinstance(self.id, int):
@@ -40,6 +50,20 @@ class NetworkConfigData:
                 raise ValueError("accounts must be strings")
         if self.from_account is not None and not isinstance(self.from_account, str):
             raise ValueError("from_account must be a string")
+        if not isinstance(self.leader_only, bool):
+            raise TypeError("leader_only must be a boolean")
+        if self.default_wait_interval is not None and not isinstance(
+            self.default_wait_interval, int
+        ):
+            raise ValueError("default_wait_interval must be an integer")
+        if self.default_wait_retries is not None and not isinstance(
+            self.default_wait_retries, int
+        ):
+            raise ValueError("default_wait_retries must be an integer")
+        if not isinstance(self.test_with_mocks, bool):
+            raise TypeError("test_with_mocks must be a boolean")
+        if self.chain_type is not None and not isinstance(self.chain_type, str):
+            raise ValueError("chain_type must be a string")
 
 
 @dataclass
@@ -130,50 +154,69 @@ class GeneralConfig:
             return self.user_config.networks[network_name].accounts
         return self.user_config.networks[self.user_config.default_network].accounts
 
-    def get_chain(self) -> GenLayerChain:
+    def get_chain_type(self) -> str:
+        # If chain_type is explicitly set via CLI, use it
+        if self.plugin_config.chain_type is not None:
+            if self.plugin_config.chain_type not in CHAINS:
+                raise ValueError(
+                    f"Unknown chain type: {self.plugin_config.chain_type}. "
+                    f"Valid values: {', '.join(CHAINS)}"
+                )
+            return self.plugin_config.chain_type
+
         network_name = self.get_network_name()
         if network_name not in self.user_config.networks:
             raise ValueError(
                 f"Unknown network: {network_name}, possible values: {self.get_networks_keys()}"
             )
+        network_config = self.user_config.networks[network_name]
+        # For preconfigured networks, use its chain type
+        if network_name in PRECONFIGURED_NETWORKS:
+            chain_type = network_config.chain_type
+        else:
+            # For custom networks, chain_type field is required
+            chain_type = network_config.chain_type
+            if not chain_type:
+                raise ValueError(
+                    f"Custom network {network_name} must specify a 'chain_type' field. "
+                    f"Valid values: {', '.join(CHAINS)}"
+                )
 
-        # Reserved network names
-        chain_map_by_name = {
+        if chain_type not in CHAINS:
+            raise ValueError(
+                f"Unknown chain type: {chain_type}. "
+                f"Valid values: {', '.join(CHAINS)}"
+            )
+        return chain_type
+
+    def get_chain(self) -> GenLayerChain:
+        chain_map = {
             "localnet": localnet,
             "studionet": studionet,
             "testnet_asimov": testnet_asimov,
         }
-
-        if network_name in chain_map_by_name:
-            return chain_map_by_name[network_name]
-
-        if network_name in PRECONFIGURED_NETWORKS:
-            raise ValueError(
-                f"Network {network_name} should be handled by reserved mapping"
-            )
-
-        # Custom networks
-        chain_map_by_id = {
-            61999: localnet,
-            4221: testnet_asimov,
-        }
-        network_id = self.user_config.networks[network_name].id
-        if network_id not in chain_map_by_id:
-            known = ", ".join(map(str, chain_map_by_id.keys()))
-            raise ValueError(
-                f"Unknown network id: {network_id}, possible values: {known}"
-            )
-        return chain_map_by_id[network_id]
+        chain_type = self.get_chain_type()
+        return chain_map[chain_type]
 
     def get_default_wait_interval(self) -> int:
         if self.plugin_config.default_wait_interval is not None:
             return self.plugin_config.default_wait_interval
-        raise ValueError("default_wait_interval is not set")
+        network_name = self.get_network_name()
+        if network_name in self.user_config.networks:
+            network_config = self.user_config.networks[network_name]
+            if network_config.default_wait_interval is not None:
+                return network_config.default_wait_interval
+        return DEFAULT_WAIT_INTERVAL
 
     def get_default_wait_retries(self) -> int:
         if self.plugin_config.default_wait_retries is not None:
             return self.plugin_config.default_wait_retries
-        raise ValueError("default_wait_retries is not set")
+        network_name = self.get_network_name()
+        if network_name in self.user_config.networks:
+            network_config = self.user_config.networks[network_name]
+            if network_config.default_wait_retries is not None:
+                return network_config.default_wait_retries
+        return DEFAULT_WAIT_RETRIES
 
     def get_network_name(self) -> str:
         if self.plugin_config.network_name is not None:
@@ -181,7 +224,13 @@ class GeneralConfig:
         return self.user_config.default_network
 
     def get_test_with_mocks(self) -> bool:
-        return self.plugin_config.test_with_mocks
+        if self.plugin_config.test_with_mocks:
+            return True
+        network_name = self.get_network_name()
+        if network_name in self.user_config.networks:
+            network_config = self.user_config.networks[network_name]
+            return network_config.test_with_mocks
+        return DEFAULT_TEST_WITH_MOCKS
 
     def get_leader_only(self) -> bool:
         if self.plugin_config.leader_only:
@@ -190,24 +239,10 @@ class GeneralConfig:
         if network_name in self.user_config.networks:
             network_config = self.user_config.networks[network_name]
             return network_config.leader_only
-        return False
+        return DEFAULT_LEADER_ONLY
 
     def check_local_rpc(self) -> bool:
-        SUPPORTED_RPC_DOMAINS = ["localhost", "127.0.0.1"]
-        rpc_url = self.get_rpc_url()
-        domain = urlparse(rpc_url).netloc.split(":")[0]  # Extract domain without port
-        return domain in SUPPORTED_RPC_DOMAINS
+        return self.get_chain_type() == "localnet"
 
     def check_studio_based_rpc(self) -> bool:
-        SUPPORTED_RPC_DOMAINS = ["localhost", "127.0.0.1"]
-        rpc_url = self.get_rpc_url()
-        domain = urlparse(rpc_url).netloc.split(":")[0]  # Extract domain without port
-
-        if domain in SUPPORTED_RPC_DOMAINS:
-            return True
-
-        # Check .genlayer.com or .genlayerlabs.com subdomains
-        if domain.endswith(".genlayer.com") or domain.endswith(".genlayerlabs.com"):
-            return True
-
-        return False
+        return self.get_chain_type() == "studionet"
