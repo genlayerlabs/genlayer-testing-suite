@@ -247,31 +247,7 @@ $ gltest --default-wait-interval <default_wait_interval>
 $ gltest --default-wait-retries <default_wait_retries>
 ```
 
-10. Run tests with mocked LLM responses (localnet only)
-```bash
-$ gltest --test-with-mocks
-```
-The `--test-with-mocks` flag enables mocking of LLM responses when creating validators. This is particularly useful for:
-- Testing without actual LLM API calls
-- Ensuring deterministic test results
-- Faster test execution
-- Testing specific edge cases with controlled responses
-
-When using this flag with the `setup_validators` fixture, you can provide custom mock responses:
-```python
-def test_with_mocked_llm(setup_validators):
-    # Setup validators with a specific mock response
-    mock_response = {"result": "This is a mocked LLM response"}
-    setup_validators(mock_response=mock_response)
-    
-    # Your LLM-based contract will receive the mocked response
-    contract = factory.deploy()
-    result = contract.llm_method()  # Will use the mocked response
-```
-
-Note: This feature is only available when running tests on localnet.
-
-11. Run tests with leader-only mode enabled
+10. Run tests with leader-only mode enabled
 ```bash
 $ gltest --leader-only
 ```
@@ -515,7 +491,6 @@ The following fixtures are available in `gltest.fixtures`:
 - **`gl_client`** (session scope) - GenLayer client instance for network operations
 - **`default_account`** (session scope) - Default account for testing and deployments
 - **`accounts`** (session scope) - List of test accounts for multi-account scenarios
-- **`setup_validators`** (function scope) - Function to create test validators for LLM operations
 
 ##### 1. `gl_client` (session scope)
 Provides a GenLayer PY client instance that's created once per test session. This is useful for operations that interact directly with the GenLayer network.
@@ -550,26 +525,6 @@ def test_multiple_accounts(accounts):
     contract.transfer(args=[receiver.address, 100], account=sender)
 ```
 
-##### 4. `setup_validators` (function scope)
-Creates test validators for localnet environment. This fixture is particularly useful for testing LLM-based contract methods and consensus behavior. It yields a function that allows you to configure validators with custom settings.
-
-```python
-def test_with_validators(setup_validators):
-    # Setup validators with default configuration
-    setup_validators()
-    
-    # Or setup with custom mock responses for testing
-    mock_response = {"result": "mocked LLM response"}
-    setup_validators(mock_response=mock_response, n_validators=3)
-    
-    # Now test your LLM-based contract methods
-    contract = factory.deploy()
-    result = contract.llm_based_method()
-```
-
-Parameters for `setup_validators`:
-- `mock_response` (dict, optional): Mock validator response when using `--test-with-mocks` flag
-- `n_validators` (int, optional): Number of validators to create (default: 5)
 
 #### Using Fixtures in Your Tests
 
@@ -579,9 +534,7 @@ To use these fixtures, simply import them and include them as parameters in your
 from gltest import get_contract_factory
 from gltest.assertions import tx_execution_succeeded
 
-def test_complete_workflow(gl_client, default_account, accounts, setup_validators):
-    # Setup validators for LLM operations
-    setup_validators()
+def test_complete_workflow(gl_client, default_account, accounts):
     
     # Deploy contract with default account
     factory = get_contract_factory("MyContract")
@@ -627,7 +580,7 @@ def test_analyze_method():
     print(f"Reliability score: {analysis.reliability_score:.2f}%")
     print(f"Unique states: {analysis.unique_states}")
     print(f"Execution time: {analysis.execution_time:.1f}s")
-    
+
     # The analysis returns a MethodStatsSummary object with:
     # - method: The contract method name
     # - args: Arguments passed to the method
@@ -645,127 +598,6 @@ The `.analyze()` method helps you:
 - Identify edge cases and failure patterns
 - Benchmark performance across multiple runs
 
-### Mock LLM Responses
-
-The Mock LLM system allows you to simulate Large Language Model responses in GenLayer tests. This is essential for creating deterministic tests by providing predefined responses instead of relying on actual LLM calls.
-
-#### Basic Structure
-
-The mock system consists of a response dictionary that maps GenLayer methods to their mocked responses:
-
-```python
-mock_response = {
-    "response": {},                               # Optional: mocks gl.nondet.exec_prompt
-    "eq_principle_prompt_comparative": {},        # Optional: mocks gl.eq_principle.prompt_comparative
-    "eq_principle_prompt_non_comparative": {}     # Optional: mocks gl.eq_principle.prompt_non_comparative
-}
-
-setup_validators(mock_response)
-```
-
-#### Method Mappings
-
-| Mock Key | GenLayer Method |
-|----------|----------------|
-| `"response"` | `gl.nondet.exec_prompt` |
-| `"eq_principle_prompt_comparative"` | `gl.eq_principle.prompt_comparative` |
-| `"eq_principle_prompt_non_comparative"` | `gl.eq_principle.prompt_non_comparative` |
-
-#### How It Works
-
-The mock system works by pattern matching against the user message that gets built internally. When a GenLayer method is called:
-
-1. A user message is constructed internally (`<user_message>`)
-2. The mock system searches for strings within that message
-3. If a matching string is found in the mock dictionary, the associated response is returned
-
-##### String Matching Rules
-
-The system performs **substring matching** on the user message. The key in your mock dictionary must be contained within the actual user message.
-
-#### Examples
-
-##### Basic Example
-
-```python
-# Mock setup
-mock_response = {
-    "eq_principle_prompt_comparative": {
-        "The value of give_coin has to match": True
-    }
-}
-setup_validators(mock_response)
-
-# In your contract
-result = gl.eq_principle.prompt_comparative(
-    get_wizard_answer, 
-    "The value of give_coin has to match"  # This string will be matched
-)
-# result will be True
-```
-
-##### Substring Matching Examples
-
-✅ **Will work** - Partial match:
-```python
-"eq_principle_prompt_comparative": {
-    "The value of give_coin": True  # Substring of the full message
-}
-```
-
-❌ **Won't work** - Extra words break the match:
-```python
-"eq_principle_prompt_comparative": {
-    "The good value of give_coin": True  # "good" is not in the actual message
-}
-```
-
-##### Complete Example
-
-```python
-from gltest import get_contract_factory
-from gltest.fixtures import setup_validators
-
-def test_with_mocked_llm(setup_validators):
-    # Define mock responses
-    mock_response = {
-        "response": {
-            "What is the weather?": "It's sunny today",
-            "Calculate 2+2": "4"
-        },
-        "eq_principle_prompt_comparative": {
-            "values must be equal": True,
-            "amounts should match": False
-        },
-        "eq_principle_prompt_non_comparative": {
-            "Is this valid?": True
-        }
-    }
-    
-    # Initialize the mock system
-    setup_validators(mock_response)
-    
-    # Deploy and test your contract
-    factory = get_contract_factory("MyLLMContract")
-    contract = factory.deploy()
-    
-    # Your LLM methods will use the mocked responses
-    result = contract.check_weather()  # Uses mocked response
-```
-
-#### Best Practices
-
-1. **Be specific with match strings**: Use unique substrings that won't accidentally match other prompts
-2. **Test your matches**: Verify that your mock strings actually appear in the generated user messages
-3. **Keep mocks simple**: Mock responses should be minimal and focused on the test case
-4. **Document your mocks**: Comment why specific responses are mocked for future reference
-5. **Use with `--test-with-mocks` flag**: Enable mocking when running tests: `gltest --test-with-mocks`
-
-#### Notes
-
-- Mock responses are only available when running tests on localnet
-- The `setup_validators` fixture handles the mock setup when provided with a mock_response
-- Mocking is particularly useful for CI/CD pipelines where deterministic results are required
 
 ### Custom Transaction Context
 
@@ -816,17 +648,58 @@ def test_with_custom_transaction_context():
     )
 ```
 
+### Mock LLM Responses
+
+The Mock LLM system allows you to simulate Large Language Model responses in GenLayer tests. This is essential for creating deterministic tests by providing predefined responses instead of relying on actual LLM calls.
+
+#### Basic Structure
+
+The mock system consists of a response dictionary that maps GenLayer methods to their mocked responses:
+
+```python
+from gltest.types import MockedLLMResponse
+
+mock_response: MockedLLMResponse = {
+    "nondet_exec_prompt": {},                               # Optional: mocks gl.nondet.exec_prompt
+    "eq_principle_prompt_comparative": {},        # Optional: mocks gl.eq_principle.prompt_comparative
+    "eq_principle_prompt_non_comparative": {}     # Optional: mocks gl.eq_principle.prompt_non_comparative
+}
+```
+
+#### Method Mappings
+
+| Mock Key | GenLayer Method |
+|----------|----------------|
+| `"nondet_exec_prompt"` | `gl.nondet.exec_prompt` |
+| `"eq_principle_prompt_comparative"` | `gl.eq_principle.prompt_comparative` |
+| `"eq_principle_prompt_non_comparative"` | `gl.eq_principle.prompt_non_comparative` |
+
+#### How It Works
+
+The mock system works by pattern matching against the user message that gets built internally. When a GenLayer method is called:
+
+1. A user message is constructed internally (`<user_message>`)
+2. The mock system searches for strings within that message
+3. If a matching string is found in the mock dictionary, the associated response is returned
+
+##### String Matching Rules
+
+The system performs **substring matching** on the user message. The key in your mock dictionary must be contained within the actual user message.
+
+
 #### Mock Validators with Transaction Context
 
 Combine mock validators with custom datetime for fully deterministic tests:
 
 ```python
+from gltest.types import MockedLLMResponse
+
 def test_with_mocked_context():
     factory = get_contract_factory("LLMContract")
     validator_factory = get_validator_factory()
     
     # Define mock LLM responses
-    mock_response = {
+    mock_response: MockedLLMResponse = {
         "nondet_exec_prompt": {
             "analyze this": "positive sentiment"
         },

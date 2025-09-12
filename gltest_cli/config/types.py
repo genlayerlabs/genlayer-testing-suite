@@ -7,7 +7,6 @@ from gltest_cli.config.constants import PRECONFIGURED_NETWORKS
 from gltest_cli.config.constants import (
     DEFAULT_WAIT_INTERVAL,
     DEFAULT_WAIT_RETRIES,
-    DEFAULT_TEST_WITH_MOCKS,
     DEFAULT_LEADER_ONLY,
     CHAINS,
 )
@@ -21,7 +20,6 @@ class PluginConfig:
     default_wait_interval: Optional[int] = None
     default_wait_retries: Optional[int] = None
     network_name: Optional[str] = None
-    test_with_mocks: bool = False
     leader_only: bool = False
     chain_type: Optional[str] = None
 
@@ -35,7 +33,6 @@ class NetworkConfigData:
     leader_only: bool = False
     default_wait_interval: Optional[int] = None
     default_wait_retries: Optional[int] = None
-    test_with_mocks: bool = False
     chain_type: Optional[str] = None
 
     def __post_init__(self):
@@ -60,8 +57,6 @@ class NetworkConfigData:
             self.default_wait_retries, int
         ):
             raise ValueError("default_wait_retries must be an integer")
-        if not isinstance(self.test_with_mocks, bool):
-            raise TypeError("test_with_mocks must be a boolean")
         if self.chain_type is not None and not isinstance(self.chain_type, str):
             raise ValueError("chain_type must be a string")
 
@@ -222,15 +217,6 @@ class GeneralConfig:
         if self.plugin_config.network_name is not None:
             return self.plugin_config.network_name
         return self.user_config.default_network
-
-    def get_test_with_mocks(self) -> bool:
-        if self.plugin_config.test_with_mocks:
-            return True
-        network_name = self.get_network_name()
-        if network_name in self.user_config.networks:
-            network_config = self.user_config.networks[network_name]
-            return network_config.test_with_mocks
-        return DEFAULT_TEST_WITH_MOCKS
 
     def get_leader_only(self) -> bool:
         if self.plugin_config.leader_only:
