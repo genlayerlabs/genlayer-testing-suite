@@ -213,16 +213,6 @@ def test_validate_raw_user_config_invalid():
             }
         )
 
-    with pytest.raises(ValueError, match="test_with_mocks must be a boolean"):
-        validate_raw_user_config(
-            {
-                "networks": {
-                    "default": "localnet",
-                    "testnet": {"test_with_mocks": "false"},
-                }
-            }
-        )
-
     with pytest.raises(ValueError, match="chain_type must be a string"):
         validate_raw_user_config(
             {"networks": {"default": "localnet", "testnet": {"chain_type": 123}}}

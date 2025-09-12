@@ -15,7 +15,6 @@ from gltest_cli.config.pytest_context import _pytest_context
 from gltest_cli.config.constants import (
     DEFAULT_WAIT_INTERVAL,
     DEFAULT_WAIT_RETRIES,
-    DEFAULT_TEST_WITH_MOCKS,
     DEFAULT_LEADER_ONLY,
     CHAINS,
 )
@@ -66,13 +65,6 @@ def pytest_addoption(parser):
     )
 
     group.addoption(
-        "--test-with-mocks",
-        action="store_true",
-        default=DEFAULT_TEST_WITH_MOCKS,
-        help="Test with mocks",
-    )
-
-    group.addoption(
         "--leader-only",
         action="store_true",
         default=DEFAULT_LEADER_ONLY,
@@ -120,7 +112,6 @@ def pytest_configure(config):
         default_wait_retries = config.getoption("--default-wait-retries")
         rpc_url = config.getoption("--rpc-url")
         network = config.getoption("--network")
-        test_with_mocks = config.getoption("--test-with-mocks")
         leader_only = config.getoption("--leader-only")
         chain_type = config.getoption("--chain-type")
 
@@ -135,7 +126,6 @@ def pytest_configure(config):
         plugin_config.default_wait_retries = int(default_wait_retries)
         plugin_config.rpc_url = rpc_url
         plugin_config.network_name = network
-        plugin_config.test_with_mocks = test_with_mocks
         plugin_config.leader_only = leader_only
         plugin_config.chain_type = chain_type
 
@@ -175,7 +165,6 @@ def pytest_sessionstart(session):
         logger.info(
             f"  Default wait retries: {general_config.get_default_wait_retries()}"
         )
-        logger.info(f"  Test with mocks: {general_config.get_test_with_mocks()}")
 
         if (
             general_config.get_leader_only()
