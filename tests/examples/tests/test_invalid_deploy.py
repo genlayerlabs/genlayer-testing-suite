@@ -4,9 +4,8 @@ from gltest.assertions import tx_execution_failed
 from gltest.exceptions import DeploymentError
 
 
-def test_invalid_deploy_basic_exception(setup_validators):
+def test_invalid_deploy_basic_exception():
     """Test deployment failure with basic exception"""
-    setup_validators()
     factory = get_contract_factory("InvalidDeploy")
 
     # Deployment should fail with exception
@@ -14,9 +13,8 @@ def test_invalid_deploy_basic_exception(setup_validators):
         factory.deploy()
 
 
-def test_invalid_deploy_receipt_only(setup_validators):
+def test_invalid_deploy_receipt_only():
     """Test deployment failure using deploy_contract_tx() method that returns receipt only"""
-    setup_validators()
     factory = get_contract_factory("InvalidDeploy")
 
     # Deploy and get receipt - should show failure
