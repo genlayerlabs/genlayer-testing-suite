@@ -1,11 +1,12 @@
 from genlayer_py.chains.localnet import SIMULATOR_JSON_RPC_URL
 from pathlib import Path
-
+from gltest.types import ChainType
 
 GLTEST_CONFIG_FILE = "gltest.config.yaml"
 DEFAULT_NETWORK = "localnet"
 PRECONFIGURED_NETWORKS = ["localnet", "studionet", "testnet_asimov"]
-CHAINS = ["localnet", "studionet", "testnet_asimov"]
+
+CHAINS = ChainType.values()
 DEFAULT_RPC_URL = SIMULATOR_JSON_RPC_URL
 DEFAULT_ENVIRONMENT = ".env"
 DEFAULT_CONTRACTS_DIR = Path("contracts")

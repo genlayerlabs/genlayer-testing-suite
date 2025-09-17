@@ -7,6 +7,17 @@ from genlayer_py.types import (
     TransactionHashVariant,
 )
 from typing import List, TypedDict, Dict, Any
+from enum import Enum
+
+
+class ChainType(Enum):
+    LOCALNET = "localnet"
+    STUDIONET = "studionet"
+    TESTNET_ASIMOV = "testnet_asimov"
+
+    @classmethod
+    def values(cls):
+        return [chain.value for chain in cls]
 
 
 class MockedLLMResponse(TypedDict):
