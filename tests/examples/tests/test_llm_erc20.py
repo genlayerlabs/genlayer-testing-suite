@@ -6,12 +6,14 @@ from gltest import (
 )
 from gltest.assertions import tx_execution_succeeded
 from gltest.types import MockedLLMResponse
+from gltest.decorators import gl_only_localnet, gl_skip_testnet_asimov
 import json
 
 TOKEN_TOTAL_SUPPLY = 1000
 TRANSFER_AMOUNT = 100
 
 
+@gl_skip_testnet_asimov
 def test_llm_erc20():
     # Test with normal validators
     # Account Setup
@@ -51,6 +53,7 @@ def test_llm_erc20():
     assert contract_state_2_3 == TRANSFER_AMOUNT
 
 
+@gl_only_localnet
 def test_llm_erc20_mocked():
     # Test with mocked validators
     # Account Setup

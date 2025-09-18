@@ -2,6 +2,7 @@ from gltest import get_contract_factory, get_validator_factory
 from gltest.assertions import tx_execution_succeeded
 from gltest.types import MockedLLMResponse
 import json
+from gltest.decorators import gl_only_localnet
 
 
 def test_football_prediction_market():
@@ -20,6 +21,7 @@ def test_football_prediction_market():
     assert contract_state_2["has_resolved"]
 
 
+@gl_only_localnet
 def test_football_prediction_market_mocked():
     # Test with mocked validators
     team_1 = "Georgia"

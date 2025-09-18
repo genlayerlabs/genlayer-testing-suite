@@ -1,11 +1,13 @@
 from gltest import get_contract_factory, get_default_account, create_account
 from datetime import datetime, timezone
+from gltest.decorators import gl_skip_testnet_asimov
 
 
 TOKEN_TOTAL_SUPPLY = 1000
 TRANSFER_AMOUNT = 100
 
 
+@gl_skip_testnet_asimov
 def test_llm_erc20_analyze():
     # Account Setup
     from_account_a = get_default_account()

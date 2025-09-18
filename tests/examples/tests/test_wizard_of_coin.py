@@ -1,6 +1,7 @@
 from gltest import get_contract_factory, get_validator_factory
 from gltest.assertions import tx_execution_succeeded
 from gltest.types import MockedLLMResponse
+from gltest.decorators import gl_only_localnet
 import json
 
 
@@ -15,6 +16,7 @@ def test_wizard_of_coin():
     assert tx_execution_succeeded(transaction_response_call_1)
 
 
+@gl_only_localnet
 def test_wizard_of_coin_mocked():
     # Test with mocked validators
     mock_llm_response: MockedLLMResponse = {

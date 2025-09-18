@@ -1,8 +1,10 @@
 from gltest import get_contract_factory
 from datetime import datetime, timedelta, timezone
 from gltest.assertions import tx_execution_succeeded, tx_execution_failed
+from gltest.decorators import gl_only_localnet
 
 
+@gl_only_localnet
 def test_simple_time_contract():
     """Test all time-based functionality in a single comprehensive test."""
 

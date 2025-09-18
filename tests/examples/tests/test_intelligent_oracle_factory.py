@@ -3,6 +3,7 @@ import json
 from gltest import get_contract_factory, get_validator_factory
 from gltest.assertions import tx_execution_succeeded
 from gltest.types import MockedLLMResponse
+from gltest.decorators import gl_only_localnet, gl_skip_testnet_asimov
 
 
 def create_mock_response(markets_data) -> MockedLLMResponse:
@@ -53,6 +54,7 @@ def create_mock_response(markets_data) -> MockedLLMResponse:
     }
 
 
+@gl_skip_testnet_asimov
 def test_intelligent_oracle_factory_pattern():
     # Test with normal validators
     markets_data = [
@@ -160,6 +162,7 @@ def test_intelligent_oracle_factory_pattern():
         # With real LLM, outcome will vary
 
 
+@gl_only_localnet
 def test_intelligent_oracle_factory_pattern_mocked():
     # Test with mocked validators
     markets_data = [
