@@ -452,7 +452,7 @@ def test_write_methods():
     ).transact(
         value=0,  # Optional: amount of native currency to send
         consensus_max_rotations=3,  # Optional: max consensus rotations
-        wait_interval=1,  # Optional: seconds between status checks
+        wait_interval=1000,  # Optional: milliseconds between status checks
         wait_retries=10,  # Optional: max number of retries
         transaction_context=None,  # Optional: custom transaction context
     )
@@ -1018,7 +1018,7 @@ def test_validator_cloning():
    tx_receipt = contract.set_value(
        args=["new_value"],
    ).transact(
-       wait_interval=2,  # Increase wait interval between status checks
+       wait_interval=2000,  # Increase wait interval between status checks
        wait_retries=20,  # Increase number of retry attempts
    )
    ```
@@ -1035,7 +1035,7 @@ def test_validator_cloning():
    # For critical operations, use more conservative settings
    contract = factory.deploy(
        consensus_max_rotations=10,  # More rotations for better reliability
-       wait_interval=3,  # Longer wait between checks
+       wait_interval=3000,  # Longer wait between checks
        wait_retries=30  # More retries for consensus
    )
    ```
