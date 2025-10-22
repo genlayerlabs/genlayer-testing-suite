@@ -14,7 +14,7 @@ Help us make the project better by testing and giving feedback:
   ```sh
   $ pip install genlayer-test
   ```
-- Try out the SDK features and tell us what you think through our [feedback form](https://docs.google.com/forms/d/e/1FAIpQLSdPcTz3ucZeU8fnCMdux-1sa663n2HsXrH8fGjb8K0W8eKGRw/viewform?usp=sharing) or on our [Discord Channel](https://discord.gg/8Jm4v89VAu).
+- Try out the SDK features and tell us what you think through our [feedback form](https://docs.google.com/forms/d/e/1FAIpQLSdPcTz3ucZeU8fnCMdux-1sa663n2HsXrH8fGjb8K0W8eKGRw/viewform?usp=sharing) or on our [Discord Channel](https://discord.gg/qjCU4AWnKE).
 - If you find any issues, please report them on our [GitHub issues page](https://github.com/yeagerai/genlayer-testing-suite/issues).
 
 
@@ -23,7 +23,7 @@ Help us make the project better by testing and giving feedback:
 Have ideas for new features or use cases? We're eager to hear them! But first:
 
 - Ensure you have the SDK installed to explore existing use cases.
-- After familiarizing yourself with the SDK, contribute your unique use case and share your ideas in our [Discord channel](https://discord.gg/8Jm4v89VAu).
+- After familiarizing yourself with the SDK, contribute your unique use case and share your ideas in our [Discord channel](https://discord.gg/qjCU4AWnKE).
 
 
 
@@ -149,7 +149,7 @@ To contribute to our docs, visit our [Documentation Repository](https://github.c
 
 Connect with the GenLayer community to discuss, collaborate, and share insights:
 
-- **[Discord Channel](https://discord.gg/8Jm4v89VAu)**: Our primary hub for discussions, support, and announcements.
+- **[Discord Channel](https://discord.gg/qjCU4AWnKE)**: Our primary hub for discussions, support, and announcements.
 - **[Telegram Group](https://t.me/genlayer)**: For more informal chats and quick updates.
 
 Your continuous feedback drives better product development. Please engage with us regularly to test, discuss, and improve the GenLayerPY SDK.
