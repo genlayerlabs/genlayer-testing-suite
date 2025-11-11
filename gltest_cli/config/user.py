@@ -15,7 +15,6 @@ from gltest_cli.config.constants import (
     PRECONFIGURED_NETWORKS,
     DEFAULT_WAIT_INTERVAL,
     DEFAULT_WAIT_RETRIES,
-    DEFAULT_TEST_WITH_MOCKS,
     DEFAULT_LEADER_ONLY,
     CHAINS,
 )
@@ -31,7 +30,6 @@ VALID_NETWORK_KEYS = [
     "leader_only",
     "default_wait_interval",
     "default_wait_retries",
-    "test_with_mocks",
     "chain_type",
 ]
 VALID_PATHS_KEYS = ["contracts", "artifacts"]
@@ -51,7 +49,6 @@ def get_default_user_config() -> UserConfig:
             leader_only=DEFAULT_LEADER_ONLY,
             default_wait_interval=DEFAULT_WAIT_INTERVAL,
             default_wait_retries=DEFAULT_WAIT_RETRIES,
-            test_with_mocks=DEFAULT_TEST_WITH_MOCKS,
             chain_type="localnet",
         ),
         "studionet": NetworkConfigData(
@@ -62,7 +59,6 @@ def get_default_user_config() -> UserConfig:
             leader_only=DEFAULT_LEADER_ONLY,
             default_wait_interval=DEFAULT_WAIT_INTERVAL,
             default_wait_retries=DEFAULT_WAIT_RETRIES,
-            test_with_mocks=DEFAULT_TEST_WITH_MOCKS,
             chain_type="studionet",
         ),
         "testnet_asimov": NetworkConfigData(
@@ -73,7 +69,6 @@ def get_default_user_config() -> UserConfig:
             leader_only=DEFAULT_LEADER_ONLY,
             default_wait_interval=DEFAULT_WAIT_INTERVAL,
             default_wait_retries=DEFAULT_WAIT_RETRIES,
-            test_with_mocks=DEFAULT_TEST_WITH_MOCKS,
             chain_type="testnet_asimov",
         ),
     }
@@ -162,11 +157,6 @@ def validate_network_config(network_name: str, network_config: dict):
         raise ValueError(
             f"network {network_name} default_wait_retries must be an integer"
         )
-
-    if "test_with_mocks" in network_config and not isinstance(
-        network_config["test_with_mocks"], bool
-    ):
-        raise ValueError(f"network {network_name} test_with_mocks must be a boolean")
 
     if "chain_type" in network_config:
         if not isinstance(network_config["chain_type"], str):
@@ -294,10 +284,6 @@ def _get_overridden_networks(raw_config: dict) -> tuple[dict, str]:
                 networks_config[network_name].default_wait_retries = network_config[
                     "default_wait_retries"
                 ]
-            if "test_with_mocks" in network_config:
-                networks_config[network_name].test_with_mocks = network_config[
-                    "test_with_mocks"
-                ]
             if "chain_type" in network_config:
                 networks_config[network_name].chain_type = network_config["chain_type"]
             continue
@@ -313,7 +299,6 @@ def _get_overridden_networks(raw_config: dict) -> tuple[dict, str]:
         default_wait_retries = network_config.get(
             "default_wait_retries", DEFAULT_WAIT_RETRIES
         )
-        test_with_mocks = network_config.get("test_with_mocks", DEFAULT_TEST_WITH_MOCKS)
         chain_type = network_config["chain_type"]  # Required for custom networks
         networks_config[network_name] = NetworkConfigData(
             id=network_id,
@@ -323,7 +308,6 @@ def _get_overridden_networks(raw_config: dict) -> tuple[dict, str]:
             leader_only=leader_only,
             default_wait_interval=default_wait_interval,
             default_wait_retries=default_wait_retries,
-            test_with_mocks=test_with_mocks,
             chain_type=chain_type,
         )
     return networks_config, user_default_network

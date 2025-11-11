@@ -4,7 +4,7 @@ from gltest_cli.config.general import get_general_config
 from genlayer_py.chains import testnet_asimov
 
 
-def test_multi_read_erc20(setup_validators):
+def test_multi_read_erc20():
     """
     This test verifies the functionality of a multi-read ERC20 contract. It deploys two separate ERC20 token contracts
     (referred to as 'doge' and 'shiba') and a multi-read ERC20 contract. The test aims to:
@@ -17,7 +17,6 @@ def test_multi_read_erc20(setup_validators):
 
     This test demonstrates the integration contract to contract reads
     """
-    setup_validators()
     general_config = get_general_config()
     chain = general_config.get_chain()
 

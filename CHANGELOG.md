@@ -386,7 +386,7 @@
 
 ### Features
 
-- Add --test-with-mocks cli param and check local rpc function
+- Add --test-with-mocks cli param and check local rpc function (DEPRECATED)
   ([#31](https://github.com/genlayerlabs/genlayer-testing-suite/pull/31),
   [`d80c88e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d80c88ed5d3ac56dee32dba235015795306afd9b))
 
