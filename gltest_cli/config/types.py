@@ -231,4 +231,4 @@ class GeneralConfig:
         return self.get_chain_type() == "localnet"
 
     def check_studio_based_rpc(self) -> bool:
-        return self.get_chain_type() == "studionet"
+        return self.get_chain_type() in ("studionet", "localnet")

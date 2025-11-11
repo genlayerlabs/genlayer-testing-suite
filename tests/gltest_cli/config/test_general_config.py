@@ -283,11 +283,24 @@ def test_check_studio_based_rpc_with_studionet():
     assert general_config.check_studio_based_rpc() is True
 
 
-def test_check_studio_based_rpc_with_non_studionet():
-    """Test check_studio_based_rpc when chain!=studionet."""
+def test_check_studio_based_rpc_with_localnet():
+    """Test check_studio_based_rpc when chain_type=localnet."""
     user_config = UserConfig(
-        networks={"studionet": NetworkConfigData(chain_type="localnet")},
-        default_network="studionet",
+        networks={"localnet": NetworkConfigData(chain_type="localnet")},
+        default_network="localnet",
+    )
+
+    plugin_config = PluginConfig()
+    general_config = GeneralConfig(user_config=user_config, plugin_config=plugin_config)
+
+    assert general_config.check_studio_based_rpc() is True
+
+
+def test_check_studio_based_rpc_with_non_studionet():
+    """Test check_studio_based_rpc when chain!=studionet and chain!=localnet."""
+    user_config = UserConfig(
+        networks={"testnet": NetworkConfigData(chain_type="testnet_asimov")},
+        default_network="testnet",
     )
 
     plugin_config = PluginConfig()
@@ -431,7 +444,7 @@ def test_general_config_chain_methods_compatibility():
 
     # Should report as local RPC even though network is testnet
     assert general_config.check_local_rpc() is True
-    assert general_config.check_studio_based_rpc() is False
+    assert general_config.check_studio_based_rpc() is True
 
     # Override to studionet
     plugin_config2 = PluginConfig(chain_type="studionet")
