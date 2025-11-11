@@ -36,7 +36,7 @@ jobs:
           private_key: ${{ secrets.CI_BOT_SECRET }}
 
       - name: Setup | Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
@@ -100,7 +100,7 @@ jobs:
 
     steps:
       - name: Setup | Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ needs.release-and-upload.outputs.commit_sha }}
           fetch-depth: 0
