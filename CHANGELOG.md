@@ -2,6 +2,34 @@
 
 <!-- version list -->
 
+## v0.10.0 (2025-11-11)
+
+### Documentation
+
+- Update README.md ([#56](https://github.com/genlayerlabs/genlayer-testing-suite/pull/56),
+  [`64251ed`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/64251ed55476591561b1ff350dfb87a89ac0cea7))
+
+### Features
+
+- Deprecate setup_validators fixture and --test-with-mocks flag
+  ([#54](https://github.com/genlayerlabs/genlayer-testing-suite/pull/54),
+  [`29ea943`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/29ea943bede28be2b78915c738e188ca688d74ce))
+
+- Deprecate setup_validators fixture and --test-with-mocks flag (DXP-650)
+  ([#54](https://github.com/genlayerlabs/genlayer-testing-suite/pull/54),
+  [`29ea943`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/29ea943bede28be2b78915c738e188ca688d74ce))
+
+### Testing
+
+- Remove deprecated test_with_mocks test cases
+  ([#54](https://github.com/genlayerlabs/genlayer-testing-suite/pull/54),
+  [`29ea943`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/29ea943bede28be2b78915c738e188ca688d74ce))
+
+- Remove setup_validators from tests
+  ([#54](https://github.com/genlayerlabs/genlayer-testing-suite/pull/54),
+  [`29ea943`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/29ea943bede28be2b78915c738e188ca688d74ce))
+
+
 ## v0.9.0 (2025-09-11)
 
 ### Documentation
