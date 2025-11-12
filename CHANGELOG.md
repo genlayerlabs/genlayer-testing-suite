@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.10.1 (2025-11-12)
+
+### Bug Fixes
+
+- Consider localnet in check_studio_based_rpc for leader-only mode
+  ([#58](https://github.com/genlayerlabs/genlayer-testing-suite/pull/58),
+  [`8f1d3cb`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/8f1d3cbcfa057b183cbe7b94ebd0c09c28cc3ccf))
+
+
 ## v0.10.0 (2025-11-11)
 
 ### Documentation
