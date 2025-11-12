@@ -1,8 +1,8 @@
 # GenLayer Testing Suite
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/license/mit/)
-[![Discord](https://dcbadge.vercel.app/api/server/8Jm4v89VAu?compact=true&style=flat)](https://discord.gg/VpfmXEMN66)
-[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/yeagerai.svg?style=social&label=Follow%20%40GenLayer)](https://x.com/GenLayer)
+[![Discord](https://dcbadge.vercel.app/api/server/8Jm4v89VAu?compact=true&style=flat)](https://discord.gg/qjCU4AWnKE)
+[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/genlayerlabs.svg?style=social&label=Follow%20%40GenLayer)](https://x.com/GenLayer)
 [![PyPI version](https://badge.fury.io/py/genlayer-test.svg)](https://badge.fury.io/py/genlayer-test)
 [![Documentation](https://img.shields.io/badge/docs-genlayer-blue)](https://docs.genlayer.com/api-references/genlayer-test)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -84,7 +84,7 @@ $ pip install genlayer-test
 
 2. Install from source:
 ```bash
-$ git clone https://github.com/yeagerai/genlayer-testing-suite
+$ git clone https://github.com/genlayerlabs/genlayer-testing-suite
 $ cd genlayer-testing-suite
 $ pip install -e .
 ```
@@ -978,8 +978,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 💬 Support
 
 - [Documentation](https://docs.genlayer.com/api-references/genlayer-test)
-- [Discord Community](https://discord.gg/VpfmXEMN66)
-- [GitHub Issues](https://github.com/yeagerai/genlayer-testing-suite/issues)
+- [Discord Community](https://discord.gg/qjCU4AWnKE)
+- [GitHub Issues](https://github.com/genlayerlabs/genlayer-testing-suite/issues)
 - [Twitter](https://x.com/GenLayer)
 
 

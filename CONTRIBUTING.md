@@ -15,7 +15,7 @@ Help us make the project better by testing and giving feedback:
   $ pip install genlayer-test
   ```
 - Try out the SDK features and tell us what you think through our [feedback form](https://docs.google.com/forms/d/e/1FAIpQLSdPcTz3ucZeU8fnCMdux-1sa663n2HsXrH8fGjb8K0W8eKGRw/viewform?usp=sharing) or on our [Discord Channel](https://discord.gg/8Jm4v89VAu).
-- If you find any issues, please report them on our [GitHub issues page](https://github.com/yeagerai/genlayer-testing-suite/issues).
+- If you find any issues, please report them on our [GitHub issues page](https://github.com/genlayerlabs/genlayer-testing-suite/issues).
 
 
 ### Sharing New Ideas and Use Cases
@@ -31,14 +31,14 @@ Have ideas for new features or use cases? We're eager to hear them! But first:
 
 #### 1. Set yourself up to start coding
 
-- **1.1. Pick an issue**: Select one from the project GitHub repository [issue list](https://github.com/yeagerai/genlayer-testing-suite/issues) and assign it to yourself.
+- **1.1. Pick an issue**: Select one from the project GitHub repository [issue list](https://github.com/genlayerlabs/genlayer-testing-suite/issues) and assign it to yourself.
 
 - **1.2. Create a branch**: create the branch that you will work on by using the link provided in the issue details page (right panel at the bottom - section "Development")
 
 - **1.3. Setup the package locally**: clone the repository
 
    ```sh
-   $ git clone https://github.com/yeagerai/genlayer-testing-suite.git
+   $ git clone https://github.com/genlayerlabs/genlayer-testing-suite.git
    ```
 
 - **1.4. Add the package to your project locally**: to add the package locally, use the command:
@@ -143,7 +143,7 @@ The project uses automated semantic versioning based on commit messages:
 
 ### Improving Documentation
 
-To contribute to our docs, visit our [Documentation Repository](https://github.com/yeagerai/genlayer-docs) to create new issues or contribute to existing issues.
+To contribute to our docs, visit our [Documentation Repository](https://github.com/genlayerlabs/genlayer-docs) to create new issues or contribute to existing issues.
 
 ## Community
 
