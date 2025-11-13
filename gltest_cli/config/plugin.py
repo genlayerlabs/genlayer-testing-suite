@@ -13,8 +13,6 @@ from gltest_cli.config.general import (
 from gltest_cli.config.types import PluginConfig
 from gltest_cli.config.pytest_context import _pytest_context
 from gltest_cli.config.constants import (
-    DEFAULT_WAIT_INTERVAL,
-    DEFAULT_WAIT_RETRIES,
     DEFAULT_LEADER_ONLY,
     CHAINS,
 )
@@ -39,14 +37,14 @@ def pytest_addoption(parser):
     group.addoption(
         "--default-wait-interval",
         action="store",
-        default=DEFAULT_WAIT_INTERVAL,
+        default=None,
         help="Default interval (ms) between transaction receipt checks",
     )
 
     group.addoption(
         "--default-wait-retries",
         action="store",
-        default=DEFAULT_WAIT_RETRIES,
+        default=None,
         help="Default number of retries for transaction receipt checks",
     )
 
@@ -122,8 +120,12 @@ def pytest_configure(config):
         plugin_config.artifacts_dir = (
             Path(artifacts_dir) if artifacts_dir is not None else None
         )
-        plugin_config.default_wait_interval = int(default_wait_interval)
-        plugin_config.default_wait_retries = int(default_wait_retries)
+        plugin_config.default_wait_interval = (
+            int(default_wait_interval) if default_wait_interval is not None else None
+        )
+        plugin_config.default_wait_retries = (
+            int(default_wait_retries) if default_wait_retries is not None else None
+        )
         plugin_config.rpc_url = rpc_url
         plugin_config.network_name = network
         plugin_config.leader_only = leader_only
