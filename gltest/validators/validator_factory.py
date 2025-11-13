@@ -1,4 +1,4 @@
-from gltest.types import MockedLLMResponse
+from gltest.types import MockedLLMResponse, MockedWebResponse
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, List
 from copy import deepcopy
@@ -16,6 +16,7 @@ class Validator:
     # Mock configuration
     mock_enabled: bool
     mock_llm_response: Optional[MockedLLMResponse]
+    mock_web_response: Optional[MockedWebResponse]
 
     def to_dict(self) -> Dict[str, Any]:
         normal_config = {
@@ -29,21 +30,27 @@ class Validator:
         if not self.mock_enabled:
             return normal_config
 
-        mock = self.mock_llm_response or {}
-        mock_config = {
-            "response": mock.get("nondet_exec_prompt", {}),
-            "eq_principle_prompt_comparative": mock.get(
+        # Mock llm response
+        mock_llm = self.mock_llm_response or {}
+        mock_llm_config = {
+            "response": mock_llm.get("nondet_exec_prompt", {}),
+            "eq_principle_prompt_comparative": mock_llm.get(
                 "eq_principle_prompt_comparative", {}
             ),
-            "eq_principle_prompt_non_comparative": mock.get(
+            "eq_principle_prompt_non_comparative": mock_llm.get(
                 "eq_principle_prompt_non_comparative", {}
             ),
+        }
+        mock_web = self.mock_web_response or {}
+        mock_web_config = {
+            "nondet_web_request": mock_web.get("nondet_web_request", {}),
         }
         return {
             **normal_config,
             "plugin_config": {
                 **self.plugin_config,
-                "mock_response": mock_config,
+                "mock_response": mock_llm_config,
+                "mock_web_response": mock_web_config,
             },
         }
 
@@ -60,6 +67,7 @@ class Validator:
             plugin_config=deepcopy(self.plugin_config),
             mock_enabled=self.mock_enabled,
             mock_llm_response=deepcopy(self.mock_llm_response),
+            mock_web_response=deepcopy(self.mock_web_response),
         )
 
 
@@ -85,6 +93,7 @@ class ValidatorFactory:
             plugin_config=deepcopy(plugin_config),
             mock_enabled=False,
             mock_llm_response=None,
+            mock_web_response=None,
         )
 
     def batch_create_validators(
@@ -109,7 +118,15 @@ class ValidatorFactory:
             for _ in range(count)
         ]
 
-    def create_mock_validator(self, mock_llm_response: MockedLLMResponse) -> Validator:
+    def create_mock_validator(
+        self,
+        mock_llm_response: Optional[MockedLLMResponse] = None,
+        mock_web_response: Optional[MockedWebResponse] = None,
+    ) -> Validator:
+        if mock_llm_response is None and mock_web_response is None:
+            raise ValueError(
+                "mock_llm_response and mock_web_response cannot both be None"
+            )
         return Validator(
             stake=8,
             provider="openai",
@@ -121,15 +138,24 @@ class ValidatorFactory:
                 "api_url": "https://api.openai.com",
             },
             mock_enabled=True,
-            mock_llm_response=deepcopy(mock_llm_response),
+            mock_llm_response=(
+                deepcopy(mock_llm_response) if mock_llm_response is not None else None
+            ),
+            mock_web_response=(
+                deepcopy(mock_web_response) if mock_web_response is not None else None
+            ),
         )
 
     def batch_create_mock_validators(
         self,
         count: int,
-        mock_llm_response: MockedLLMResponse,
+        mock_llm_response: Optional[MockedLLMResponse] = None,
+        mock_web_response: Optional[MockedWebResponse] = None,
     ) -> List[Validator]:
-        return [self.create_mock_validator(mock_llm_response) for _ in range(count)]
+        return [
+            self.create_mock_validator(mock_llm_response, mock_web_response)
+            for _ in range(count)
+        ]
 
 
 def get_validator_factory() -> ValidatorFactory:

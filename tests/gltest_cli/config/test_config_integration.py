@@ -432,3 +432,119 @@ environment: .env
         ]
     )
     assert result.ret == 0
+
+
+def test_wait_retries_network_config(pytester):
+    """Test default wait retries from network configuration."""
+    pytester.makepyfile(
+        """
+        from gltest_cli.config.general import get_general_config
+
+        def test_wait_retries():
+            general_config = get_general_config()
+            assert general_config.get_default_wait_retries() == 100
+            assert general_config.get_default_wait_interval() == 5000
+    """
+    )
+
+    config_content = """
+networks:
+  default: localnet
+  localnet:
+    url: "http://127.0.0.1:4000/api"
+    default_wait_retries: 100
+    default_wait_interval: 5000
+
+paths:
+  contracts: "contracts"
+
+environment: .env
+"""
+
+    pytester.makefile(".config.yaml", **{"gltest": config_content})
+
+    result = pytester.runpytest("-v")
+    result.stdout.fnmatch_lines(
+        [
+            "*::test_wait_retries PASSED*",
+        ]
+    )
+    assert result.ret == 0
+
+
+def test_wait_retries_cli_overrides_network(pytester):
+    """Test CLI wait retries override network configuration."""
+    pytester.makepyfile(
+        """
+        from gltest_cli.config.general import get_general_config
+
+        def test_wait_retries_override():
+            general_config = get_general_config()
+            # CLI values should override network config
+            assert general_config.get_default_wait_retries() == 20
+            assert general_config.get_default_wait_interval() == 2000
+    """
+    )
+
+    config_content = """
+networks:
+  default: localnet
+  localnet:
+    url: "http://127.0.0.1:4000/api"
+    default_wait_retries: 100
+    default_wait_interval: 5000
+
+paths:
+  contracts: "contracts"
+
+environment: .env
+"""
+
+    pytester.makefile(".config.yaml", **{"gltest": config_content})
+
+    result = pytester.runpytest(
+        "--default-wait-retries=20", "--default-wait-interval=2000", "-v"
+    )
+    result.stdout.fnmatch_lines(
+        [
+            "*::test_wait_retries_override PASSED*",
+        ]
+    )
+    assert result.ret == 0
+
+
+def test_wait_retries_defaults_when_not_set(pytester):
+    """Test wait retries fall back to defaults when not set in network config."""
+    pytester.makepyfile(
+        """
+        from gltest_cli.config.general import get_general_config
+
+        def test_wait_retries_defaults():
+            general_config = get_general_config()
+            # Should use system defaults (50 retries, 3000ms interval)
+            assert general_config.get_default_wait_retries() == 50
+            assert general_config.get_default_wait_interval() == 3000
+    """
+    )
+
+    config_content = """
+networks:
+  default: localnet
+  localnet:
+    url: "http://127.0.0.1:4000/api"
+
+paths:
+  contracts: "contracts"
+
+environment: .env
+"""
+
+    pytester.makefile(".config.yaml", **{"gltest": config_content})
+
+    result = pytester.runpytest("-v")
+    result.stdout.fnmatch_lines(
+        [
+            "*::test_wait_retries_defaults PASSED*",
+        ]
+    )
+    assert result.ret == 0
