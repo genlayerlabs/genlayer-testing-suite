@@ -599,6 +599,205 @@ The `.analyze()` method helps you:
 - Benchmark performance across multiple runs
 
 
+### Mock Web Responses
+
+The Mock Web Response system allows you to simulate HTTP responses for web requests made by intelligent contracts using GenLayer's web methods (`gl.nondet.web.get()`, `gl.nondet.web.post()`, etc.). This feature enables deterministic testing of contracts that interact with external web services without making actual HTTP calls.
+
+#### Basic Example
+
+Here's a simple example of mocking a web API response:
+
+```python
+from gltest import get_contract_factory, get_validator_factory
+from gltest.types import MockedWebResponse
+import json
+
+def test_simple_web_mock():
+    # Define mock web responses
+    mock_web_response: MockedWebResponse = {
+        "nondet_web_request": {
+            "https://api.example.com/price": {
+                "method": "GET",
+                "status": 200,
+                "body": json.dumps({"price": 100.50})
+            }
+        }
+    }
+    
+    # Create validators with mock web responses
+    validator_factory = get_validator_factory()
+    validators = validator_factory.batch_create_mock_validators(
+        count=5,
+        mock_web_response=mock_web_response
+    )
+    
+    # Use validators in transaction context
+    transaction_context = {"validators": [v.to_dict() for v in validators]}
+    
+    # Deploy and test contract
+    factory = get_contract_factory("PriceOracle")
+    contract = factory.deploy(transaction_context=transaction_context)
+    
+    # Contract's web requests will receive the mocked response
+    result = contract.update_price().transact(transaction_context=transaction_context)
+```
+
+#### Supported HTTP Methods
+
+Mock web responses support all HTTP methods including GET, POST, PUT, DELETE, PATCH, etc.:
+
+```python
+mock_web_response: MockedWebResponse = {
+    "nondet_web_request": {
+        # GET request
+        "https://api.example.com/users/123": {
+            "method": "GET",
+            "status": 200,
+            "body": '{"id": 123, "name": "Alice"}'
+        },
+        # POST request
+        "https://api.example.com/users": {
+            "method": "POST",
+            "status": 201,
+            "body": '{"id": 124, "name": "Bob", "created": true}'
+        },
+        # DELETE request
+        "https://api.example.com/users/123": {
+            "method": "DELETE",
+            "status": 204,
+            "body": ""
+        },
+        # PUT request
+        "https://api.example.com/users/123": {
+            "method": "PUT",
+            "status": 200,
+            "body": '{"id": 123, "name": "Alice Updated"}'
+        },
+        # Error response
+        "https://api.example.com/error": {
+            "method": "GET",
+            "status": 500,
+            "body": "Internal Server Error"
+        }
+    }
+}
+```
+
+#### How It Works
+
+When a contract calls any web method (`gl.nondet.web.get()`, `gl.nondet.web.post()`, etc.):
+1. The mock system checks if the URL exists in the mock configuration
+2. If found, it returns the mocked response with the specified status and body
+3. If not found, the actual web request would be made (or fail if network access is disabled)
+
+#### Complete Example: Twitter/X Username Storage
+
+Here's a real-world example showing how to mock Twitter/X API responses:
+
+```python
+# test_x_username_storage.py
+from gltest import get_contract_factory, get_validator_factory
+from gltest.assertions import tx_execution_succeeded
+from gltest.types import MockedWebResponse
+import json
+import urllib.parse
+
+def test_x_username_storage():
+    # Helper to build URL with query parameters
+    def get_username_url(username: str) -> str:
+        params = {"user.fields": "public_metrics,verified"}
+        return f"https://domain.com/api/twitter/users/by/username/{username}?{urllib.parse.urlencode(params)}"
+    
+    # Define mock responses for different usernames
+    mock_web_response: MockedWebResponse = {
+        "nondet_web_request": {
+            get_username_url("user_a"): {
+                "method": "GET",
+                "status": 200,
+                "body": json.dumps({"username": "user_a", "verified": True})
+            },
+            get_username_url("user_b"): {
+                "method": "GET",
+                "status": 200,
+                "body": json.dumps({"username": "user_b", "verified": False})
+            }
+        }
+    }
+    
+    # Create validators with mock web responses
+    validator_factory = get_validator_factory()
+    validators = validator_factory.batch_create_mock_validators(
+        count=5,
+        mock_web_response=mock_web_response
+    )
+    transaction_context = {"validators": [v.to_dict() for v in validators]}
+    
+    # Deploy and test contract
+    factory = get_contract_factory("XUsernameStorage")
+    contract = factory.deploy(transaction_context=transaction_context)
+    
+    # Test updating username - will use mocked response
+    tx_receipt = contract.update_username(args=["user_a"]).transact(
+        transaction_context=transaction_context
+    )
+    assert tx_execution_succeeded(tx_receipt)
+    
+    # Verify the username was stored
+    username = contract.get_username().call(transaction_context=transaction_context)
+    assert username == "user_a"
+```
+
+#### Combining Mock LLM and Web Responses
+
+You can combine both mock LLM responses and mock web responses in the same test:
+
+```python
+def test_combined_mocks():
+    # Define both mock types
+    mock_llm_response = {
+        "eq_principle_prompt_comparative": {
+            "values match": True
+        }
+    }
+    
+    mock_web_response: MockedWebResponse = {
+        "nondet_web_request": {
+            "https://api.example.com/data": {
+                "method": "GET",
+                "status": 200,
+                "body": '{"value": 42}'
+            }
+        }
+    }
+    
+    # Create validators with both mock types
+    validator_factory = get_validator_factory()
+    validators = validator_factory.batch_create_mock_validators(
+        count=5,
+        mock_llm_response=mock_llm_response,
+        mock_web_response=mock_web_response
+    )
+    
+    # Use in your tests...
+```
+
+#### Best Practices
+
+1. **URL Matching**: URLs must match exactly, including query parameters
+2. **Response Body**: Always provide the body as a string (use `json.dumps()` for JSON data)
+3. **Status Codes**: Use realistic HTTP status codes (200, 404, 500, etc.)
+4. **Method Matching**: Specify the correct HTTP method that your contract uses
+5. **Error Testing**: Mock error responses to test error handling paths
+6. **Deterministic Tests**: Mock web responses ensure tests don't depend on external services
+
+#### Notes
+
+- Mock web responses are only available when using mock validators
+- URL matching is exact - the full URL including query parameters must match
+- The method field should match the HTTP method used by the contract
+- Useful for testing contracts that interact with external APIs without network dependencies
+- All standard HTTP methods are supported (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
+
 ### Custom Transaction Context
 
 The GenLayer Testing Suite allows you to customize the transaction execution environment by providing a `transaction_context` parameter with custom validators and GenVM datetime settings.
