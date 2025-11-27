@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v0.11.0 (2025-11-27)
+
+### Documentation
+
+- Replace yeagerai references with genlayerlabs
+  ([#57](https://github.com/genlayerlabs/genlayer-testing-suite/pull/57),
+  [`c22b9bc`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/c22b9bc5cd028d12baa292aeb375a24e2dd1b095))
+
+- Update Discord invite links to current working link
+  ([#57](https://github.com/genlayerlabs/genlayer-testing-suite/pull/57),
+  [`c22b9bc`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/c22b9bc5cd028d12baa292aeb375a24e2dd1b095))
+
+### Features
+
+- Implement mock web request ([#53](https://github.com/genlayerlabs/genlayer-testing-suite/pull/53),
+  [`bdb3a04`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/bdb3a04b13b6b953de98f1329d04368ebfafb783))
+
+### Revert
+
+- Keep original Discord link in CONTRIBUTING.md
+  ([#57](https://github.com/genlayerlabs/genlayer-testing-suite/pull/57),
+  [`c22b9bc`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/c22b9bc5cd028d12baa292aeb375a24e2dd1b095))
+
+
 ## v0.10.1 (2025-11-12)
 
 ### Bug Fixes
