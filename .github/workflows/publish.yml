@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Setup | Get CI Bot Token
-        uses: tibdex/github-app-token@v1
+        uses: tibdex/github-app-token@v2
         id: ci_bot_token
         with:
           app_id: ${{ secrets.CI_BOT_APP_ID }}
