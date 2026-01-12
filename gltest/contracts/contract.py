@@ -139,6 +139,41 @@ def write_contract_wrapper(
                 pending_receipts = next_receipts
         return receipt
 
+    def raw_transact_method(
+        value: int = 0,
+        consensus_max_rotations: Optional[int] = None,
+        transaction_context: Optional[TransactionContext] = None,
+    ):
+        """
+        Send the transaction and return the transaction hash without waiting.
+        """
+        general_config = get_general_config()
+        leader_only = (
+            general_config.get_leader_only()
+            if general_config.check_studio_based_rpc()
+            else False
+        )
+        client = get_gl_client()
+        sim_config = None
+        if transaction_context:
+            try:
+                sim_config = SimConfig(**transaction_context)
+            except TypeError as e:
+                raise ValueError(
+                    f"Invalid transaction_context keys: {sorted(transaction_context.keys())}"
+                ) from e
+        tx_hash = client.write_contract(
+            address=self.address,
+            function_name=method_name,
+            account=self.account,
+            value=value,
+            consensus_max_rotations=consensus_max_rotations,
+            leader_only=leader_only,
+            args=args,
+            sim_config=sim_config,
+        )
+        return tx_hash
+
     def analyze_method(
         provider: str,
         model: str,
@@ -172,7 +207,7 @@ def write_contract_wrapper(
         method_name=method_name,
         read_only=False,
         transact_method=transact_method,
-        transact_tx_method=transact_tx_method,
+        raw_transact_method=raw_transact_method,
         analyze_method=analyze_method,
     )
 
