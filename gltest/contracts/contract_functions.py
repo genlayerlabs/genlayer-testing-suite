@@ -10,6 +10,7 @@ class ContractFunction:
     call_method: Optional[Callable] = None
     analyze_method: Optional[Callable] = None
     transact_method: Optional[Callable] = None
+    transact_tx_method: Optional[Callable] = None
 
     def call(
         self,
@@ -32,6 +33,7 @@ class ContractFunction:
         wait_retries: Optional[int] = None,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_triggered_transactions_depth: int = 3,
         transaction_context: Optional[TransactionContext] = None,
     ):
         if self.read_only:
@@ -44,6 +46,25 @@ class ContractFunction:
             wait_retries=wait_retries,
             wait_triggered_transactions=wait_triggered_transactions,
             wait_triggered_transactions_status=wait_triggered_transactions_status,
+            wait_triggered_transactions_depth=wait_triggered_transactions_depth,
+            transaction_context=transaction_context,
+        )
+    
+    def transact_tx(
+        self,
+        value: int = 0,
+        consensus_max_rotations: Optional[int] = None,
+        wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_interval: Optional[int] = None,
+        wait_retries: Optional[int] = None,
+        transaction_context: Optional[TransactionContext] = None,
+    ):
+        return self.transact_tx_method(
+            value=value,
+            consensus_max_rotations=consensus_max_rotations,
+            wait_transaction_status=wait_transaction_status,
+            wait_interval=wait_interval,
+            wait_retries=wait_retries,
             transaction_context=transaction_context,
         )
 
