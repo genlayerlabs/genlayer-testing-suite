@@ -49,7 +49,7 @@ class ContractFunction:
             wait_triggered_transactions_depth=wait_triggered_transactions_depth,
             transaction_context=transaction_context,
         )
-    
+
     def transact_tx(
         self,
         value: int = 0,
