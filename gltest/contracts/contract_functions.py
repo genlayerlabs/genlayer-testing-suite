@@ -56,6 +56,8 @@ class ContractFunction:
         consensus_max_rotations: Optional[int] = None,
         transaction_context: Optional[TransactionContext] = None,
     ):
+        if self.read_only:
+            raise ValueError("Cannot raw_transact read-only method")
         return self.raw_transact_method(
             value=value,
             consensus_max_rotations=consensus_max_rotations,

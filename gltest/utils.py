@@ -41,7 +41,7 @@ def wait_for_transaction(
     Returns:
         A TransactionTree with the root transaction and nested children for
         triggered transactions. Use .flatten() to get a flat list of receipts,
-        or .children to access direct children, or .get_all_children() for all descendants.
+        or .children to access direct children, or .get_children_receipts() for all descendants.
     """
     general_config = get_general_config()
     actual_wait_interval = (
