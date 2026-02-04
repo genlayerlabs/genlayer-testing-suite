@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.13.0 (2026-02-04)
+
+### Features
+
+- **direct**: Support RunNondet gl_call and fix web mock format
+  ([`3405b16`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3405b169081800c3de9112495f669e74a336b452))
+
+
 ## v0.12.0 (2026-02-04)
 
 ### Bug Fixes
