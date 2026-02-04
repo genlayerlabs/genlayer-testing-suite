@@ -1,0 +1,9 @@
+{
+  "skills": [
+    {
+      "name": "write-direct-tests",
+      "path": "skills/write-direct-tests.md",
+      "description": "Write fast direct mode tests for GenLayer intelligent contracts"
+    }
+  ]
+}
