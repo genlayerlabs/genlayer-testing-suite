@@ -122,6 +122,19 @@ def extract_runner(
 
     extract_base = CACHE_DIR / "extracted" / version / runner_type
 
+    # Fast path: if hash specified and already extracted, skip tarball entirely
+    if runner_hash and runner_hash.lower() != "latest":
+        extract_dir = extract_base / runner_hash
+        if extract_dir.exists():
+            return extract_dir
+
+    # Check if any version already extracted (for "latest" case)
+    if extract_base.exists():
+        existing = sorted(extract_base.iterdir(), reverse=True)
+        if existing and (not runner_hash or runner_hash.lower() == "latest"):
+            return existing[0]
+
+    # Need to open tarball - this is slow (~13s for xz)
     with tarfile.open(tarball_path, "r:xz") as outer_tar:
         prefix = f"runners/{runner_type}/"
         runner_tars = [
