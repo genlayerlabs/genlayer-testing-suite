@@ -2,6 +2,29 @@
 
 <!-- version list -->
 
+## v0.12.0 (2026-02-04)
+
+### Bug Fixes
+
+- Enable TreeMap tests by fixing address type handling
+  ([`3ca6f2c`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3ca6f2cfd49f6f53494cf620c819f5611426909a))
+
+### Features
+
+- Add native Python test runner for GenLayer contracts
+  ([`42f25bb`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/42f25bbb10c56022de4424df25798679c95da5bf))
+
+### Performance Improvements
+
+- Skip tarball parsing when SDK already extracted
+  ([`4635446`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/46354463159d13767b7faa9cab09276c01fcf278))
+
+### Refactoring
+
+- Rename native → direct for clarity
+  ([`6772215`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/6772215a8d3e2d41b4f8d25d187ce9e522a87919))
+
+
 ## v0.11.0 (2025-11-27)
 
 ### Documentation
