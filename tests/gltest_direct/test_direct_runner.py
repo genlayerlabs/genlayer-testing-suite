@@ -1,5 +1,5 @@
 """
-Integration tests for the native Python test runner.
+Integration tests for the direct Python test runner.
 
 Tests the full flow of:
 - VMContext activation
@@ -12,8 +12,8 @@ Tests the full flow of:
 import pytest
 from pathlib import Path
 
-from gltest.native import VMContext, deploy_contract, create_address
-from gltest.native.wasi_mock import ContractRollback, MockNotFoundError
+from gltest.direct import VMContext, deploy_contract, create_address
+from gltest.direct.wasi_mock import ContractRollback, MockNotFoundError
 
 
 # Path to example contracts

@@ -1,5 +1,5 @@
 """
-SDK version loader for native test runner.
+SDK version loader for direct test runner.
 
 Handles downloading and extracting the correct genlayer-py-std version
 based on contract header dependencies, similar to genvm-linter.
@@ -15,7 +15,7 @@ import urllib.request
 from pathlib import Path
 from typing import Optional, Dict, List
 
-CACHE_DIR = Path.home() / ".cache" / "gltest-native"
+CACHE_DIR = Path.home() / ".cache" / "gltest-direct"
 GITHUB_RELEASES_URL = "https://github.com/genlayerlabs/genvm/releases"
 
 RUNNER_TYPE = "py-genlayer"
@@ -49,7 +49,7 @@ def get_latest_version() -> str:
             f"{GITHUB_RELEASES_URL}/latest",
             method="HEAD",
         )
-        req.add_header("User-Agent", "gltest-native")
+        req.add_header("User-Agent", "gltest-direct")
         with urllib.request.urlopen(req, timeout=10) as resp:
             final_url = resp.url
             version = final_url.split("/")[-1]
@@ -85,7 +85,7 @@ def download_artifacts(version: str) -> Path:
     print(f"Downloading {url}...")
 
     req = urllib.request.Request(url)
-    req.add_header("User-Agent", "gltest-native")
+    req.add_header("User-Agent", "gltest-direct")
 
     with urllib.request.urlopen(req, timeout=300) as resp:
         total = int(resp.headers.get("Content-Length", 0))

@@ -5,7 +5,7 @@ Runs contracts directly in Python without WASM/simulator, providing
 Foundry-style cheatcodes and fast test execution.
 
 Usage:
-    from gltest.native import VMContext, deploy_contract
+    from gltest.direct import VMContext, deploy_contract
 
     def test_transfer():
         vm = VMContext()

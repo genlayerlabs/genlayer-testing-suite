@@ -1,5 +1,5 @@
 """
-Contract loader for native test runner.
+Contract loader for direct test runner.
 
 Handles:
 - SDK version setup based on contract headers

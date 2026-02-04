@@ -1,5 +1,5 @@
 """
-Type definitions for native test runner.
+Type definitions for direct test runner.
 
 Reuses MockedLLMResponse and MockedWebResponse from gltest.types.
 """

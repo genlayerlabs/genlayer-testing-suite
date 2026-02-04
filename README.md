@@ -289,6 +289,72 @@ The chain type determines various behaviors including RPC endpoints, consensus m
 - **Prompt Testing & Statistical Analysis** – Evaluate and statistically test prompts for AI-driven contract execution.
 - **Scalability to Security & Audit Tools** – Designed to extend into security testing and smart contract auditing.
 - **Custom Transaction Context** – Set custom validators with specific LLM providers and models, and configure GenVM datetime for deterministic testing scenarios.
+- **Direct Execution Mode** – Run contracts directly in Python for ultra-fast unit testing (~ms vs minutes).
+
+## ⚡ Direct vs Simulator Mode
+
+The testing suite provides two execution modes:
+
+| Mode | How it works | Speed | Use case |
+|------|--------------|-------|----------|
+| **Simulator** | Deploy to GenLayer simulator, interact via RPC | ~minutes | Integration tests, consensus validation |
+| **Direct** | Run Python code directly in-memory | ~milliseconds | Unit tests, rapid development |
+
+### Quick Start with Direct Mode
+
+```python
+def test_token_transfer(direct_vm, direct_deploy):
+    # Deploy contract directly in Python (no simulator)
+    token = direct_deploy("contracts/Token.py", initial_supply=1000)
+
+    # Create test addresses
+    from gltest.direct import create_address
+    alice = create_address("alice")
+    bob = create_address("bob")
+
+    # Set sender and interact
+    direct_vm.sender = alice
+    token.mint(alice, 500)
+    token.transfer(bob, 100)
+
+    assert token.balances[bob] == 100
+```
+
+### Available Fixtures
+
+| Fixture | Description |
+|---------|-------------|
+| `direct_vm` | VM context with cheatcodes |
+| `direct_deploy` | Deploy contracts directly |
+| `direct_alice`, `direct_bob`, `direct_charlie` | Test addresses |
+| `direct_owner` | Default sender address |
+| `direct_accounts` | List of 10 test addresses |
+
+### Cheatcodes
+
+```python
+# Change sender
+direct_vm.sender = alice
+
+# Prank (temporary sender change)
+with direct_vm.prank(bob):
+    contract.method()  # Called as bob
+
+# Snapshots
+snap_id = direct_vm.snapshot()
+contract.modify_state()
+direct_vm.revert(snap_id)  # State restored
+
+# Expect revert
+with direct_vm.expect_revert("Insufficient balance"):
+    contract.transfer(bob, 1000000)
+
+# Mock web/LLM (for nondet operations)
+direct_vm.mock_web(r"api\.example\.com", {"status": 200, "body": "{}"})
+direct_vm.mock_llm(r"analyze.*", "positive sentiment")
+```
+
+📖 **[Full Direct Mode Documentation](docs/direct-runner.md)**
 
 ## 📚 Examples
 

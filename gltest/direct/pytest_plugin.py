@@ -1,14 +1,14 @@
 """
-Pytest plugin for native GenLayer contract testing.
+Pytest plugin for direct GenLayer contract testing.
 
 Provides fixtures:
-- native_vm: VMContext for Foundry-style cheatcodes
-- native_deploy: Factory for deploying contracts
+- direct_vm: VMContext for Foundry-style cheatcodes
+- direct_deploy: Factory for deploying contracts
 
 Usage:
-    def test_transfer(native_vm, native_deploy):
-        token = native_deploy("contracts/Token.py")
-        native_vm.sender = alice
+    def test_transfer(direct_vm, direct_deploy):
+        token = direct_deploy("contracts/Token.py")
+        direct_vm.sender = alice
         token.transfer(bob, 100)
         assert token.balances[bob] == 100
 """
@@ -24,7 +24,7 @@ from .loader import deploy_contract, create_address, create_test_addresses
 
 
 @pytest.fixture
-def native_vm() -> VMContext:
+def direct_vm() -> VMContext:
     """
     Provides a fresh VMContext for each test.
     The VM is automatically activated for the test scope.
@@ -37,13 +37,13 @@ def native_vm() -> VMContext:
 
 
 @pytest.fixture
-def native_deploy(native_vm: VMContext) -> Callable[..., Any]:
+def direct_deploy(direct_vm: VMContext) -> Callable[..., Any]:
     """
-    Factory fixture for deploying contracts natively.
+    Factory fixture for deploying contracts directly.
 
     Usage:
-        def test_example(native_deploy):
-            token = native_deploy("path/to/Token.py", initial_supply=1000)
+        def test_example(direct_deploy):
+            token = direct_deploy("path/to/Token.py", initial_supply=1000)
     """
     def _deploy(
         contract_path: str,
@@ -67,51 +67,51 @@ def native_deploy(native_vm: VMContext) -> Callable[..., Any]:
                         path = candidate.resolve()
                         break
 
-        return deploy_contract(path, native_vm, *args, sdk_version=sdk_version, **kwargs)
+        return deploy_contract(path, direct_vm, *args, sdk_version=sdk_version, **kwargs)
 
     return _deploy
 
 
 @pytest.fixture
-def native_alice() -> Any:
+def direct_alice() -> Any:
     """Test address: Alice."""
     return create_address("alice")
 
 
 @pytest.fixture
-def native_bob() -> Any:
+def direct_bob() -> Any:
     """Test address: Bob."""
     return create_address("bob")
 
 
 @pytest.fixture
-def native_charlie() -> Any:
+def direct_charlie() -> Any:
     """Test address: Charlie."""
     return create_address("charlie")
 
 
 @pytest.fixture
-def native_owner() -> Any:
+def direct_owner() -> Any:
     """Test address: Owner (default sender)."""
     return create_address("default_sender")
 
 
 @pytest.fixture
-def native_accounts() -> list:
+def direct_accounts() -> list:
     """List of 10 test addresses."""
     return create_test_addresses(10)
 
 
 def pytest_configure(config):
-    """Register markers for native tests."""
+    """Register markers for direct tests."""
     config.addinivalue_line(
         "markers",
-        "native: mark test as using native contract execution (no simulator)",
+        "direct: mark test as using direct contract execution (no simulator)",
     )
 
 
 def pytest_collection_modifyitems(config, items):
-    """Auto-mark tests using native fixtures."""
+    """Auto-mark tests using direct fixtures."""
     for item in items:
-        if 'native_vm' in item.fixturenames or 'native_deploy' in item.fixturenames:
-            item.add_marker(pytest.mark.native)
+        if 'direct_vm' in item.fixturenames or 'direct_deploy' in item.fixturenames:
+            item.add_marker(pytest.mark.direct)

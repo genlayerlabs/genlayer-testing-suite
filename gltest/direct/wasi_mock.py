@@ -141,7 +141,7 @@ def _handle_gl_call(vm: "VMContext", request: Any) -> Any:
 
     if "Sandbox" in request:
         warnings.warn(
-            "gl.sandbox is not fully isolated in native test mode.",
+            "gl.sandbox is not fully isolated in direct test mode.",
             RuntimeWarning,
             stacklevel=3,
         )
