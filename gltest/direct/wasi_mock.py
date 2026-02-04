@@ -102,12 +102,19 @@ def gl_call(data: bytes, /) -> int:
     if response is None:
         return 2**32 - 1
 
-    try:
-        from genlayer.py import calldata
-        encoded = calldata.encode(response)
-    except Exception as e:
-        vm._trace(f"gl_call encode error: {e}")
-        return 2**32 - 1
+    # If response is already bytes (from RunNondet), use directly
+    # RunNondet handles its own ResultCode prefix for sub-VM result format
+    if isinstance(response, bytes):
+        encoded = response
+    else:
+        # Regular responses (web, llm, etc) are just calldata-encoded
+        # The SDK's _decode_nondet expects plain {"ok": ...} format
+        try:
+            from genlayer.py import calldata
+            encoded = calldata.encode(response)
+        except Exception as e:
+            vm._trace(f"gl_call encode error: {e}")
+            return 2**32 - 1
 
     fd_counter = getattr(_local, 'fd_counter', 100)
     fd = fd_counter
@@ -148,7 +155,7 @@ def _handle_gl_call(vm: "VMContext", request: Any) -> Any:
         return {"ok": None}
 
     if "RunNondet" in request:
-        return {"ok": None}
+        return _handle_run_nondet(vm, request["RunNondet"])
 
     if "GetWebsite" in request or "WebRequest" in request:
         web_data = request.get("GetWebsite") or request.get("WebRequest", {})
@@ -167,9 +174,13 @@ def _handle_web_request(vm: "VMContext", data: Any) -> Any:
     url = data.get("url", "")
     method = data.get("method", "GET")
 
-    response = vm._match_web_mock(url, method)
-    if response:
-        return {"ok": response}
+    mock_data = vm._match_web_mock(url, method)
+    if mock_data:
+        # SDK expects {"ok": {"response": {...}}} format
+        # Mock stores {"response": {...}, "method": "..."}
+        if "response" in mock_data:
+            return {"ok": {"response": mock_data["response"]}}
+        return {"ok": mock_data}
 
     raise MockNotFoundError(f"No web mock for {method} {url}")
 
@@ -183,6 +194,34 @@ def _handle_llm_request(vm: "VMContext", data: Any) -> Any:
         return {"ok": response}
 
     raise MockNotFoundError(f"No LLM mock for prompt: {prompt[:100]}...")
+
+
+def _handle_run_nondet(vm: "VMContext", data: Any) -> Any:
+    """Handle RunNondet request by executing the leader function directly.
+
+    In direct mode, we skip the leader/validator consensus and just run
+    the leader function, returning its result.
+    """
+    import cloudpickle
+    from genlayer.py import calldata
+
+    data_leader = data.get("data_leader")
+    if not data_leader:
+        raise ValueError("RunNondet missing data_leader")
+
+    # Unpickle and execute the leader function
+    # The lambda expects a stage_data argument, but in leader mode it's None
+    leader_fn = cloudpickle.loads(data_leader)
+
+    try:
+        result = leader_fn(None)
+        # Wrap result in Return format (code 0 + calldata)
+        encoded = bytes([0]) + calldata.encode(result)
+        return encoded
+    except Exception as e:
+        # Wrap error in UserError format (code 1 + message)
+        error_msg = str(e)
+        return bytes([1]) + error_msg.encode('utf-8')
 
 
 def patched_fdopen(fd_arg: int, mode: str = "r", *args, **kwargs):
