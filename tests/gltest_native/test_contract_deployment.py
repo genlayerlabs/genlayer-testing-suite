@@ -28,22 +28,26 @@ class TestContractDeployment:
         storage.update_storage("new value")
         assert storage.get_storage() == "new value"
 
-    @pytest.mark.skip(reason="TreeMap generic resolution issue in SDK - not a native runner bug")
-    def test_deploy_user_storage_with_sender(self, native_vm, native_deploy, native_alice, native_bob):
+    def test_deploy_user_storage_with_sender(self, native_vm, native_deploy):
         """UserStorage respects gl.message.sender_address."""
         user_storage = native_deploy(str(CONTRACTS_DIR / "user_storage.py"))
 
+        # Re-create addresses after deploy (genlayer now loaded, returns Address objects)
+        from gltest.native.loader import create_address
+        alice = create_address("alice")
+        bob = create_address("bob")
+
         # Alice stores her data
-        native_vm.sender = native_alice
+        native_vm.sender = alice
         user_storage.update_storage("alice's data")
 
         # Bob stores his data
-        native_vm.sender = native_bob
+        native_vm.sender = bob
         user_storage.update_storage("bob's data")
 
         # Verify data is separate per user
-        alice_data = user_storage.get_account_storage(native_alice.as_hex)
-        bob_data = user_storage.get_account_storage(native_bob.as_hex)
+        alice_data = user_storage.get_account_storage(alice.as_hex)
+        bob_data = user_storage.get_account_storage(bob.as_hex)
 
         assert alice_data == "alice's data"
         assert bob_data == "bob's data"
@@ -64,24 +68,28 @@ class TestContractDeployment:
         # which happens automatically on the next get_storage() call
         assert storage.get_storage() == "before"
 
-    @pytest.mark.skip(reason="TreeMap generic resolution issue in SDK - not a native runner bug")
-    def test_prank_with_contract(self, native_vm, native_deploy, native_alice, native_bob):
+    def test_prank_with_contract(self, native_vm, native_deploy):
         """Prank changes sender during contract calls."""
         user_storage = native_deploy(str(CONTRACTS_DIR / "user_storage.py"))
 
-        native_vm.sender = native_alice
+        # Re-create addresses after deploy (genlayer now loaded)
+        from gltest.native.loader import create_address
+        alice = create_address("alice")
+        bob = create_address("bob")
+
+        native_vm.sender = alice
 
         # Prank as Bob
-        with native_vm.prank(native_bob):
+        with native_vm.prank(bob):
             user_storage.update_storage("pranked as bob")
 
         # Verify it was stored under Bob's address
-        bob_data = user_storage.get_account_storage(native_bob.as_hex)
+        bob_data = user_storage.get_account_storage(bob.as_hex)
         assert bob_data == "pranked as bob"
 
         # Alice's storage still empty
         with pytest.raises(Exception):
-            user_storage.get_account_storage(native_alice.as_hex)
+            user_storage.get_account_storage(alice.as_hex)
 
 
 class TestAddressFixtures:
