@@ -1,0 +1,432 @@
+"""
+VMContext - Foundry-style test VM for GenLayer contracts.
+
+Provides cheatcodes for:
+- Setting sender/value (vm.sender, vm.value)
+- Snapshots and reverts (vm.snapshot(), vm.revert())
+- Mocking nondet operations (vm.mock_web(), vm.mock_llm())
+- Expecting reverts (vm.expect_revert())
+- Pranking (vm.prank(), vm.startPrank(), vm.stopPrank())
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+import hashlib
+from contextlib import contextmanager, ExitStack
+from dataclasses import dataclass, field
+from typing import Any, Optional, Pattern, List, Tuple, Dict
+from unittest.mock import patch
+
+from ..types import MockedWebResponseData
+
+
+@dataclass
+class Snapshot:
+    """Storage snapshot for revert functionality."""
+    id: int
+    storage_data: Dict[bytes, bytes]
+    balances: Dict[bytes, int]
+
+
+class InmemManager:
+    """
+    In-memory storage manager compatible with genlayer.py.storage.
+    """
+
+    def __init__(self):
+        self._parts: Dict[bytes, Tuple["Slot", bytearray]] = {}
+
+    def get_store_slot(self, slot_id: bytes) -> "Slot":
+        res = self._parts.get(slot_id)
+        if res is None:
+            slot = Slot(slot_id, self)
+            self._parts[slot_id] = (slot, bytearray())
+            return slot
+        return res[0]
+
+    def do_read(self, slot_id: bytes, off: int, length: int) -> bytes:
+        res = self._parts.get(slot_id)
+        if res is None:
+            slot = Slot(slot_id, self)
+            mem = bytearray()
+            self._parts[slot_id] = (slot, mem)
+        else:
+            _, mem = res
+
+        needed = off + length
+        if len(mem) < needed:
+            mem.extend(b'\x00' * (needed - len(mem)))
+
+        return bytes(memoryview(mem)[off:off + length])
+
+    def do_write(self, slot_id: bytes, off: int, what: bytes) -> None:
+        res = self._parts.get(slot_id)
+        if res is None:
+            slot = Slot(slot_id, self)
+            mem = bytearray()
+            self._parts[slot_id] = (slot, mem)
+        else:
+            _, mem = res
+
+        what_view = memoryview(what)
+        length = len(what_view)
+
+        needed = off + length
+        if len(mem) < needed:
+            mem.extend(b'\x00' * (needed - len(mem)))
+
+        memoryview(mem)[off:off + length] = what_view
+
+    def snapshot(self) -> Dict[bytes, bytes]:
+        return {
+            slot_id: bytes(mem)
+            for slot_id, (_, mem) in self._parts.items()
+        }
+
+    def restore(self, data: Dict[bytes, bytes]) -> None:
+        self._parts.clear()
+        for slot_id, mem_data in data.items():
+            slot = Slot(slot_id, self)
+            self._parts[slot_id] = (slot, bytearray(mem_data))
+
+
+class Slot:
+    """Storage slot compatible with genlayer.py.storage."""
+
+    __slots__ = ('id', 'manager', '_indir_cache')
+
+    def __init__(self, slot_id: bytes, manager: InmemManager):
+        self.id = slot_id
+        self.manager = manager
+        self._indir_cache = hashlib.sha3_256(slot_id)
+
+    def read(self, off: int, length: int) -> bytes:
+        return self.manager.do_read(self.id, off, length)
+
+    def write(self, off: int, what: bytes) -> None:
+        self.manager.do_write(self.id, off, what)
+
+    def indirect(self, off: int) -> "Slot":
+        hasher = self._indir_cache.copy()
+        hasher.update(off.to_bytes(4, 'little'))
+        return self.manager.get_store_slot(hasher.digest())
+
+
+ROOT_SLOT_ID = b'\x00' * 32
+
+
+@dataclass
+class VMContext:
+    """
+    Test VM context providing Foundry-style cheatcodes.
+
+    Usage:
+        vm = VMContext()
+        vm.sender = Address("0x" + "a" * 40)
+        vm.mock_web("api.example.com", {"status": 200, "body": "{}"})
+
+        with vm.activate():
+            contract = deploy_contract("Token.py", vm, owner)
+            contract.transfer(bob, 100)
+    """
+
+    # Message context
+    _sender: Optional[Any] = None
+    _origin: Optional[Any] = None
+    _contract_address: Optional[Any] = None
+    _value: int = 0
+    _chain_id: int = 1
+    _datetime: str = "2024-01-01T00:00:00Z"
+
+    # Storage
+    _storage: InmemManager = field(default_factory=InmemManager)
+    _balances: Dict[bytes, int] = field(default_factory=dict)
+
+    # Snapshots
+    _snapshots: Dict[int, Snapshot] = field(default_factory=dict)
+    _snapshot_counter: int = 0
+
+    # Mocks
+    _web_mocks: List[Tuple[Pattern, MockedWebResponseData]] = field(default_factory=list)
+    _llm_mocks: List[Tuple[Pattern, str]] = field(default_factory=list)
+
+    # Expect revert
+    _expect_revert: Optional[str] = None
+    _expect_revert_any: bool = False
+
+    # Prank stack
+    _prank_stack: List[Any] = field(default_factory=list)
+
+    # Return value capture
+    _return_value: Any = None
+    _returned: bool = False
+
+    # Debug tracing
+    _traces: List[str] = field(default_factory=list)
+    _trace_enabled: bool = True
+
+    @property
+    def sender(self) -> Any:
+        if self._prank_stack:
+            return self._prank_stack[-1]
+        return self._sender
+
+    @sender.setter
+    def sender(self, addr: Any) -> None:
+        self._sender = addr
+        self._refresh_gl_message()
+
+    @property
+    def value(self) -> int:
+        return self._value
+
+    @value.setter
+    def value(self, val: int) -> None:
+        self._value = val
+
+    @property
+    def origin(self) -> Any:
+        return self._origin or self._sender
+
+    @origin.setter
+    def origin(self, addr: Any) -> None:
+        self._origin = addr
+
+    def warp(self, timestamp: str) -> None:
+        """Set block timestamp (ISO format)."""
+        self._datetime = timestamp
+
+    def deal(self, address: Any, amount: int) -> None:
+        """Set balance for an address."""
+        addr_bytes = self._to_bytes(address)
+        self._balances[addr_bytes] = amount
+
+    def snapshot(self) -> int:
+        """Take a snapshot of current state. Returns snapshot ID."""
+        snap_id = self._snapshot_counter
+        self._snapshot_counter += 1
+
+        self._snapshots[snap_id] = Snapshot(
+            id=snap_id,
+            storage_data=self._storage.snapshot(),
+            balances=dict(self._balances),
+        )
+
+        return snap_id
+
+    def revert(self, snapshot_id: int) -> None:
+        """Revert to a previous snapshot."""
+        if snapshot_id not in self._snapshots:
+            raise ValueError(f"Snapshot {snapshot_id} not found")
+
+        snap = self._snapshots[snapshot_id]
+        self._storage.restore(snap.storage_data)
+        self._balances = dict(snap.balances)
+
+        self._snapshots = {
+            k: v for k, v in self._snapshots.items()
+            if k <= snapshot_id
+        }
+
+    def mock_web(
+        self,
+        url_pattern: str,
+        response: MockedWebResponseData,
+    ) -> None:
+        """Mock web requests matching URL pattern."""
+        pattern = re.compile(url_pattern)
+        self._web_mocks.append((pattern, response))
+
+    def mock_llm(self, prompt_pattern: str, response: str) -> None:
+        """Mock LLM prompts matching pattern."""
+        pattern = re.compile(prompt_pattern)
+        self._llm_mocks.append((pattern, response))
+
+    def clear_mocks(self) -> None:
+        """Clear all registered mocks."""
+        self._web_mocks.clear()
+        self._llm_mocks.clear()
+
+    @contextmanager
+    def expect_revert(self, message: Optional[str] = None):
+        """Context manager expecting the next call to revert."""
+        self._expect_revert = message
+        self._expect_revert_any = message is None
+
+        try:
+            yield
+            raise AssertionError(
+                f"Expected revert{f' with message: {message}' if message else ''}, but call succeeded"
+            )
+        except Exception as e:
+            from .wasi_mock import ContractRollback
+
+            if isinstance(e, ContractRollback):
+                if message is not None and message not in e.message:
+                    raise AssertionError(
+                        f"Expected revert with message '{message}', got '{e.message}'"
+                    )
+            elif isinstance(e, AssertionError):
+                raise
+            else:
+                if message is not None and message not in str(e):
+                    raise
+        finally:
+            self._expect_revert = None
+            self._expect_revert_any = False
+
+    @contextmanager
+    def prank(self, address: Any):
+        """Context manager to temporarily change sender."""
+        self._prank_stack.append(address)
+        self._refresh_gl_message()
+        try:
+            yield
+        finally:
+            self._prank_stack.pop()
+            self._refresh_gl_message()
+
+    def startPrank(self, address: Any) -> None:
+        """Start pranking as address (persists until stopPrank)."""
+        self._prank_stack.append(address)
+        self._refresh_gl_message()
+
+    def stopPrank(self) -> None:
+        """Stop the current prank."""
+        if self._prank_stack:
+            self._prank_stack.pop()
+            self._refresh_gl_message()
+        else:
+            raise RuntimeError("No active prank to stop")
+
+    @contextmanager
+    def activate(self):
+        """
+        Activate this VM context for contract execution.
+        Uses proper cleanup via ExitStack for resource management.
+        """
+        from . import wasi_mock
+
+        with ExitStack() as stack:
+            wasi_mock.set_vm(self)
+            sys.modules['_genlayer_wasi'] = wasi_mock
+
+            stack.enter_context(
+                patch('os.fdopen', wasi_mock.patched_fdopen)
+            )
+            stack.callback(self._cleanup_after_deactivate)
+
+            try:
+                yield self
+            finally:
+                if '_genlayer_wasi' in sys.modules:
+                    del sys.modules['_genlayer_wasi']
+                wasi_mock.clear_vm()
+
+    def _cleanup_after_deactivate(self) -> None:
+        """Clean up resources after VM deactivation."""
+        modules_to_remove = [
+            key for key in sys.modules.keys()
+            if key.startswith('genlayer') or key.startswith('_contract_')
+        ]
+        for mod in modules_to_remove:
+            del sys.modules[mod]
+
+    def _match_web_mock(self, url: str, method: str = "GET") -> Optional[MockedWebResponseData]:
+        for pattern, response in self._web_mocks:
+            if pattern.search(url):
+                if response.get("method", "GET") == method:
+                    return response
+        return None
+
+    def _match_llm_mock(self, prompt: str) -> Optional[str]:
+        for pattern, response in self._llm_mocks:
+            if pattern.search(prompt):
+                return response
+        return None
+
+    def _trace(self, message: str) -> None:
+        if self._trace_enabled:
+            self._traces.append(message)
+
+    def _to_bytes(self, addr: Any) -> bytes:
+        if isinstance(addr, bytes):
+            return addr
+        if hasattr(addr, 'as_bytes'):
+            return addr.as_bytes
+        if hasattr(addr, '__bytes__'):
+            return bytes(addr)
+        if isinstance(addr, str):
+            if addr.startswith("0x"):
+                return bytes.fromhex(addr[2:])
+            return bytes.fromhex(addr)
+        raise ValueError(f"Cannot convert {type(addr)} to bytes")
+
+    def _refresh_gl_message(self) -> None:
+        """
+        Refresh gl.message and gl.message_raw to reflect current sender.
+
+        GenLayer SDK caches gl.message at import time. This method updates
+        the cached values so contracts see the current vm.sender.
+
+        Only updates if genlayer.gl is already imported - we must not trigger
+        a fresh import as that would read from stdin before message is injected.
+        """
+        # Only proceed if genlayer.gl is already loaded
+        if 'genlayer.gl' not in sys.modules:
+            return
+
+        try:
+            gl = sys.modules['genlayer.gl']
+            from genlayer.py.types import Address, u256
+
+            # Convert sender to Address if needed
+            sender = self.sender
+            if sender is not None and not isinstance(sender, Address):
+                if isinstance(sender, bytes):
+                    sender = Address(sender)
+                elif hasattr(sender, 'as_bytes'):
+                    sender = Address(sender.as_bytes)
+
+            origin = self.origin
+            if origin is not None and not isinstance(origin, Address):
+                if isinstance(origin, bytes):
+                    origin = Address(origin)
+                elif hasattr(origin, 'as_bytes'):
+                    origin = Address(origin.as_bytes)
+
+            # Update message_raw dict (mutable)
+            if hasattr(gl, 'message_raw') and gl.message_raw is not None:
+                gl.message_raw['sender_address'] = sender
+                gl.message_raw['origin_address'] = origin
+
+            # Replace gl.message with new NamedTuple (immutable, must recreate)
+            if hasattr(gl, 'message') and gl.message is not None:
+                gl.message = gl.MessageType(
+                    contract_address=gl.message.contract_address,
+                    sender_address=sender,
+                    origin_address=origin,
+                    value=u256(self._value),
+                    chain_id=u256(self._chain_id),
+                )
+        except ImportError:
+            # genlayer not loaded yet, nothing to update
+            pass
+
+    def get_message_raw(self) -> Dict[str, Any]:
+        """Get MessageRawType dict for stdin injection."""
+        return {
+            "contract_address": self._contract_address,
+            "sender_address": self.sender,
+            "origin_address": self.origin,
+            "stack": [],
+            "value": self._value,
+            "datetime": self._datetime,
+            "is_init": False,
+            "chain_id": self._chain_id,
+            "entry_kind": 0,
+            "entry_data": b"",
+            "entry_stage_data": None,
+        }

@@ -35,6 +35,7 @@ exclude = ["tests*", "scripts*"]
 
 [project.entry-points.pytest11]
 gltest = "gltest_cli.config.plugin"
+gltest_native = "gltest.native.pytest_plugin"
 
 [project.scripts]
 gltest = "gltest_cli.main:main"
