@@ -170,27 +170,50 @@ def _handle_gl_call(vm: "VMContext", request: Any) -> Any:
 
 
 def _handle_web_request(vm: "VMContext", data: Any) -> Any:
-    """Handle web request using mocks."""
+    """Handle web request using mocks.
+
+    Accepts two mock formats:
+    1. Full: {"method": "GET", "response": {"status": 200, "headers": {}, "body": b"..."}}
+    2. Flat: {"method": "GET", "status": 200, "body": "..."}  (auto-adapted)
+    """
     url = data.get("url", "")
     method = data.get("method", "GET")
 
     mock_data = vm._match_web_mock(url, method)
     if mock_data:
-        # SDK expects {"ok": {"response": {...}}} format
-        # Mock stores {"response": {...}, "method": "..."}
+        # Full format: already has "response" wrapper
         if "response" in mock_data:
             return {"ok": {"response": mock_data["response"]}}
-        return {"ok": mock_data}
+        # Flat format: auto-adapt {status, body} → SDK response format
+        body = mock_data.get("body", "")
+        if isinstance(body, str):
+            body = body.encode("utf-8")
+        return {"ok": {"response": {
+            "status": mock_data.get("status", 200),
+            "headers": {},
+            "body": body,
+        }}}
 
     raise MockNotFoundError(f"No web mock for {method} {url}")
 
 
 def _handle_llm_request(vm: "VMContext", data: Any) -> Any:
-    """Handle LLM prompt request using mocks."""
+    """Handle LLM prompt request using mocks.
+
+    Auto-parses JSON strings so exec_prompt(response_format='json') gets a dict.
+    """
+    import json as _json
+
     prompt = data.get("prompt", "")
 
     response = vm._match_llm_mock(prompt)
     if response:
+        # Auto-parse JSON strings (exec_prompt with response_format='json' expects dict)
+        if isinstance(response, str):
+            try:
+                response = _json.loads(response)
+            except (ValueError, TypeError):
+                pass
         return {"ok": response}
 
     raise MockNotFoundError(f"No LLM mock for prompt: {prompt[:100]}...")

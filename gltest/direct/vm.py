@@ -14,12 +14,18 @@ from __future__ import annotations
 import re
 import sys
 import hashlib
+import datetime as _dt_module
 from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass, field
 from typing import Any, Optional, Pattern, List, Tuple, Dict
 from unittest.mock import patch
 
 from ..types import MockedWebResponseData
+
+
+def _now_iso() -> str:
+    """Return current UTC time as ISO string (default for _datetime)."""
+    return _dt_module.datetime.now(_dt_module.timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
 @dataclass
@@ -102,6 +108,10 @@ class Slot:
         self.manager = manager
         self._indir_cache = hashlib.sha3_256(slot_id)
 
+    def __reduce__(self):
+        # _indir_cache (hashlib.HASH) is not picklable; recompute on unpickle
+        return (Slot, (self.id, self.manager))
+
     def read(self, off: int, length: int) -> bytes:
         return self.manager.do_read(self.id, off, length)
 
@@ -138,7 +148,7 @@ class VMContext:
     _contract_address: Optional[Any] = None
     _value: int = 0
     _chain_id: int = 1
-    _datetime: str = "2024-01-01T00:00:00Z"
+    _datetime: str = field(default_factory=_now_iso)
 
     # Storage
     _storage: InmemManager = field(default_factory=InmemManager)
@@ -306,8 +316,27 @@ class VMContext:
         """
         Activate this VM context for contract execution.
         Uses proper cleanup via ExitStack for resource management.
+
+        Patches datetime.datetime so that datetime.now() returns the
+        warped time set via vm.warp(). This is dynamic: calling warp()
+        mid-test updates _datetime and subsequent now() calls reflect it.
         """
         from . import wasi_mock
+        import datetime as _dt_module
+
+        _vm_ref = self
+        _OrigDatetime = _dt_module.datetime
+
+        class _WarpedDatetime(_OrigDatetime):
+            """datetime subclass that returns vm._datetime from now()."""
+
+            @classmethod
+            def now(cls, tz=None):
+                ts = _vm_ref._datetime
+                warped = _OrigDatetime.fromisoformat(ts.replace('Z', '+00:00'))
+                if tz is not None:
+                    return warped.astimezone(tz)
+                return warped.replace(tzinfo=None)
 
         with ExitStack() as stack:
             wasi_mock.set_vm(self)
@@ -315,6 +344,9 @@ class VMContext:
 
             stack.enter_context(
                 patch('os.fdopen', wasi_mock.patched_fdopen)
+            )
+            stack.enter_context(
+                patch.object(_dt_module, 'datetime', _WarpedDatetime)
             )
             stack.callback(self._cleanup_after_deactivate)
 
@@ -330,9 +362,16 @@ class VMContext:
         modules_to_remove = [
             key for key in sys.modules.keys()
             if key.startswith('genlayer') or key.startswith('_contract_')
+            or key.startswith('_deployed_')
         ]
         for mod in modules_to_remove:
             del sys.modules[mod]
+
+        # Remove SDK cache paths from sys.path to avoid stale SDK version conflicts
+        sys.path[:] = [
+            p for p in sys.path
+            if 'gltest-direct' not in p
+        ]
 
     def _match_web_mock(self, url: str, method: str = "GET") -> Optional[MockedWebResponseData]:
         for pattern, response in self._web_mocks:

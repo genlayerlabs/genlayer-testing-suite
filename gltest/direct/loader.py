@@ -75,9 +75,71 @@ def deploy_contract(
 
     contract_cls = load_contract_class(contract_path, vm, sdk_version)
 
+    # Patch run_nondet to skip pickling in direct mode
+    _patch_run_nondet_for_direct_mode()
+
     instance = _allocate_contract(contract_cls, vm, *args, **kwargs)
 
     return instance
+
+
+def _patch_run_nondet_for_direct_mode() -> None:
+    """Replace gl.vm.run_nondet with a direct-mode version.
+
+    The SDK's run_nondet pickles leader_fn via cloudpickle to pass through
+    the WASM boundary. In direct mode there's no WASM, and the closure
+    captures unpicklable objects (hashlib.HASH, classmethod_descriptor).
+    We bypass pickling by calling leader_fn() directly.
+    """
+    try:
+        import genlayer.gl.vm as gl_vm
+    except ImportError:
+        return
+
+    if getattr(gl_vm, '_direct_mode_patched', False):
+        return
+
+    def _direct_run_nondet(leader_fn, validator_fn, /, **kwargs):
+        return leader_fn()
+
+    gl_vm.run_nondet = _direct_run_nondet
+    gl_vm._direct_mode_patched = True
+
+    # Also mock embeddings (ONNX model not available in direct mode)
+    _mock_embeddings_for_direct_mode()
+
+
+def _mock_embeddings_for_direct_mode() -> None:
+    """Replace genlayer_embeddings.SentenceTransformer with a deterministic mock.
+
+    The real SentenceTransformer requires ONNX model files set via
+    GENLAYER_EMBEDDINGS_MODELS env var. In direct mode we generate
+    deterministic 384-dim vectors from text hashes instead.
+    """
+    try:
+        import genlayer_embeddings as gle
+    except ImportError:
+        return
+
+    if getattr(gle, '_direct_mode_patched', False):
+        return
+
+    import numpy as np
+
+    def _mock_sentence_transformer(model: str):
+        def _embed(text: str) -> np.ndarray:
+            h = hashlib.sha512(text.encode()).digest()
+            # Expand hash to 384 floats deterministically
+            arr = np.frombuffer(h * 6, dtype=np.uint8)[:384].astype(np.float32)
+            # Normalize to unit vector
+            norm = np.linalg.norm(arr)
+            if norm > 0:
+                arr = arr / norm
+            return arr
+        return _embed
+
+    gle.SentenceTransformer = _mock_sentence_transformer
+    gle._direct_mode_patched = True
 
 
 def _inject_message_to_fd0(vm: "VMContext") -> None:
