@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.15.0 (2026-02-05)
+
+### Features
+
+- **direct**: Add vm.run_validator() for testing nondet validator functions
+  ([`bf5c9e1`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/bf5c9e1511b1c0e1134b13b7711e0d780e2fa862))
+
+
 ## v0.13.0 (2026-02-04)
 
 ### Features
