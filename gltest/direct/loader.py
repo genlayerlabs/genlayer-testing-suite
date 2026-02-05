@@ -11,6 +11,7 @@ Handles:
 from __future__ import annotations
 
 import sys
+import typing
 import hashlib
 import importlib.util
 from pathlib import Path
@@ -48,7 +49,10 @@ def load_contract_class(
     #    (genlayer reads message from fd 0 at import time)
     _inject_message_to_fd0(vm)
 
-    # 4. Load the contract module
+    # 4. Patch get_type_hints for PEP 695 compat (Python 3.12.0-3.12.7)
+    _patch_get_type_hints_for_pep695()
+
+    # 5. Load the contract module
     module = _load_module(contract_path)
 
     contract_cls = _find_contract_class(module)
@@ -81,6 +85,35 @@ def deploy_contract(
     instance = _allocate_contract(contract_cls, vm, *args, **kwargs)
 
     return instance
+
+
+def _patch_get_type_hints_for_pep695() -> None:
+    """Patch typing.get_type_hints to handle PEP 695 scoped TypeVars.
+
+    Python 3.12.0-3.12.7 has a bug where typing.get_type_hints() fails to
+    resolve PEP 695 scoped TypeVars (e.g. ``class Foo[T, S]:``) when the
+    module uses ``from __future__ import annotations``. The scoped TypeVars
+    aren't included in globalns/localns during ForwardRef evaluation.
+
+    This patch injects ``__type_params__`` into localns so the TypeVars
+    can be found.
+    """
+    if getattr(typing, '_pep695_patched', False):
+        return
+
+    _original = typing.get_type_hints
+
+    def _patched(obj, globalns=None, localns=None, include_extras=False):  # type: ignore[override]
+        if isinstance(obj, type) and hasattr(obj, '__type_params__'):
+            extra = {tp.__name__: tp for tp in obj.__type_params__}
+            if localns is None:
+                localns = extra
+            else:
+                localns = {**extra, **localns}
+        return _original(obj, globalns=globalns, localns=localns, include_extras=include_extras)
+
+    typing.get_type_hints = _patched  # type: ignore[assignment]
+    typing._pep695_patched = True  # type: ignore[attr-defined]
 
 
 def _patch_run_nondet_for_direct_mode() -> None:
