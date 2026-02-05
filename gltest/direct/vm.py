@@ -22,6 +22,8 @@ from unittest.mock import patch
 
 from ..types import MockedWebResponseData
 
+_sentinel = object()
+
 
 def _now_iso() -> str:
     """Return current UTC time as ISO string (default for _datetime)."""
@@ -173,6 +175,9 @@ class VMContext:
     _return_value: Any = None
     _returned: bool = False
 
+    # Validator capture (from run_nondet calls)
+    _captured_validators: List[Tuple[Any, Any, Any]] = field(default_factory=list)
+
     # Debug tracing
     _traces: List[str] = field(default_factory=list)
     _trace_enabled: bool = True
@@ -258,6 +263,55 @@ class VMContext:
         """Clear all registered mocks."""
         self._web_mocks.clear()
         self._llm_mocks.clear()
+
+    def run_validator(
+        self,
+        *,
+        leader_result: Any = _sentinel,
+        leader_error: Optional[Exception] = None,
+        index: int = -1,
+    ) -> bool:
+        """Run a captured validator function from a prior run_nondet call.
+
+        Each ``gl.vm.run_nondet`` call in a contract appends an entry to
+        an internal list. Use *index* to select which one (default -1,
+        the most recent).
+
+        Mocks still apply: the validator typically re-runs leader_fn
+        internally, which hits the current web/LLM mocks. Swap mocks
+        between the contract call and ``run_validator()`` to simulate
+        the validator seeing different external data.
+
+        Args:
+            leader_result: Override the leader's return value.
+            leader_error: Simulate a leader exception (gl.vm.UserError).
+            index: Which captured validator to run (-1 = last).
+
+        Returns:
+            The bool returned by the validator function.
+        """
+        if not self._captured_validators:
+            raise RuntimeError(
+                "No validator captured. Call a contract method that uses "
+                "gl.vm.run_nondet before calling run_validator()."
+            )
+
+        stored_result, leader_fn, validator_fn = self._captured_validators[index]
+
+        import genlayer.gl.vm as gl_vm
+
+        if leader_error is not None:
+            wrapped = gl_vm.UserError(message=str(leader_error))
+        elif leader_result is not _sentinel:
+            wrapped = gl_vm.Return(calldata=leader_result)
+        else:
+            wrapped = gl_vm.Return(calldata=stored_result)
+
+        return validator_fn(wrapped)
+
+    def clear_validators(self) -> None:
+        """Clear the captured validator list."""
+        self._captured_validators.clear()
 
     @contextmanager
     def expect_revert(self, message: Optional[str] = None):

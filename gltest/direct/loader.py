@@ -133,7 +133,11 @@ def _patch_run_nondet_for_direct_mode() -> None:
         return
 
     def _direct_run_nondet(leader_fn, validator_fn, /, **kwargs):
-        return leader_fn()
+        from . import wasi_mock
+        vm = wasi_mock.get_vm()
+        result = leader_fn()
+        vm._captured_validators.append((result, leader_fn, validator_fn))
+        return result
 
     gl_vm.run_nondet = _direct_run_nondet
     gl_vm._direct_mode_patched = True
