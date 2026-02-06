@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.15.1 (2026-02-06)
+
+### Bug Fixes
+
+- **direct**: Council-identified bugs + pickling validation
+  ([`2482653`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/24826530b325c87cd13d7e1227e6ed70605f2bb1))
+
+
 ## v0.15.0 (2026-02-05)
 
 ### Features
