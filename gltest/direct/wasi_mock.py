@@ -207,7 +207,7 @@ def _handle_llm_request(vm: "VMContext", data: Any) -> Any:
     prompt = data.get("prompt", "")
 
     response = vm._match_llm_mock(prompt)
-    if response:
+    if response is not None:
         # Auto-parse JSON strings (exec_prompt with response_format='json' expects dict)
         if isinstance(response, str):
             try:

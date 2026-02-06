@@ -178,6 +178,9 @@ class VMContext:
     # Validator capture (from run_nondet calls)
     _captured_validators: List[Tuple[Any, Any, Any]] = field(default_factory=list)
 
+    # Pickling validation (opt-in)
+    _check_pickling: bool = False
+
     # Debug tracing
     _traces: List[str] = field(default_factory=list)
     _trace_enabled: bool = True
@@ -200,6 +203,7 @@ class VMContext:
     @value.setter
     def value(self, val: int) -> None:
         self._value = val
+        self._refresh_gl_message()
 
     @property
     def origin(self) -> Any:
@@ -208,10 +212,21 @@ class VMContext:
     @origin.setter
     def origin(self, addr: Any) -> None:
         self._origin = addr
+        self._refresh_gl_message()
 
     def warp(self, timestamp: str) -> None:
         """Set block timestamp (ISO format)."""
         self._datetime = timestamp
+        self._refresh_gl_message()
+
+    @property
+    def check_pickling(self) -> bool:
+        """Whether to validate pickling of run_nondet closures."""
+        return self._check_pickling
+
+    @check_pickling.setter
+    def check_pickling(self, val: bool) -> None:
+        self._check_pickling = val
 
     def deal(self, address: Any, amount: int) -> None:
         """Set balance for an address."""
@@ -413,6 +428,18 @@ class VMContext:
 
     def _cleanup_after_deactivate(self) -> None:
         """Clean up resources after VM deactivation."""
+        import os as _os
+
+        # Restore original stdin if we replaced it
+        stdin_fd = getattr(self, '_original_stdin_fd', None)
+        if stdin_fd is not None:
+            try:
+                _os.dup2(stdin_fd, 0)
+                _os.close(stdin_fd)
+            except OSError:
+                pass
+            self._original_stdin_fd = None
+
         modules_to_remove = [
             key for key in sys.modules.keys()
             if key.startswith('genlayer') or key.startswith('_contract_')

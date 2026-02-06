@@ -73,9 +73,8 @@ def deploy_contract(
     """Deploy a contract and return an instance."""
     contract_path = Path(contract_path).resolve()
 
-    if vm._contract_address is None:
-        addr_hash = hashlib.sha256(str(contract_path).encode()).digest()[:20]
-        vm._contract_address = addr_hash
+    addr_hash = hashlib.sha256(str(contract_path).encode()).digest()[:20]
+    vm._contract_address = addr_hash
 
     contract_cls = load_contract_class(contract_path, vm, sdk_version)
 
@@ -135,6 +134,9 @@ def _patch_run_nondet_for_direct_mode() -> None:
     def _direct_run_nondet(leader_fn, validator_fn, /, **kwargs):
         from . import wasi_mock
         vm = wasi_mock.get_vm()
+        if vm._check_pickling:
+            _validate_pickling(leader_fn, "leader_fn")
+            _validate_pickling(validator_fn, "validator_fn")
         result = leader_fn()
         vm._captured_validators.append((result, leader_fn, validator_fn))
         return result
@@ -177,6 +179,20 @@ def _mock_embeddings_for_direct_mode() -> None:
 
     gle.SentenceTransformer = _mock_sentence_transformer
     gle._direct_mode_patched = True
+
+
+def _validate_pickling(fn: Any, label: str) -> None:
+    """Try pickling a function via cloudpickle, warn on failure."""
+    import warnings
+    try:
+        import cloudpickle
+        cloudpickle.dumps(fn)
+    except Exception as e:
+        warnings.warn(
+            f"{label} is not picklable (will fail in production): {e}",
+            RuntimeWarning,
+            stacklevel=3,
+        )
 
 
 def _inject_message_to_fd0(vm: "VMContext") -> None:
@@ -360,8 +376,7 @@ def _allocate_contract(
             instance._storage_slot = root_slot.indirect(0)
             instance._off = 0
 
-        if args or kwargs:
-            instance.__init__(*args, **kwargs)
+        instance.__init__(*args, **kwargs)
 
         return instance
 

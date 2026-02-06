@@ -168,7 +168,7 @@ def extract_runner(
         extract_dir.mkdir(parents=True, exist_ok=True)
 
         with tarfile.open(fileobj=inner_tar_file, mode="r:") as inner_tar:
-            inner_tar.extractall(extract_dir)
+            inner_tar.extractall(extract_dir, filter='data')
 
         return extract_dir
 
