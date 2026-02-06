@@ -115,6 +115,7 @@ class ContractFactory:
         wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_triggered_transactions_depth: int = 3,
         transaction_context: Optional[TransactionContext] = None,
     ) -> Contract:
         """
@@ -132,6 +133,7 @@ class ContractFactory:
             wait_transaction_status=wait_transaction_status,
             wait_triggered_transactions=wait_triggered_transactions,
             wait_triggered_transactions_status=wait_triggered_transactions_status,
+            wait_triggered_transactions_depth=wait_triggered_transactions_depth,
             transaction_context=transaction_context,
         )
 
@@ -151,6 +153,7 @@ class ContractFactory:
         wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_triggered_transactions_depth: int = 3,
         transaction_context: Optional[TransactionContext] = None,
     ) -> GenLayerTransaction:
         """
@@ -197,15 +200,25 @@ class ContractFactory:
                 interval=actual_wait_interval,
                 retries=actual_wait_retries,
             )
-            if wait_triggered_transactions:
-                triggered_transactions = tx_receipt.get("triggered_transactions", [])
-                for triggered_transaction in triggered_transactions:
-                    client.wait_for_transaction_receipt(
-                        transaction_hash=triggered_transaction,
-                        status=wait_triggered_transactions_status,
-                        interval=actual_wait_interval,
-                        retries=actual_wait_retries,
-                    )
+            if wait_triggered_transactions and wait_triggered_transactions_depth > 0:
+                pending_receipts = [tx_receipt]
+                for _ in range(wait_triggered_transactions_depth):
+                    next_receipts = []
+                    for current_receipt in pending_receipts:
+                        triggered_transactions = current_receipt.get(
+                            "triggered_transactions", []
+                        )
+                        for triggered_transaction in triggered_transactions:
+                            triggered_receipt = client.wait_for_transaction_receipt(
+                                transaction_hash=triggered_transaction,
+                                status=wait_triggered_transactions_status,
+                                interval=actual_wait_interval,
+                                retries=actual_wait_retries,
+                            )
+                            next_receipts.append(triggered_receipt)
+                    if not next_receipts:
+                        break
+                    pending_receipts = next_receipts
             return tx_receipt
         except Exception as e:
             raise DeploymentError(
