@@ -340,10 +340,10 @@ direct_vm.sender = alice
 with direct_vm.prank(bob):
     contract.method()  # Called as bob
 
-# Snapshots
+# Snapshots (captures full state: storage, mocks, sender, validators)
 snap_id = direct_vm.snapshot()
 contract.modify_state()
-direct_vm.revert(snap_id)  # State restored
+direct_vm.revert(snap_id)  # Full state restored
 
 # Expect revert
 with direct_vm.expect_revert("Insufficient balance"):
@@ -352,6 +352,18 @@ with direct_vm.expect_revert("Insufficient balance"):
 # Mock web/LLM (for nondet operations)
 direct_vm.mock_web(r"api\.example\.com", {"status": 200, "body": "{}"})
 direct_vm.mock_llm(r"analyze.*", "positive sentiment")
+
+# Test validator consensus logic
+contract.update_price()          # Runs leader_fn, captures validator
+direct_vm.clear_mocks()          # Swap mocks for validator
+direct_vm.mock_llm(r".*", "different result")
+assert direct_vm.run_validator() is False  # Validator disagrees
+
+# Strict mocks (detect unused mocks)
+direct_vm.strict_mocks = True
+
+# Pickling validation (catch production serialization issues)
+direct_vm.check_pickling = True
 ```
 
 📖 **[Full Direct Mode Documentation](docs/direct-runner.md)**

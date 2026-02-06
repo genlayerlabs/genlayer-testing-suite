@@ -32,10 +32,19 @@ def _now_iso() -> str:
 
 @dataclass
 class Snapshot:
-    """Storage snapshot for revert functionality."""
+    """Full VM state snapshot for revert functionality."""
     id: int
     storage_data: Dict[bytes, bytes]
     balances: Dict[bytes, int]
+    web_mocks: List[Tuple[Any, Any]]
+    llm_mocks: List[Tuple[Any, str]]
+    prank_stack: List[Any]
+    captured_validators: List[Tuple[Any, Any, Any]]
+    sender: Any
+    origin: Any
+    value: int
+    chain_id: int
+    datetime: str
 
 
 class InmemManager:
@@ -181,6 +190,11 @@ class VMContext:
     # Pickling validation (opt-in)
     _check_pickling: bool = False
 
+    # Strict mock tracking (opt-in)
+    _strict_mocks: bool = False
+    _web_mocks_hit: set = field(default_factory=set)
+    _llm_mocks_hit: set = field(default_factory=set)
+
     # Debug tracing
     _traces: List[str] = field(default_factory=list)
     _trace_enabled: bool = True
@@ -228,6 +242,15 @@ class VMContext:
     def check_pickling(self, val: bool) -> None:
         self._check_pickling = val
 
+    @property
+    def strict_mocks(self) -> bool:
+        """Whether to warn about unused mocks on cleanup."""
+        return self._strict_mocks
+
+    @strict_mocks.setter
+    def strict_mocks(self, val: bool) -> None:
+        self._strict_mocks = val
+
     def deal(self, address: Any, amount: int) -> None:
         """Set balance for an address."""
         addr_bytes = self._to_bytes(address)
@@ -242,6 +265,15 @@ class VMContext:
             id=snap_id,
             storage_data=self._storage.snapshot(),
             balances=dict(self._balances),
+            web_mocks=list(self._web_mocks),
+            llm_mocks=list(self._llm_mocks),
+            prank_stack=list(self._prank_stack),
+            captured_validators=list(self._captured_validators),
+            sender=self._sender,
+            origin=self._origin,
+            value=self._value,
+            chain_id=self._chain_id,
+            datetime=self._datetime,
         )
 
         return snap_id
@@ -254,6 +286,16 @@ class VMContext:
         snap = self._snapshots[snapshot_id]
         self._storage.restore(snap.storage_data)
         self._balances = dict(snap.balances)
+        self._web_mocks = list(snap.web_mocks)
+        self._llm_mocks = list(snap.llm_mocks)
+        self._prank_stack = list(snap.prank_stack)
+        self._captured_validators = list(snap.captured_validators)
+        self._sender = snap.sender
+        self._origin = snap.origin
+        self._value = snap.value
+        self._chain_id = snap.chain_id
+        self._datetime = snap.datetime
+        self._refresh_gl_message()
 
         self._snapshots = {
             k: v for k, v in self._snapshots.items()
@@ -276,8 +318,11 @@ class VMContext:
 
     def clear_mocks(self) -> None:
         """Clear all registered mocks."""
+        self._warn_unused_mocks()
         self._web_mocks.clear()
         self._llm_mocks.clear()
+        self._web_mocks_hit.clear()
+        self._llm_mocks_hit.clear()
 
     def run_validator(
         self,
@@ -330,7 +375,14 @@ class VMContext:
 
     @contextmanager
     def expect_revert(self, message: Optional[str] = None):
-        """Context manager expecting the next call to revert."""
+        """Context manager expecting the next call to revert.
+
+        Catches ContractRollback (gl.rollback) and any Exception raised
+        by contract code (ValueError, RuntimeError, etc.). If *message*
+        is given, the exception text must contain it.
+        """
+        from .wasi_mock import ContractRollback
+
         self._expect_revert = message
         self._expect_revert_any = message is None
 
@@ -339,19 +391,18 @@ class VMContext:
             raise AssertionError(
                 f"Expected revert{f' with message: {message}' if message else ''}, but call succeeded"
             )
+        except AssertionError:
+            raise
+        except ContractRollback as e:
+            if message is not None and message not in e.message:
+                raise AssertionError(
+                    f"Expected revert with message '{message}', got '{e.message}'"
+                )
         except Exception as e:
-            from .wasi_mock import ContractRollback
-
-            if isinstance(e, ContractRollback):
-                if message is not None and message not in e.message:
-                    raise AssertionError(
-                        f"Expected revert with message '{message}', got '{e.message}'"
-                    )
-            elif isinstance(e, AssertionError):
-                raise
-            else:
-                if message is not None and message not in str(e):
-                    raise
+            if message is not None and message not in str(e):
+                raise AssertionError(
+                    f"Expected revert with message '{message}', got '{e}'"
+                )
         finally:
             self._expect_revert = None
             self._expect_revert_any = False
@@ -430,6 +481,8 @@ class VMContext:
         """Clean up resources after VM deactivation."""
         import os as _os
 
+        self._warn_unused_mocks()
+
         # Restore original stdin if we replaced it
         stdin_fd = getattr(self, '_original_stdin_fd', None)
         if stdin_fd is not None:
@@ -455,17 +508,39 @@ class VMContext:
         ]
 
     def _match_web_mock(self, url: str, method: str = "GET") -> Optional[MockedWebResponseData]:
-        for pattern, response in self._web_mocks:
+        for i, (pattern, response) in enumerate(self._web_mocks):
             if pattern.search(url):
                 if response.get("method", "GET") == method:
+                    self._web_mocks_hit.add(i)
                     return response
         return None
 
     def _match_llm_mock(self, prompt: str) -> Optional[str]:
-        for pattern, response in self._llm_mocks:
+        for i, (pattern, response) in enumerate(self._llm_mocks):
             if pattern.search(prompt):
+                self._llm_mocks_hit.add(i)
                 return response
         return None
+
+    def _warn_unused_mocks(self) -> None:
+        """Warn about mocks that were never matched (strict_mocks mode)."""
+        if not self._strict_mocks:
+            return
+        import warnings
+        for i, (pattern, _) in enumerate(self._web_mocks):
+            if i not in self._web_mocks_hit:
+                warnings.warn(
+                    f"Web mock never matched: {pattern.pattern}",
+                    RuntimeWarning,
+                    stacklevel=3,
+                )
+        for i, (pattern, _) in enumerate(self._llm_mocks):
+            if i not in self._llm_mocks_hit:
+                warnings.warn(
+                    f"LLM mock never matched: {pattern.pattern}",
+                    RuntimeWarning,
+                    stacklevel=3,
+                )
 
     def _trace(self, message: str) -> None:
         if self._trace_enabled:

@@ -194,7 +194,11 @@ def _handle_web_request(vm: "VMContext", data: Any) -> Any:
             "body": body,
         }}}
 
-    raise MockNotFoundError(f"No web mock for {method} {url}")
+    registered = [f"{r.get('method', 'GET')} {p.pattern}" for p, r in vm._web_mocks]
+    raise MockNotFoundError(
+        f"No web mock for {method} {url}\n"
+        f"  Registered: {registered or '(none)'}"
+    )
 
 
 def _handle_llm_request(vm: "VMContext", data: Any) -> Any:
@@ -216,7 +220,11 @@ def _handle_llm_request(vm: "VMContext", data: Any) -> Any:
                 pass
         return {"ok": response}
 
-    raise MockNotFoundError(f"No LLM mock for prompt: {prompt[:100]}...")
+    registered = [p.pattern for p, _ in vm._llm_mocks]
+    raise MockNotFoundError(
+        f"No LLM mock for prompt: {prompt[:100]}...\n"
+        f"  Registered: {registered or '(none)'}"
+    )
 
 
 def _handle_run_nondet(vm: "VMContext", data: Any) -> Any:

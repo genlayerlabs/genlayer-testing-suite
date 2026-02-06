@@ -2,13 +2,33 @@
 
 <!-- version list -->
 
-## v0.15.1 (2026-02-06)
+## v0.17.0 (2026-02-06)
+
+### Features
+
+- **direct**: Full snapshot/revert captures mocks, prank stack, sender, validators
+- **direct**: Strict mocks mode (`vm.strict_mocks = True`) warns on unused mocks
+- **direct**: MockNotFoundError now lists registered patterns for debugging
 
 ### Bug Fixes
 
-- **direct**: Council-identified bugs + pickling validation
-  ([`2482653`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/24826530b325c87cd13d7e1227e6ed70605f2bb1))
+- **direct**: `expect_revert` now properly handles `ContractRollback`, `ValueError`,
+  `RuntimeError`, and generic exceptions with correct message matching
 
+## v0.16.0 (2026-02-05)
+
+### Features
+
+- **direct**: Add `vm.check_pickling` for opt-in cloudpickle validation of run_nondet closures
+
+### Bug Fixes
+
+- **direct**: Fix falsy LLM mock responses (`""`, `0`, `{}`) rejected as missing mocks
+- **direct**: Fix stale `gl.message` after `vm.value`, `vm.origin`, or `vm.warp()` mutations
+- **direct**: Fix stdin fd leak — original stdin now restored on VM deactivation
+- **direct**: Fix no-arg constructor skipped in fallback contract allocator
+- **direct**: Always set unique contract address per deploy
+- **direct**: Safe tar extraction with `filter='data'` (prevents path traversal)
 
 ## v0.15.0 (2026-02-05)
 

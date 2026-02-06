@@ -153,7 +153,7 @@ direct_vm.stopPrank()
 
 ### Snapshots
 
-Save and restore state:
+Save and restore full VM state (storage, balances, mocks, sender, prank stack, captured validators):
 
 ```python
 def test_snapshots(direct_vm, direct_deploy):
@@ -267,6 +267,88 @@ def test_llm_mock(direct_vm, direct_deploy):
 direct_vm.clear_mocks()  # Remove all registered mocks
 ```
 
+### Strict Mocks
+
+Enable strict mode to detect mocks that are registered but never matched:
+
+```python
+direct_vm.strict_mocks = True
+
+direct_vm.mock_web(r"api\.example\.com", {"status": 200, "body": "{}"})
+direct_vm.mock_llm(r"unused pattern", "never called")
+
+# On clear_mocks() or VM cleanup, a RuntimeWarning is emitted
+# for each mock that was never matched.
+```
+
+## Validator Testing
+
+Test the leader/validator consensus logic of `gl.vm.run_nondet` blocks.
+
+After a contract method calls `run_nondet`, the leader result and validator
+function are captured. Call `vm.run_validator()` to execute the validator
+against the leader's result — optionally after swapping mocks so the
+validator sees different external data.
+
+```python
+def test_validator_agrees(direct_vm, direct_deploy):
+    contract = direct_deploy("contracts/Oracle.py")
+
+    # Register mocks and call the method (runs leader_fn)
+    direct_vm.mock_web(r"api\.example\.com", {"status": 200, "body": '{"price": 100}'})
+    direct_vm.mock_llm(r".*", "100")
+    contract.update_price()
+
+    # Same mocks still active -> validator agrees
+    assert direct_vm.run_validator() is True
+
+
+def test_validator_disagrees(direct_vm, direct_deploy):
+    contract = direct_deploy("contracts/Oracle.py")
+
+    direct_vm.mock_web(r"api\.example\.com", {"status": 200, "body": '{"price": 100}'})
+    direct_vm.mock_llm(r".*", "100")
+    contract.update_price()
+
+    # Swap mocks -> validator gets different data
+    direct_vm.clear_mocks()
+    direct_vm.mock_web(r"api\.example\.com", {"status": 200, "body": '{"price": 999}'})
+    direct_vm.mock_llm(r".*", "999")
+
+    assert direct_vm.run_validator() is False
+```
+
+### run_validator options
+
+```python
+# Run the most recent captured validator (default)
+direct_vm.run_validator()
+
+# Run a specific validator by index (if multiple run_nondet calls)
+direct_vm.run_validator(index=0)
+
+# Override the leader result
+direct_vm.run_validator(leader_result=custom_data)
+
+# Simulate a leader error
+direct_vm.run_validator(leader_error=ValueError("timeout"))
+
+# Clear captured validators
+direct_vm.clear_validators()
+```
+
+## Pickling Validation
+
+In production, `run_nondet` serializes closures via cloudpickle for the
+WASM boundary. Direct mode skips this. Enable pickle checking to catch
+closures that would fail in production:
+
+```python
+direct_vm.check_pickling = True
+# Now every run_nondet call tries cloudpickle.dumps() on leader_fn
+# and validator_fn, emitting a RuntimeWarning on failure.
+```
+
 ## SDK Version Handling
 
 Direct mode automatically downloads and caches the correct GenLayer SDK version based on contract headers:
@@ -287,10 +369,10 @@ SDKs are cached in `~/.cache/gltest-direct/`.
 
 Direct mode does **not** support:
 
-- Multi-validator consensus
+- Full multi-validator consensus (use `vm.run_validator()` for single-validator testing)
 - Actual RPC/network calls
 - Gas metering
-- Cross-contract calls via address (same-file imports work)
+- Cross-contract calls via address (use ContractRegistry pattern for multi-contract)
 - Persistence between test runs
 
 For these features, use Simulator mode.
