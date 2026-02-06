@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "genlayer-test"
-version = "0.16.0"
+version = "0.18.0"
 description = "GenLayer Testing Suite"
 authors = [
     { name = "GenLayer" }
@@ -29,6 +29,14 @@ classifiers = [
     "Topic :: Software Development :: Testing",
 ]
 
+[project.optional-dependencies]
+sim = [
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.20",
+    "httpx>=0.24",
+    "eth-account>=0.10",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 exclude = ["tests*", "scripts*"]
@@ -39,3 +47,4 @@ gltest_direct = "gltest.direct.pytest_plugin"
 
 [project.scripts]
 gltest = "gltest_cli.main:main"
+glsim = "glsim.__main__:main"

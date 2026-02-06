@@ -165,6 +165,13 @@ def _handle_gl_call(vm: "VMContext", request: Any) -> Any:
         prompt_data = request["ExecPrompt"]
         return _handle_llm_request(vm, prompt_data)
 
+    # Cross-contract calls: delegate to hook if installed (glsim mode)
+    hook = getattr(vm, '_gl_call_hook', None)
+    if hook is not None:
+        result = hook(vm, request)
+        if result is not None:
+            return result
+
     vm._trace(f"Unknown gl_call request type: {list(request.keys())}")
     return None
 
@@ -194,6 +201,11 @@ def _handle_web_request(vm: "VMContext", data: Any) -> Any:
             "body": body,
         }}}
 
+    # Live handler fallback (glsim mode)
+    live_handler = getattr(vm, '_live_web_handler', None)
+    if live_handler is not None:
+        return live_handler(data)
+
     registered = [f"{r.get('method', 'GET')} {p.pattern}" for p, r in vm._web_mocks]
     raise MockNotFoundError(
         f"No web mock for {method} {url}\n"
@@ -219,6 +231,11 @@ def _handle_llm_request(vm: "VMContext", data: Any) -> Any:
             except (ValueError, TypeError):
                 pass
         return {"ok": response}
+
+    # Live handler fallback (glsim mode)
+    live_handler = getattr(vm, '_live_llm_handler', None)
+    if live_handler is not None:
+        return live_handler(data)
 
     registered = [p.pattern for p, _ in vm._llm_mocks]
     raise MockNotFoundError(

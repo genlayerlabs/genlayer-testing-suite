@@ -45,6 +45,8 @@ class Snapshot:
     value: int
     chain_id: int
     datetime: str
+    live_web_handler: Optional[Any] = None
+    live_llm_handler: Optional[Any] = None
 
 
 class InmemManager:
@@ -195,6 +197,13 @@ class VMContext:
     _web_mocks_hit: set = field(default_factory=set)
     _llm_mocks_hit: set = field(default_factory=set)
 
+    # Live I/O handlers (for glsim — fallback when no mock matches)
+    _live_web_handler: Optional[Any] = None
+    _live_llm_handler: Optional[Any] = None
+
+    # Cross-contract call hook (for glsim — handles DeployContract/CallContract/PostMessage)
+    _gl_call_hook: Optional[Any] = None
+
     # Debug tracing
     _traces: List[str] = field(default_factory=list)
     _trace_enabled: bool = True
@@ -274,6 +283,8 @@ class VMContext:
             value=self._value,
             chain_id=self._chain_id,
             datetime=self._datetime,
+            live_web_handler=self._live_web_handler,
+            live_llm_handler=self._live_llm_handler,
         )
 
         return snap_id
@@ -295,6 +306,8 @@ class VMContext:
         self._value = snap.value
         self._chain_id = snap.chain_id
         self._datetime = snap.datetime
+        self._live_web_handler = snap.live_web_handler
+        self._live_llm_handler = snap.live_llm_handler
         self._refresh_gl_message()
 
         self._snapshots = {
@@ -495,7 +508,8 @@ class VMContext:
 
         modules_to_remove = [
             key for key in sys.modules.keys()
-            if key.startswith('genlayer') or key.startswith('_contract_')
+            if (key == 'genlayer' or key.startswith('genlayer.'))
+            or key.startswith('_contract_')
             or key.startswith('_deployed_')
         ]
         for mod in modules_to_remove:
