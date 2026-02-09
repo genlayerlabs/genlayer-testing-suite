@@ -1,5 +1,6 @@
 [semantic_release]
 version_toml = ["pyproject.toml:project.version"]
+version_variables = ["glsim/__init__.py:__version__"]
 assets = []
 build_command_env = []
 commit_message = "chore(release): {version}"
