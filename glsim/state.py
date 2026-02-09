@@ -16,6 +16,7 @@ class TxStatus(str, Enum):
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     FINALIZED = "FINALIZED"
+    UNDETERMINED = "UNDETERMINED"
     FAILED = "FAILED"
 
 
@@ -56,6 +57,8 @@ class Transaction:
     calldata_bytes: bytes = field(default=b"", repr=False)
     result_bytes: bytes = field(default=b"", repr=False)
     num_validators: int = 1
+    consensus_votes: Dict[str, str] = field(default_factory=dict)
+    consensus_rotation: int = 0
 
 
 class StateStore:

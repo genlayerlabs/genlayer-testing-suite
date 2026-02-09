@@ -161,6 +161,9 @@ def _handle_gl_call(vm: "VMContext", request: Any) -> Any:
         web_data = request.get("GetWebsite") or request.get("WebRequest", {})
         return _handle_web_request(vm, web_data)
 
+    if "WebRender" in request:
+        return _handle_web_render(vm, request["WebRender"])
+
     if "ExecPrompt" in request:
         prompt_data = request["ExecPrompt"]
         return _handle_llm_request(vm, prompt_data)
@@ -209,6 +212,45 @@ def _handle_web_request(vm: "VMContext", data: Any) -> Any:
     registered = [f"{r.get('method', 'GET')} {p.pattern}" for p, r in vm._web_mocks]
     raise MockNotFoundError(
         f"No web mock for {method} {url}\n"
+        f"  Registered: {registered or '(none)'}"
+    )
+
+
+def _handle_web_render(vm: "VMContext", data: Any) -> Any:
+    """Handle WebRender (gl.nondet.web.render) using web mocks.
+
+    WebRender returns ``{text: str}`` for text/html mode. We reuse web
+    mocks: the mock body becomes the rendered text.
+    """
+    url = data.get("url", "")
+    mode = data.get("mode", "text")
+
+    mock_data = vm._match_web_mock(url, "GET")
+    if mock_data:
+        body = mock_data.get("body", "")
+        if "response" in mock_data:
+            body = mock_data["response"].get("body", "")
+        if isinstance(body, bytes):
+            body = body.decode("utf-8", errors="replace")
+        if mode == "screenshot":
+            return {"ok": {"image": b""}}
+        return {"ok": {"text": body}}
+
+    # Live handler fallback — do a GET, return body as text
+    live_handler = getattr(vm, '_live_web_handler', None)
+    if live_handler is not None:
+        resp = live_handler({"url": url, "method": "GET", "headers": {}, "body": None})
+        resp_data = resp.get("ok", {}).get("response", {})
+        body = resp_data.get("body", b"")
+        if isinstance(body, bytes):
+            body = body.decode("utf-8", errors="replace")
+        if mode == "screenshot":
+            return {"ok": {"image": b""}}
+        return {"ok": {"text": body}}
+
+    registered = [f"GET {p.pattern}" for p, r in vm._web_mocks]
+    raise MockNotFoundError(
+        f"No web mock for WebRender {url}\n"
         f"  Registered: {registered or '(none)'}"
     )
 

@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 
 from .state import StateStore, Transaction, TxStatus
 from .engine import SimEngine
+from .consensus import run_consensus
 from .tx_decoder import (
     decode_raw_transaction,
     decode_genlayer_payload,
@@ -288,40 +289,52 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
     # Install web mocks from sim_config before executing
     _install_sim_config_mocks(engine, sim_config)
 
-    try:
-        if tx_type == "deploy":
-            code_hex = decoded.get("code", "")
-            code_bytes = bytes.fromhex(code_hex[2:]) if code_hex.startswith("0x") else code_hex.encode()
-            constructor_args = decoded.get("constructor_args")
-            calldata_bytes = b""
-            if constructor_args:
-                calldata_bytes = encode_calldata_result(constructor_args)
-            tx.calldata_bytes = calldata_bytes
+    if tx_type == "deploy":
+        code_hex = decoded.get("code", "")
+        code_bytes = bytes.fromhex(code_hex[2:]) if code_hex.startswith("0x") else code_hex.encode()
+        constructor_args = decoded.get("constructor_args")
+        calldata_bytes = b""
+        if constructor_args:
+            calldata_bytes = encode_calldata_result(constructor_args)
+        tx.calldata_bytes = calldata_bytes
 
-            contract_addr, _ = engine.deploy_from_code(code_bytes, calldata_bytes, sender)
-            tx.status = TxStatus.FINALIZED
-            tx.to_address = contract_addr
-            tx.result = contract_addr
+        def execute_fn():
+            addr, _ = engine.deploy_from_code(code_bytes, calldata_bytes, sender)
+            return addr, b""
+
+        consensus = run_consensus(engine, execute_fn, engine.num_validators, engine.max_rotations)
+        tx.status = consensus.status
+        if consensus.error:
+            tx.error = consensus.error
+            tx.result_bytes = encode_error_bytes(consensus.error)
         else:
-            # Call
-            call_data = decoded.get("call_data")
-            if call_data is None:
-                raise ValueError("No calldata in transaction")
-            # Re-encode the calldata for method dispatch
-            calldata_bytes = encode_calldata_result(call_data)
-            tx.calldata_bytes = calldata_bytes
+            tx.to_address = consensus.result
+            tx.result = consensus.result
+    else:
+        # Call
+        call_data = decoded.get("call_data")
+        if call_data is None:
+            _clear_sim_config_mocks(engine)
+            state.next_block()
+            raise ValueError("No calldata in transaction")
+        calldata_bytes = encode_calldata_result(call_data)
+        tx.calldata_bytes = calldata_bytes
 
-            result, result_bytes = engine.call_from_calldata(recipient, calldata_bytes, sender)
-            tx.status = TxStatus.FINALIZED
-            tx.result = result
-            tx.result_bytes = encode_result_bytes(result)
+        def execute_fn():
+            result, _ = engine.call_from_calldata(recipient, calldata_bytes, sender)
+            return result, encode_result_bytes(result)
 
-    except Exception as exc:
-        # Contract execution failed — still a valid transaction, just with ERROR result.
-        # SDK expects eth_tx_hash returned (not an RPC error).
-        tx.status = TxStatus.FINALIZED
-        tx.error = str(exc)
-        tx.result_bytes = encode_error_bytes(str(exc))
+        consensus = run_consensus(engine, execute_fn, engine.num_validators, engine.max_rotations)
+        tx.status = consensus.status
+        if consensus.error:
+            tx.error = consensus.error
+            tx.result_bytes = encode_error_bytes(consensus.error)
+        else:
+            tx.result = consensus.result
+            tx.result_bytes = consensus.result_bytes
+
+    tx.consensus_votes = _build_consensus_votes(consensus.votes, tx.num_validators)
+    tx.consensus_rotation = consensus.rotation
 
     _clear_sim_config_mocks(engine)
     state.next_block()
@@ -446,16 +459,28 @@ def _rpc_eth_get_transaction_by_hash(state: StateStore, engine: SimEngine, param
 
     validators = []
     votes = {}
-    for i in range(tx.num_validators):
-        v_addr = f"0x{i:040x}"
-        validators.append({
-            **leader_receipt,
-            "mode": "validator",
-            "vote": "agree" if tx.status == TxStatus.FINALIZED else None,
-            "node_config": {**node_config, "address": v_addr},
-        })
-        if tx.status == TxStatus.FINALIZED:
-            votes[v_addr] = "agree"
+    if tx.consensus_votes:
+        # Real consensus data from consensus simulation
+        for v_addr, vote in tx.consensus_votes.items():
+            validators.append({
+                **leader_receipt,
+                "mode": "validator",
+                "vote": vote,
+                "node_config": {**node_config, "address": v_addr},
+            })
+        votes = dict(tx.consensus_votes)
+    else:
+        # Synthetic fallback for sim_deploy/sim_call paths
+        for i in range(tx.num_validators):
+            v_addr = f"0x{i:040x}"
+            validators.append({
+                **leader_receipt,
+                "mode": "validator",
+                "vote": "agree" if tx.status == TxStatus.FINALIZED else None,
+                "node_config": {**node_config, "address": v_addr},
+            })
+            if tx.status == TxStatus.FINALIZED:
+                votes[v_addr] = "agree"
 
     consensus_data = {
         "leader_receipt": [leader_receipt],
@@ -679,6 +704,15 @@ def _install_sim_config_mocks(engine: SimEngine, sim_config: dict | None) -> Non
         engine.vm.mock_llm(prompt_key, response_text)
 
 
+def _build_consensus_votes(votes: list, num_validators: int) -> dict:
+    """Convert vote list to {address: vote} dict."""
+    result = {}
+    for i, vote in enumerate(votes):
+        v_addr = f"0x{i:040x}"
+        result[v_addr] = vote
+    return result
+
+
 def _clear_sim_config_mocks(engine: SimEngine) -> None:
     """Clear any mocks installed from sim_config."""
     engine.vm._web_mocks.clear()
@@ -708,6 +742,7 @@ def _normalize_params(params) -> dict:
 
 def create_app(
     num_validators: int = 1,
+    max_rotations: int = 3,
     llm_provider: str | None = None,
     use_browser: bool = False,
     verbose: bool = False,
@@ -725,6 +760,8 @@ def create_app(
 
     state = StateStore()
     engine = SimEngine(state, web_handler=web_handler, llm_handler=llm_handler)
+    engine.num_validators = num_validators
+    engine.max_rotations = max_rotations
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):

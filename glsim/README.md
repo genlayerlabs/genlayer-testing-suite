@@ -160,6 +160,25 @@ client.provider.make_request("sim_restoreSnapshot", [snapshot_id])
 
 Used by `load_fixture()` for test fixture caching.
 
+### Consensus Simulation
+
+glsim simulates one round of consensus: 1 leader + N validators with rotation on disagreement.
+
+- **Leader** executes the contract method. Each `run_nondet` call captures `(result, leader_fn, validator_fn)`.
+- **Validators** each run the captured `validator_fn(leader_result)` for every nondet call. If all return `True`, the validator agrees.
+- **Majority vote**: if >50% agree, the transaction is FINALIZED. Otherwise, the leader rotates (re-executes from clean state).
+- **Max rotations**: if no consensus after N rotations, the transaction is UNDETERMINED.
+
+With mocks, validators always agree (deterministic). With live LLM/web, each validator may get different responses and disagree — surfacing consensus-related bugs during development.
+
+```bash
+# 5 validators, up to 3 rotations on disagreement
+glsim --validators 5 --max-rotations 3
+
+# Leader-only (no validation, fastest)
+glsim --validators 1
+```
+
 ## CLI Options
 
 ```
@@ -168,7 +187,8 @@ glsim [OPTIONS]
 Options:
   --port PORT          RPC server port (default: 4000)
   --host HOST          Bind address (default: 127.0.0.1)
-  --validators N       Number of validators (default: 1, leader-only)
+  --validators N       Number of validators (default: 5)
+  --max-rotations N    Max leader rotations on disagreement (default: 3)
   --llm-provider P     Default LLM provider, e.g. openai:gpt-4o
   --no-browser         Disable Playwright browser for web requests
   --verbose, -v        Verbose logging
@@ -192,6 +212,7 @@ Client (GenLayerClient / web3.py)
 glsim server (FastAPI + uvicorn)
   ↓
 SimEngine (wraps gltest.direct)
+  ├── Consensus (leader + N validators + rotation)
   ├── VMContext (cheatcodes, mocks)
   ├── InmemManager (per-contract storage)
   ├── Cross-contract hooks
@@ -208,7 +229,7 @@ Each contract gets isolated storage. The VM context persists across requests, en
 |---|---|---|
 | Startup | ~1 second | Minutes (Docker) |
 | Execution | Native Python | WASM in GenVM |
-| Consensus | Simulated (instant) | Full protocol |
+| Consensus | 1 leader + N validators, rotation | Full protocol with appeals |
 | Web requests | httpx / Playwright | GenVM sandbox |
 | LLM requests | Direct API calls | GenVM sandbox |
 | State | In-memory (lost on restart) | Persistent |
@@ -217,6 +238,6 @@ Each contract gets isolated storage. The VM context persists across requests, en
 ## Limitations
 
 - **In-memory state**: All state is lost when glsim restarts. Use snapshots within a session.
-- **No real consensus**: All validators auto-agree. Validator functions run but consensus is not enforced.
+- **No appeals**: Consensus runs one round (leader + validators + rotation) but no appeal mechanism.
 - **GenVM-only libraries**: Stubs provide basic functionality but not full fidelity (e.g., VecDB uses simple L2 distance, not cover trees).
 - **No gas metering**: Gas-related RPCs return 0.

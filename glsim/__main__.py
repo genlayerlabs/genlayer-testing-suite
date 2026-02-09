@@ -15,7 +15,11 @@ def main():
         "--host", default="127.0.0.1", help="Bind address (default: 127.0.0.1)"
     )
     parser.add_argument(
-        "--validators", type=int, default=1, help="Number of validators (default: 1, leader-only)"
+        "--validators", type=int, default=5, help="Number of validators (default: 5)"
+    )
+    parser.add_argument(
+        "--max-rotations", type=int, default=3,
+        help="Max leader rotations on disagreement (default: 3)"
     )
     parser.add_argument(
         "--llm-provider", default=None,
@@ -35,6 +39,7 @@ def main():
 
     app = create_app(
         num_validators=args.validators,
+        max_rotations=args.max_rotations,
         llm_provider=args.llm_provider,
         use_browser=not args.no_browser,
         verbose=args.verbose,
