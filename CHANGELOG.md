@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.19.1 (2026-02-09)
+
+### Bug Fixes
+
+- Add glsim version to semantic-release config
+  ([`791a987`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/791a987b88b68dae912d6269a347e47479024811))
+
+
 ## v0.17.0 (2026-02-06)
 
 ### Features
