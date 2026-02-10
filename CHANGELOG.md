@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.19.2 (2026-02-10)
+
+### Bug Fixes
+
+- Use path-based module eviction in direct mode cleanup
+  ([`68d72a1`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/68d72a19d3a47c3d519da4215e4da07832e5a8a3))
+
+### Documentation
+
+- Update project CLAUDE.md and direct-tests skill
+  ([`9cf1605`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/9cf1605f024a9bf768a2f57275db33d404edb680))
+
+
 ## v0.19.1 (2026-02-09)
 
 ### Bug Fixes
