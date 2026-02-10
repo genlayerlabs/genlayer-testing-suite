@@ -1,6 +1,6 @@
 # Write Direct Mode Tests
 
-Write fast, comprehensive tests for GenLayer intelligent contracts using direct mode execution.
+Write fast tests for GenLayer intelligent contracts using direct mode execution.
 
 ## When to Use
 
@@ -13,13 +13,6 @@ Write fast, comprehensive tests for GenLayer intelligent contracts using direct 
 
 Direct mode runs contract Python code in-memory without the GenLayer simulator. Tests execute in ~30ms instead of minutes.
 
-**Two approaches:**
-
-| Approach | When to Use | Speed |
-|----------|-------------|-------|
-| DEV MODE | Contract has dev bypass (`bridge_sender=zero_address`) | ~30ms |
-| Production + Mocks | Test actual nondet logic with `mock_web()` | ~50ms |
-
 ## Fixtures
 
 ```python
@@ -28,149 +21,103 @@ from gltest.direct import create_address
 # Core fixtures (from pytest_plugin)
 def test_example(direct_vm, direct_deploy, direct_alice, direct_bob):
     # direct_vm: VMContext with cheatcodes
-    # direct_deploy: Deploy contracts
+    # direct_deploy: Deploy contracts from file path
     # direct_alice/bob/charlie: Test addresses
+    # direct_owner: Default sender address
+    # direct_accounts: List of 10 test addresses
     pass
 ```
 
-## DEV MODE Tests
+## Basic Contract Test
 
-For contracts with DEV MODE support (skip external verification when `bridge_sender=zero_address`):
-
-```python
-@pytest.fixture
-def dev_contract(direct_vm, direct_deploy, contract_path, direct_alice):
-    """Deploy contract in DEV MODE."""
-    direct_vm.sender = direct_alice
-    return direct_deploy(
-        str(contract_path),
-        bridge_sender="0x0000000000000000000000000000000000000000",  # DEV MODE
-        # ... other args
-    )
-
-def test_create_item(dev_contract, direct_vm, direct_alice):
-    """Test basic creation flow."""
-    direct_vm.sender = direct_alice
-    dev_contract.dev_register_identity("alice_github")  # DEV MODE method
-
-    result = dev_contract.create_item("item_1", 100)
-    assert result == "item_1"
-
-    item = dev_contract.get_item("item_1")
-    assert item["status"] == "active"
-```
-
-## Production Mode with Mocks
-
-For testing actual nondet operations (GitHub API, RPC calls, LLM):
+Using the Storage contract (`tests/examples/contracts/storage.py`):
 
 ```python
-@pytest.fixture
-def prod_contract(direct_vm, direct_deploy, contract_path, direct_alice):
-    """Deploy contract in production mode (requires mocks)."""
-    direct_vm.sender = direct_alice
-    return direct_deploy(
-        str(contract_path),
-        bridge_sender="0x1111111111111111111111111111111111111111",  # Non-zero
-        github_api_base="https://api.github.com",
-        # ... other args
-    )
+from pathlib import Path
 
-def test_github_verification(prod_contract, direct_vm, direct_alice):
-    """Test GitHub verification with mocked API."""
-    direct_vm.sender = direct_alice
+CONTRACTS = Path(__file__).parent.parent / "examples" / "contracts"
 
-    # Start verification to get challenge
-    challenge = prod_contract.start_identity_verification()
+def test_storage(direct_vm, direct_deploy):
+    storage = direct_deploy(str(CONTRACTS / "storage.py"), "initial")
 
-    # Mock GitHub API response
-    direct_vm.mock_web(
-        r"api\.github\.com/users/testuser",
-        {
-            "response": {
-                "status": 200,
-                "headers": {},
-                "body": json.dumps({
-                    "id": 12345,
-                    "login": "testuser",
-                    "bio": challenge  # Challenge in bio
-                }).encode()
-            },
-            "method": "GET"
-        }
-    )
+    assert storage.get_storage() == "initial"
 
-    # Verify identity (makes real nondet web call, intercepted by mock)
-    prod_contract.verify_identity("testuser")
-
-    # Assert result
-    identity = prod_contract.get_identity(direct_alice)
-    assert identity["github_username"] == "testuser"
+    storage.update_storage("updated")
+    assert storage.get_storage() == "updated"
 ```
 
-## Mock Helpers Pattern
+## Testing with Sender / Access Control
 
-Create reusable mock helpers in conftest.py:
+Using UserStorage (per-user data via `gl.message.sender_address`):
+
+```python
+def test_per_user_storage(direct_vm, direct_deploy, direct_alice, direct_bob):
+    user_storage = direct_deploy(str(CONTRACTS / "user_storage.py"))
+
+    direct_vm.sender = direct_alice
+    user_storage.update_storage("alice data")
+
+    direct_vm.sender = direct_bob
+    user_storage.update_storage("bob data")
+
+    assert user_storage.get_account_storage(direct_alice.as_hex) == "alice data"
+    assert user_storage.get_account_storage(direct_bob.as_hex) == "bob data"
+```
+
+## Mocking Web Requests
+
+For contracts using `gl.nondet.web.get()` (e.g. XUsernameStorage):
 
 ```python
 import json
 
-def mock_github_user(direct_vm, username: str, user_id: int, bio: str = ""):
-    """Mock GitHub user API response."""
+def test_web_mock(direct_vm, direct_deploy):
+    contract = direct_deploy(str(CONTRACTS / "x_username_storage.py"))
+
+    # Mock the X API endpoint (pattern is a regex)
     direct_vm.mock_web(
-        rf"api\.github\.com/users/{username}",
+        r"domain\.com/api/twitter/users/by/username/testuser",
         {
             "response": {
                 "status": 200,
                 "headers": {},
-                "body": json.dumps({
-                    "id": user_id,
-                    "login": username,
-                    "bio": bio
-                }).encode()
+                "body": json.dumps({"username": "testuser"}).encode()
             },
             "method": "GET"
         }
     )
 
-def mock_rpc_call(direct_vm, rpc_url_pattern: str, result_hex: str):
-    """Mock JSON-RPC response."""
-    direct_vm.mock_web(
-        rpc_url_pattern,
-        {
-            "response": {
-                "status": 200,
-                "headers": {},
-                "body": json.dumps({
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "result": result_hex
-                }).encode()
-            },
-            "method": "POST"
-        }
+    contract.update_username("testuser")
+    assert contract.get_username() == "testuser"
+```
+
+### Flat mock format (auto-adapted)
+
+```python
+direct_vm.mock_web(
+    r"api\.example\.com/price",
+    {"status": 200, "body": '{"price": 42000}'}
+)
+```
+
+## Mocking LLM Prompts
+
+For contracts using `gl.nondet.exec_prompt()` (e.g. WizardOfCoin):
+
+```python
+import json
+
+def test_llm_mock(direct_vm, direct_deploy):
+    contract = direct_deploy(str(CONTRACTS / "wizard_of_coin.py"), True)
+
+    # Mock LLM response (pattern matched against prompt text)
+    direct_vm.mock_llm(
+        r"wizard.*coin",
+        json.dumps({"reasoning": "No coin for you!", "give_coin": False})
     )
 
-def mock_github_pr(direct_vm, repo: str, pr_number: int, user_id: int, merged: bool = False):
-    """Mock GitHub PR API response."""
-    repo_escaped = repo.replace("/", r"\/")
-    direct_vm.mock_web(
-        rf"api\.github\.com/repos/{repo_escaped}/pulls/{pr_number}",
-        {
-            "response": {
-                "status": 200,
-                "headers": {},
-                "body": json.dumps({
-                    "id": pr_number * 1000,
-                    "number": pr_number,
-                    "state": "closed" if merged else "open",
-                    "merged": merged,
-                    "user": {"id": user_id}
-                }).encode()
-            },
-            "method": "GET"
-        }
-    )
+    contract.ask_for_coin("Give me the coin!")
+    assert contract.get_have_coin() == True  # wizard refused
 ```
 
 ## VMContext Cheatcodes
@@ -179,32 +126,56 @@ def mock_github_pr(direct_vm, repo: str, pr_number: int, user_id: int, merged: b
 # Set sender for next call
 direct_vm.sender = direct_alice
 
-# Set native value
-direct_vm.value = 1000000000000000000  # 1 ETH in wei
+# Set native value (wei)
+direct_vm.value = 1000000000000000000
 
-# Expect revert
-with direct_vm.expect_revert("Error message substring"):
+# Expect revert (catches ContractRollback + generic exceptions)
+with direct_vm.expect_revert("Error substring"):
     contract.method_that_reverts()
 
 # Prank (temporary sender change)
 with direct_vm.prank(direct_bob):
-    contract.method()  # Called as bob
+    contract.method()  # called as bob
 
 # Snapshot and revert state
 snap_id = direct_vm.snapshot()
 contract.modify_state()
-direct_vm.revert(snap_id)  # State restored
+direct_vm.revert(snap_id)  # state restored
 
 # Set balance
 direct_vm.deal(direct_alice, 1000000000000000000)
 
 # Time control (sets gl.message.datetime)
 direct_vm.warp("2024-06-01T12:00:00Z")
+
+# Clear all mocks
+direct_vm.clear_mocks()
+```
+
+## Testing Validators (run_nondet)
+
+After a nondet call, test that the validator function behaves correctly:
+
+```python
+def test_validator(direct_vm, direct_deploy):
+    contract = direct_deploy(str(CONTRACTS / "x_username_storage.py"))
+
+    direct_vm.mock_web(r"domain\.com/api/twitter/.*", {
+        "response": {"status": 200, "headers": {},
+                     "body": json.dumps({"username": "alice"}).encode()},
+        "method": "GET"
+    })
+
+    contract.update_username("alice")
+
+    # Run the captured validator with the leader's result
+    result = direct_vm.run_validator()  # defaults to last captured nondet
+    assert result == True  # validator agrees with leader
 ```
 
 ## Mock Response Format
 
-The mock_web response format must match what the SDK expects:
+The full `mock_web` format must match what the SDK expects:
 
 ```python
 {
@@ -224,103 +195,63 @@ For JSON APIs, encode the body:
 
 ## How Nondet Mocking Works
 
-When contract calls `gl.nondet.web.get(url)` or similar:
+When a contract calls `gl.nondet.web.get(url)` or `gl.nondet.exec_prompt(prompt)`:
 
-1. Contract calls `gl.eq_principle.strict_eq(fetch_fn)`
+1. Contract calls `gl.eq_principle.strict_eq(fn)` or `gl.eq_principle.prompt_comparative(fn, ...)`
 2. This triggers `RunNondet` gl_call with cloudpickle-serialized function
-3. Direct mode executes the leader function directly
+3. Direct mode executes the leader function directly (skips pickling)
 4. Inside leader, `gl.nondet.web.get()` triggers `GetWebsite` gl_call
-5. `mock_web()` intercepts by URL pattern matching
+5. `mock_web()` intercepts by URL regex matching
 6. Mock response returned to contract
 
-This means mocks work for ALL nondet operations including those inside `gl.eq_principle.strict_eq()`.
-
-## Test Organization
-
-```
-tests/
-├── direct/
-│   ├── conftest.py              # Fixtures + mock helpers
-│   ├── test_<feature>.py        # DEV MODE tests
-│   └── test_<feature>_mocks.py  # Production tests with mocks
-└── intelligent_contracts/
-    └── unit/
-        └── test_smoke.py        # Simulator smoke test (1-2 tests)
-```
-
-## Coverage Strategy
-
-| What to Test | Where | Why |
-|--------------|-------|-----|
-| State transitions | DEV MODE | Fast, no mocks needed |
-| Validation logic | DEV MODE | Fast, deterministic |
-| Access control | DEV MODE | Fast, test all roles |
-| External API parsing | Production + mocks | Test actual parsing |
-| Error handling | Both | Cover all paths |
-| Happy path E2E | Simulator smoke | Validate deployment |
+Mocks work for ALL nondet operations including those inside equivalence principles.
 
 ## Common Patterns
 
 ### Testing Validation Errors
 ```python
-def test_invalid_input(dev_contract, direct_vm, direct_alice):
-    direct_vm.sender = direct_alice
+def test_revert(direct_vm, direct_deploy):
+    contract = direct_deploy(str(CONTRACTS / "storage.py"), "init")
 
-    with direct_vm.expect_revert("Invalid amount"):
-        dev_contract.create_item("item", amount=0)
+    with direct_vm.expect_revert():
+        # Trigger any contract error
+        contract.some_method_that_raises()
 ```
 
-### Testing Access Control
+### Snapshot/Revert for Isolation
 ```python
-def test_only_owner(dev_contract, direct_vm, direct_alice, direct_bob):
-    direct_vm.sender = direct_alice
-    dev_contract.create_item("item_1")
+def test_isolated_changes(direct_vm, direct_deploy):
+    storage = direct_deploy(str(CONTRACTS / "storage.py"), "before")
 
-    direct_vm.sender = direct_bob
-    with direct_vm.expect_revert("Only owner"):
-        dev_contract.delete_item("item_1")
+    snap_id = direct_vm.snapshot()
+    storage.update_storage("after")
+    assert storage.get_storage() == "after"
+
+    direct_vm.revert(snap_id)
+    assert storage.get_storage() == "before"
 ```
 
-### Testing State Changes
+### Multiple Accounts
 ```python
-def test_state_transition(dev_contract, direct_vm, direct_alice):
+def test_multi_party(direct_vm, direct_deploy, direct_alice, direct_bob):
+    user_storage = direct_deploy(str(CONTRACTS / "user_storage.py"))
+
     direct_vm.sender = direct_alice
-    dev_contract.create_item("item_1")
+    user_storage.update_storage("alice")
 
-    assert dev_contract.get_item("item_1")["status"] == "pending"
-
-    dev_contract.approve_item("item_1")
-
-    assert dev_contract.get_item("item_1")["status"] == "approved"
-```
-
-### Testing with Multiple Accounts
-```python
-def test_multi_party(dev_contract, direct_vm, direct_alice, direct_bob, direct_charlie):
-    # Alice creates
-    direct_vm.sender = direct_alice
-    dev_contract.create_item("item_1")
-
-    # Bob participates
-    direct_vm.sender = direct_bob
-    dev_contract.join_item("item_1")
-
-    # Charlie verifies
-    direct_vm.sender = direct_charlie
-    dev_contract.verify_item("item_1")
+    with direct_vm.prank(direct_bob):
+        user_storage.update_storage("bob")
 ```
 
 ## Debugging
 
-Enable traces in VMContext:
 ```python
+# Enable traces
 direct_vm._trace_enabled = True
 # ... run test
 print(direct_vm._traces)
-```
 
-Check mock matching:
-```python
-# Mocks are stored as (pattern, response) tuples
-print(direct_vm._web_mocks)
+# Inspect registered mocks
+print(direct_vm._web_mocks)  # [(pattern, response), ...]
+print(direct_vm._llm_mocks)  # [(pattern, response), ...]
 ```
