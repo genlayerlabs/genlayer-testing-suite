@@ -506,14 +506,22 @@ class VMContext:
                 pass
             self._original_stdin_fd = None
 
-        modules_to_remove = [
-            key for key in sys.modules.keys()
-            if (key == 'genlayer' or key.startswith('genlayer.'))
-            or key.startswith('_contract_')
-            or key.startswith('_deployed_')
-        ]
+        # Collect SDK root paths before removing them from sys.path
+        sdk_roots = [p for p in sys.path if 'gltest-direct' in p]
+
+        # Remove all modules loaded from SDK paths (path-based eviction).
+        # This catches genlayer.*, genlayer_embeddings.*, and any future
+        # SDK addon — any module whose file lives under an SDK root.
+        modules_to_remove = []
+        for key, mod in sys.modules.items():
+            if key.startswith('_contract_') or key.startswith('_deployed_'):
+                modules_to_remove.append(key)
+                continue
+            mod_file = getattr(mod, '__file__', None) or ''
+            if any(mod_file.startswith(root) for root in sdk_roots):
+                modules_to_remove.append(key)
         for mod in modules_to_remove:
-            del sys.modules[mod]
+            sys.modules.pop(mod, None)
 
         # Remove SDK cache paths from sys.path to avoid stale SDK version conflicts
         sys.path[:] = [
