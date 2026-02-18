@@ -7,320 +7,54 @@
 [![Documentation](https://img.shields.io/badge/docs-genlayer-blue)](https://docs.genlayer.com/api-references/genlayer-test)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-## About
-
-The GenLayer Testing Suite is a powerful testing framework designed to streamline the development and validation of intelligent contracts within the GenLayer ecosystem. Built on top of [pytest](https://docs.pytest.org/en/stable/) and [genlayer-py](https://docs.genlayer.com/api-references/genlayer-py), this suite provides developers with a comprehensive set of tools for deploying, interacting with, and testing intelligent contracts efficiently in a simulated GenLayer environment.
-
-## 🚀 Quick Start
-
-### Installation
+A pytest-based testing framework for [GenLayer](https://docs.genlayer.com/) intelligent contracts. Built on top of [genlayer-py](https://docs.genlayer.com/api-references/genlayer-py).
 
 ```bash
 pip install genlayer-test
 ```
 
-### Basic Usage
+## Two Ways to Test
+
+The testing suite provides two execution modes. Pick the one that fits your workflow:
+
+| | Direct Mode | Studio Mode |
+|---|---|---|
+| **How it works** | Runs contract Python code directly in-memory | Deploys to GenLayer Studio, interacts via RPC |
+| **Speed** | ~milliseconds per test | ~minutes per test |
+| **Prerequisites** | Python >= 3.12 | Python >= 3.12 + GenLayer Studio (Docker) |
+| **Best for** | Unit tests, rapid development, CI/CD | Integration tests, consensus validation, testnet |
+| **Mocking** | Foundry-style cheatcodes (`mock_web`, `mock_llm`) | Mock validators with transaction context |
+
+**Start with Direct Mode.** It's faster, simpler, and doesn't require Docker. Use Studio Mode when you need full network behavior, multi-validator consensus, or testnet deployment.
+
+---
+
+## Direct Mode
+
+Run contracts directly in Python — no simulator, no Docker, no network. Tests execute in milliseconds.
+
+### Quick Start
 
 ```python
-from gltest import get_contract_factory, get_default_account, create_account
-from gltest.assertions import tx_execution_succeeded
+def test_storage(direct_vm, direct_deploy):
+    # Deploy contract in-memory
+    storage = direct_deploy("contracts/Storage.py", "initial")
 
-factory = get_contract_factory("MyContract")
-# Deploy a contract with default account
-contract = factory.deploy() # This will be deployed with the default account
-assert contract.account == get_default_account()
+    # Read state directly
+    assert storage.get_storage() == "initial"
 
-# Deploy a contract with other account
-other_account = create_account()
-contract = factory.deploy(account=other_account)
-assert contract.account == other_account
-
-# Interact with the contract
-result = contract.get_value().call()  # Read method
-tx_receipt = contract.set_value(args=["new_value"]).transact()  # Write method
-
-assert tx_execution_succeeded(tx_receipt)
+    # Write state directly
+    storage.update_storage("updated")
+    assert storage.get_storage() == "updated"
 ```
 
-## 📋 Table of Contents
+Run with pytest:
 
-- [About](#about)
-- [Quick Start](#-quick-start)
-- [Prerequisites](#prerequisites)
-- [Installation and Usage](#installation-and-usage)
-- [Key Features](#-key-features)
-- [Examples](#-examples)
-  - [Project Structure](#project-structure)
-  - [Storage Contract Example](#storage-contract-example)
-  - [Contract Deployment](#contract-deployment)
-  - [Read Methods](#read-methods)
-  - [Write Methods](#write-methods)
-  - [Assertions](#assertions)
-  - [Test Fixtures](#test-fixtures)
-  - [Statistical Analysis with `.analyze()`](#statistical-analysis-with-analyze)
-  - [Mock LLM Responses](#mock-llm-responses)
-- [Best Practices](#-best-practices)
-- [Troubleshooting](#-troubleshooting)
-- [Contributing](#-contributing)
-- [License](#-license)
-- [Support](#-support)
-
-## Prerequisites
-
-Before installing GenLayer Testing Suite, ensure you have the following prerequisites installed:
-
-- Python (>=3.12)
-- GenLayer Studio (Docker deployment)
-- pip (Python package installer)
-
-## Installation and Usage
-
-### Installation Options
-
-1. Install from PyPI (recommended):
 ```bash
-$ pip install genlayer-test
+pytest tests/ -v
 ```
 
-2. Install from source:
-```bash
-$ git clone https://github.com/genlayerlabs/genlayer-testing-suite
-$ cd genlayer-testing-suite
-$ pip install -e .
-```
-
-### Configuration
-
-The GenLayer Testing Suite can be configured using an optional but recommended `gltest.config.yaml` file in your project root. While not required, this file helps manage network configurations, contract paths, and environment settings in a centralized way, making it easier to maintain different environments and share configurations across team members.
-
-```yaml
-# gltest.config.yaml
-networks:
-  default: localnet  # Default network to use
-
-  localnet:  # Local development network configuration (pre-configured)
-    url: "http://127.0.0.1:4000/api"
-    leader_only: false  # Set to true to run all contracts in leader-only mode by default
-
-  studionet:  # Studio network configuration (pre-configured)
-    # Pre-configured network - accounts are automatically generated
-    # You can override any settings if needed
-
-  testnet_asimov:  # Test network configuration (pre-configured)
-    # Pre-configured network - requires accounts to be specified
-    accounts:
-      - "${ACCOUNT_PRIVATE_KEY_1}"
-      - "${ACCOUNT_PRIVATE_KEY_2}"
-      - "${ACCOUNT_PRIVATE_KEY_3}"
-    from: "${ACCOUNT_PRIVATE_KEY_2}"  # Optional: specify default account
-
-  custom_network:  # Custom network configuration
-    id: 1234
-    url: "http://custom.network:8545"
-    chain_type: "localnet"  # Required for custom networks: localnet, studionet, or testnet_asimov
-    accounts:
-      - "${CUSTOM_ACCOUNT_1}"
-      - "${CUSTOM_ACCOUNT_2}"
-    from: "${CUSTOM_ACCOUNT_1}"  # Optional: specify default account
-
-paths:
-  contracts: "contracts"  # Path to your contracts directory
-  artifacts: "artifacts" # Path to your artifacts directory
-
-environment: .env  # Path to your environment file containing private keys and other secrets
-```
-
-Key configuration sections:
-
-1. **Networks**: Define different network environments
-   - `default`: Specifies which network to use by default
-   - **Pre-configured Networks**:
-     - `localnet`: Local development network with auto-generated test accounts
-     - `studionet`: GenLayer Studio network with auto-generated test accounts
-     - `testnet_asimov`: Public testnet (requires account configuration)
-   - Network configurations can include:
-     - `url`: The RPC endpoint for the network (optional for pre-configured networks)
-     - `id`: Chain ID (optional for pre-configured networks)
-     - `chain_type`: Chain type - one of: `localnet`, `studionet`, or `testnet_asimov` (required for custom networks)
-     - `accounts`: List of account private keys (using environment variables)
-     - `from`: Specify which account to use as the default for transactions (optional, defaults to first account)
-     - `leader_only`: Leader only mode
-   - For custom networks (non-pre-configured), `id`, `url`, `chain_type`, and `accounts` are required fields
-
-**Note on Environment Variables**: When using environment variables in your configuration (e.g., `${ACCOUNT_PRIVATE_KEY_1}`), ensure they are properly set in your `environment` file. If an environment variable is not found, the system will raise a clear error message indicating which variable is missing.
-
-**Default Account Selection**: The `from` field allows you to specify which account from the `accounts` list should be used as the default for deployments and transactions. If not specified, the first account in the list is used by default. This is useful when you want a specific account to be the primary account for your tests without having to specify it in every transaction.
-
-Example:
-```yaml
-testnet_asimov:
-  accounts:
-    - "${DEPLOYER_KEY}"      # accounts[0]
-    - "${USER_KEY}"          # accounts[1] 
-    - "${ADMIN_KEY}"         # accounts[2]
-  from: "${ADMIN_KEY}"       # Use ADMIN_KEY as default instead of DEPLOYER_KEY
-```
-
-**Chain vs Network**: 
-- **Network**: Defines the connection details (URL, accounts, etc.) for a specific environment
-- **Chain**: Defines the genlayer chain type and its associated behaviors (localnet, studionet, or testnet_asimov)
-- Pre-configured networks automatically have the correct chain type set
-- Custom networks must specify the chain type explicitly
-- The `--chain-type` CLI flag can override the chain type for any network, allowing you to test different chain behaviors with the same network configuration
-
-2. **Paths**: Define important directory paths
-   - `contracts`: Location of your contract files
-   - `artifacts`: Location of your artifacts files (analysis results will be stored here)
-
-3. **Environment**: Path to your `.env` file containing sensitive information like private keys
-
-If you don't provide a config file, the suite will use default values. You can override these settings using command-line arguments. For example:
-```bash
-# Override the default network
-gltest --network testnet_asimov
-
-# Override the contracts directory
-gltest --contracts-dir custom/contracts/path
-```
-
-### Running Tests
-
-1. Run all tests:
-```bash
-$ gltest
-```
-
-2. Run specific test file:
-```bash
-$ gltest tests/test_mycontract.py
-```
-
-3. Run tests with specific markers:
-```bash
-$ gltest -m "integration"
-```
-
-4. Run tests with verbose output:
-```bash
-$ gltest -v
-```
-
-5. Run tests in specific contracts directories, by default `<path_to_contracts>` is set to `contracts/`
-```bash
-$ gltest --contracts-dir <path_to_contracts>
-```
-
-6. Run tests on a specific network:
-```bash
-# Run tests on localnet (default)
-$ gltest --network localnet
-
-# Run tests on studionet
-$ gltest --network studionet
-
-# Run tests on testnet (requires account configuration)
-$ gltest --network testnet_asimov
-
-# Run tests on a custom network
-$ gltest --network custom_network
-```
-The `--network` flag allows you to specify which network configuration to use from your `gltest.config.yaml`. If not specified, it will use the `default` network defined in your config file.
-
-**Pre-configured Networks**:
-- `localnet` and `studionet`: Work out of the box with auto-generated test accounts
-- `testnet_asimov`: Requires account configuration in `gltest.config.yaml`
-
-When using `testnet_asimov` without proper account configuration, you'll receive a clear error message directing you to configure accounts in your config file.
-
-7. Run tests with a custom RPC url
-```bash
-$ gltest --rpc-url <custom_rpc_url>
-```
-
-8. Run tests with a default wait interval for waiting transaction receipts
-```bash
-$ gltest --default-wait-interval <default_wait_interval>
-```
-
-9. Run tests with a default wait retries for waiting transaction receipts
-```bash
-$ gltest --default-wait-retries <default_wait_retries>
-```
-
-10. Run tests with leader-only mode enabled
-```bash
-$ gltest --leader-only
-```
-The `--leader-only` flag configures all contract deployments and write operations to run only on the leader node. This is useful for:
-- Faster test execution by avoiding consensus
-- Testing specific leader-only scenarios
-- Development and debugging purposes
-- Reducing computational overhead in test environments
-
-When this flag is enabled, all contracts deployed and all write transactions will automatically use leader-only mode, regardless of individual method parameters.
-
-**Note:** Leader-only mode is only available for studio-based networks (localhost, 127.0.0.1, *.genlayer.com, *.genlayerlabs.com). When enabled on other networks, it will have no effect and a warning will be logged.
-
-12. Override the chain type
-```bash
-$ gltest --chain-type localnet
-$ gltest --chain-type studionet
-$ gltest --chain-type testnet_asimov
-```
-The `--chain-type` flag allows you to override the chain type configured for the network. This is useful when:
-- Testing different chain behaviors without changing network configuration
-- Switching between chain types for testing purposes
-- Using a custom network URL with a specific chain type
-
-Available chain types:
-- `localnet`: Local development chain
-- `studionet`: Studio-based chain
-- `testnet_asimov`: Testnet Asimov chain
-
-The chain type determines various behaviors including RPC endpoints, consensus mechanisms, and available features. When specified, this flag overrides the chain type configured in your network settings.
-
-## 🚀 Key Features
-
-- **Pytest Integration** – Extends pytest to support intelligent contract testing, making it familiar and easy to adopt.
-- **Account & Transaction Management** – Create, fund, and track accounts and transactions within the GenLayer Simulator.
-- **Contract Deployment & Interaction** – Deploy contracts, call methods, and monitor events seamlessly.
-- **CLI Compatibility** – Run tests directly from the command line, ensuring smooth integration with the GenLayer CLI.
-- **State Injection & Consensus Simulation** – Modify contract states dynamically and simulate consensus scenarios for advanced testing.
-- **Prompt Testing & Statistical Analysis** – Evaluate and statistically test prompts for AI-driven contract execution.
-- **Scalability to Security & Audit Tools** – Designed to extend into security testing and smart contract auditing.
-- **Custom Transaction Context** – Set custom validators with specific LLM providers and models, and configure GenVM datetime for deterministic testing scenarios.
-- **Direct Execution Mode** – Run contracts directly in Python for ultra-fast unit testing (~ms vs minutes).
-
-## ⚡ Direct vs Simulator Mode
-
-The testing suite provides two execution modes:
-
-| Mode | How it works | Speed | Use case |
-|------|--------------|-------|----------|
-| **Simulator** | Deploy to GenLayer simulator, interact via RPC | ~minutes | Integration tests, consensus validation |
-| **Direct** | Run Python code directly in-memory | ~milliseconds | Unit tests, rapid development |
-
-### Quick Start with Direct Mode
-
-```python
-def test_token_transfer(direct_vm, direct_deploy):
-    # Deploy contract directly in Python (no simulator)
-    token = direct_deploy("contracts/Token.py", initial_supply=1000)
-
-    # Create test addresses
-    from gltest.direct import create_address
-    alice = create_address("alice")
-    bob = create_address("bob")
-
-    # Set sender and interact
-    direct_vm.sender = alice
-    token.mint(alice, 500)
-    token.transfer(bob, 100)
-
-    assert token.balances[bob] == 100
-```
-
-### Available Fixtures
+### Fixtures
 
 | Fixture | Description |
 |---------|-------------|
@@ -349,7 +83,7 @@ direct_vm.revert(snap_id)  # Full state restored
 with direct_vm.expect_revert("Insufficient balance"):
     contract.transfer(bob, 1000000)
 
-# Mock web/LLM (for nondet operations)
+# Mock web/LLM (regex pattern matching)
 direct_vm.mock_web(r"api\.example\.com", {"status": 200, "body": "{}"})
 direct_vm.mock_llm(r"analyze.*", "positive sentiment")
 
@@ -366,584 +100,190 @@ direct_vm.strict_mocks = True
 direct_vm.check_pickling = True
 ```
 
-📖 **[Full Direct Mode Documentation](docs/direct-runner.md)**
+**[Full Direct Mode Documentation](docs/direct-runner.md)** — fixtures, cheatcodes, validator testing, limitations, and complete examples.
 
-## 📚 Examples
+---
 
-### Project Structure
+## Studio Mode
 
-Before diving into the examples, let's understand the basic project structure:
+Deploy contracts to a running GenLayer Studio instance and interact via RPC. This gives you full network behavior including multi-validator consensus.
 
-```
-genlayer-example/
-├── contracts/              # Contract definitions
-│   └── storage.py          # Example storage contract
-├── test/                   # Test files
-│   └── test_contract.py    # Contract test cases
-└── gltest.config.yaml      # Configuration file
-```
+### Prerequisites
 
-### Storage Contract Example
+- Python >= 3.12
+- GenLayer Studio running (Docker)
 
-Let's examine a simple Storage contract that demonstrates basic read and write operations:
-
-```python
-# { "Depends": "py-genlayer:test" }
-
-from genlayer import *
-
-
-# contract class
-class Storage(gl.Contract):
-    # State variable to store data
-    storage: str
-
-    # Constructor - initializes the contract state
-    def __init__(self, initial_storage: str):
-        self.storage = initial_storage
-
-    # Read method - marked with @gl.public.view decorator
-    # Returns the current storage value
-    @gl.public.view
-    def get_storage(self) -> str:
-        return self.storage
-
-    # Write method - marked with @gl.public.write decorator
-    # Updates the storage value
-    @gl.public.write
-    def update_storage(self, new_storage: str) -> None:
-        self.storage = new_storage
-```
-
-Key features demonstrated in this contract:
-- State variable declaration
-- Constructor with initialization
-- Read-only method with `@gl.public.view` decorator
-- State-modifying method with `@gl.public.write` decorator
-- Type hints for better code clarity
-
-### Contract Deployment
-
-The GenLayer Testing Suite provides two methods for deploying contracts:
-
-1. **`deploy()`** - Returns the deployed contract instance (recommended for most use cases)
-2. **`deploy_contract_tx()`** - Returns only the transaction receipt
-
-Here's how to deploy the Storage contract:
+### Quick Start
 
 ```python
 from gltest import get_contract_factory, get_default_account
 from gltest.assertions import tx_execution_succeeded
-from gltest.utils import extract_contract_address
 
-def test_deployment():
-    # Get the contract factory for your contract
-    # it will search in the contracts directory
-    factory = get_contract_factory("Storage")
-    
-    # Method 1: Deploy the contract with constructor arguments (recommended)
-    contract = factory.deploy(
-        args=["initial_value"],  # Constructor arguments
-        account=get_default_account(),  # Account to deploy from
-        consensus_max_rotations=3,  # Optional: max consensus rotations
-        transaction_context=None,  # Optional: custom transaction context
-    )
-    
-    # Contract is now deployed and ready to use
-    assert contract.address is not None
-    
-    # Method 2: Deploy and get only the receipt
-    receipt = factory.deploy_contract_tx(
-        args=["initial_value"],
-        account=get_default_account(),
-    )
-    
-    # Verify deployment succeeded
-    assert tx_execution_succeeded(receipt)
+factory = get_contract_factory("MyContract")
+contract = factory.deploy()
 
-    # Get the contract address
-    contract_address = extract_contract_address(receipt)
+# Read method — returns value directly
+result = contract.get_value().call()
+
+# Write method — returns transaction receipt
+tx_receipt = contract.set_value(args=["new_value"]).transact()
+assert tx_execution_succeeded(tx_receipt)
 ```
 
-### Read Methods
+Run with the `gltest` CLI:
 
-Reading from the contract requires calling `.call()` on the method:
-
-```python
-from gltest import get_contract_factory
-
-def test_read_methods():
-
-    # Get the contract factory and deploy the contract
-    factory = get_contract_factory("Storage")
-    contract = factory.deploy()
-
-    # Call a read-only method
-    result = contract.get_storage(args=[]).call(
-        transaction_context=None,  # Optional: custom transaction context
-    )
-    
-    # Assert the result matches the initial value
-    assert result == "initial_value"
+```bash
+gltest                              # Run all tests
+gltest tests/test_mycontract.py     # Specific file
+gltest --network studionet          # Specific network
+gltest --leader-only                # Skip consensus (faster)
+gltest -v                           # Verbose output
 ```
 
-### Write Methods
+### Configuration
 
-Writing to the contract requires calling `.transact()` on the method. Method arguments are passed to the write method, while transaction parameters are passed to `.transact()`:
+Create a `gltest.config.yaml` in your project root:
+
+```yaml
+networks:
+  default: localnet
+
+  localnet:
+    url: "http://127.0.0.1:4000/api"
+    leader_only: false
+
+  studionet:
+    # Pre-configured — accounts auto-generated
+
+  testnet_asimov:
+    accounts:
+      - "${ACCOUNT_PRIVATE_KEY_1}"
+      - "${ACCOUNT_PRIVATE_KEY_2}"
+    from: "${ACCOUNT_PRIVATE_KEY_1}"
+
+paths:
+  contracts: "contracts"
+  artifacts: "artifacts"
+
+environment: .env
+```
+
+Key options:
+- **Networks**: `localnet` and `studionet` work out of the box. `testnet_asimov` requires account keys.
+- **Paths**: Where your contracts and artifacts live.
+- **Environment**: `.env` file for private keys.
+
+Override via CLI:
+
+```bash
+gltest --network testnet_asimov
+gltest --contracts-dir custom/contracts/path
+gltest --rpc-url http://custom:4000/api
+gltest --chain-type localnet
+```
+
+### Contract Deployment
 
 ```python
-from gltest import get_contract_factory
+from gltest import get_contract_factory, get_default_account
 from gltest.assertions import tx_execution_succeeded
 
-def test_write_methods():
-    # Get the contract factory and deploy the contract
-    factory = get_contract_factory("Storage")
-    contract = factory.deploy()
-    
-    # Call a write method with arguments
-    tx_receipt = contract.update_storage(
-        args=["new_value"],  # Method arguments
-    ).transact(
-        value=0,  # Optional: amount of native currency to send
-        consensus_max_rotations=3,  # Optional: max consensus rotations
-        wait_interval=1000,  # Optional: milliseconds between status checks
-        wait_retries=10,  # Optional: max number of retries
-        transaction_context=None,  # Optional: custom transaction context
-    )
-    
-    # Verify the transaction was successful
-    assert tx_execution_succeeded(tx_receipt)
-    
-    # Verify the value was updated
-    assert contract.get_storage().call() == "new_value"
+factory = get_contract_factory("Storage")
+
+# deploy() returns the contract instance (recommended)
+contract = factory.deploy(
+    args=["initial_value"],
+    account=get_default_account(),
+    consensus_max_rotations=3,
+)
+
+# deploy_contract_tx() returns only the receipt
+receipt = factory.deploy_contract_tx(args=["initial_value"])
+assert tx_execution_succeeded(receipt)
+```
+
+### Read and Write Methods
+
+```python
+# Read — call() returns the value
+result = contract.get_storage().call()
+
+# Write — transact() returns a receipt
+tx_receipt = contract.update_storage(args=["new_value"]).transact(
+    value=0,
+    consensus_max_rotations=3,
+    wait_interval=1000,
+    wait_retries=10,
+)
+assert tx_execution_succeeded(tx_receipt)
 ```
 
 ### Assertions
 
-The GenLayer Testing Suite provides powerful assertion functions to validate transaction results and their output:
-
-#### Basic Transaction Assertions
-
 ```python
 from gltest.assertions import tx_execution_succeeded, tx_execution_failed
 
-# Basic success/failure checks
 assert tx_execution_succeeded(tx_receipt)
-assert tx_execution_failed(tx_receipt)  # Opposite of tx_execution_succeeded
-```
+assert tx_execution_failed(tx_receipt)
 
-#### Advanced Output Matching
-
-You can match specific patterns in the transaction's stdout and stderr output using regex patterns, similar to pytest's `match` parameter:
-
-```python
-# Simple string matching
-assert tx_execution_succeeded(tx_receipt, match_std_out="Process completed")
-assert tx_execution_failed(tx_receipt, match_std_err="Warning: deprecated")
-
-# Regex pattern matching
+# Regex matching on stdout/stderr (localnet/studionet only)
 assert tx_execution_succeeded(tx_receipt, match_std_out=r".*code \d+")
 assert tx_execution_failed(tx_receipt, match_std_err=r"Method.*failed")
 ```
 
-#### Assertion Function Parameters
+### Fixtures
 
-Both `tx_execution_succeeded` and `tx_execution_failed` accept the following parameters:
-
-- `result`: The transaction result object from contract method calls
-- `match_std_out` (optional): String or regex pattern to match in stdout
-- `match_std_err` (optional): String or regex pattern to match in stderr
-
-**Network Compatibility**: The stdout/stderr matching feature (`match_std_out` and `match_std_err` parameters) is only available when running on **studionet** and **localnet**. These features are not supported on testnet.
-
-For more example contracts, check out the [contracts directory](tests/examples/contracts) which contains various sample contracts demonstrating different features and use cases.
-
-### Test Fixtures
-
-The GenLayer Testing Suite provides reusable pytest fixtures in `gltest.fixtures` to simplify common testing operations. These fixtures can be imported and used in your test files to avoid repetitive setup code.
-
-#### Available Fixtures
-
-The following fixtures are available in `gltest.fixtures`:
-
-- **`gl_client`** (session scope) - GenLayer client instance for network operations
-- **`default_account`** (session scope) - Default account for testing and deployments
-- **`accounts`** (session scope) - List of test accounts for multi-account scenarios
-
-##### 1. `gl_client` (session scope)
-Provides a GenLayer PY client instance that's created once per test session. This is useful for operations that interact directly with the GenLayer network.
+| Fixture | Scope | Description |
+|---------|-------|-------------|
+| `gl_client` | session | GenLayer client for network operations |
+| `default_account` | session | Default account for transactions |
+| `accounts` | session | List of test accounts |
 
 ```python
-def test_client_operations(gl_client):
-    # Use the client for network operations
-    tx_hash = "0x1234..."
-    transaction = gl_client.get_transaction(tx_hash)
-```
-
-##### 2. `default_account` (session scope)
-Provides the default account used to execute transactions when no account is specified.
-
-```python
-def test_with_default_account(default_account):
-    # Use the default account for deployments
+def test_workflow(gl_client, default_account, accounts):
     factory = get_contract_factory("MyContract")
     contract = factory.deploy(account=default_account)
-```
 
-##### 3. `accounts` (session scope)
-Provides a list of account objects loaded from the private keys defined in `gltest.config.yaml` for the current network, or pre-created test accounts if no config is present
-
-```python
-def test_multiple_accounts(accounts):
-    # Get multiple accounts for testing
-    sender = accounts[0]
-    receiver = accounts[1]
-    
-    # Test transfers or multi-party interactions
-    contract.transfer(args=[receiver.address, 100], account=sender)
-```
-
-
-#### Using Fixtures in Your Tests
-
-To use these fixtures, simply import them and include them as parameters in your test functions:
-
-```python
-from gltest import get_contract_factory
-from gltest.assertions import tx_execution_succeeded
-
-def test_complete_workflow(gl_client, default_account, accounts):
-    
-    # Deploy contract with default account
-    factory = get_contract_factory("MyContract")
-    contract = factory.deploy(account=default_account)
-    
-    # Interact using other accounts
-    other_account = accounts[1]
-    tx_receipt = contract.some_method(args=["value"], account=other_account)
-    
+    tx_receipt = contract.some_method(args=["value"], account=accounts[1])
     assert tx_execution_succeeded(tx_receipt)
-```
-
-Fixtures help maintain clean, DRY test code by:
-- Eliminating repetitive setup code
-- Ensuring consistent test environments
-- Managing resource cleanup automatically
-- Providing appropriate scoping for performance
-### Statistical Analysis with `.analyze()`
-
-The GenLayer Testing Suite provides a powerful `.analyze()` method for write operations that performs statistical analysis through multiple simulation runs. This is particularly useful for testing LLM-based contracts where outputs may vary:
-
-```python
-from gltest import get_contract_factory
-
-def test_analyze_method():
-    factory = get_contract_factory("LlmContract")
-    contract = factory.deploy()
-    
-    # Analyze a write method's behavior across multiple runs
-    analysis = contract.process_with_llm(args=["input_data"]).analyze(
-        provider="openai",           # LLM provider
-        model="gpt-4o",             # Model to use
-        runs=100,                   # Number of simulation runs (default: 100)
-        config=None,                # Optional: provider-specific config
-        plugin=None,                # Optional: plugin name
-        plugin_config=None,         # Optional: plugin configuration
-        genvm_datetime="2024-01-15T10:30:00Z",  # Optional: GenVM datetime in ISO format
-    )
-    
-    # Access analysis results
-    print(f"Method: {analysis.method}")
-    print(f"Success rate: {analysis.success_rate:.2f}%")
-    print(f"Reliability score: {analysis.reliability_score:.2f}%")
-    print(f"Unique states: {analysis.unique_states}")
-    print(f"Execution time: {analysis.execution_time:.1f}s")
-
-    # The analysis returns a MethodStatsSummary object with:
-    # - method: The contract method name
-    # - args: Arguments passed to the method
-    # - total_runs: Total number of simulation runs
-    # - successful_runs: Number of successful executions
-    # - failed_runs: Number of failed executions
-    # - unique_states: Number of unique contract states observed
-    # - reliability_score: Percentage of runs with the most common state
-    # - execution_time: Total time for all simulations
-```
-
-The `.analyze()` method helps you:
-- Test non-deterministic contract methods
-- Measure consistency of LLM-based operations
-- Identify edge cases and failure patterns
-- Benchmark performance across multiple runs
-
-
-### Mock Web Responses
-
-The Mock Web Response system allows you to simulate HTTP responses for web requests made by intelligent contracts using GenLayer's web methods (`gl.nondet.web.get()`, `gl.nondet.web.post()`, etc.). This feature enables deterministic testing of contracts that interact with external web services without making actual HTTP calls.
-
-#### Basic Example
-
-Here's a simple example of mocking a web API response:
-
-```python
-from gltest import get_contract_factory, get_validator_factory
-from gltest.types import MockedWebResponse
-import json
-
-def test_simple_web_mock():
-    # Define mock web responses
-    mock_web_response: MockedWebResponse = {
-        "nondet_web_request": {
-            "https://api.example.com/price": {
-                "method": "GET",
-                "status": 200,
-                "body": json.dumps({"price": 100.50})
-            }
-        }
-    }
-    
-    # Create validators with mock web responses
-    validator_factory = get_validator_factory()
-    validators = validator_factory.batch_create_mock_validators(
-        count=5,
-        mock_web_response=mock_web_response
-    )
-    
-    # Use validators in transaction context
-    transaction_context = {"validators": [v.to_dict() for v in validators]}
-    
-    # Deploy and test contract
-    factory = get_contract_factory("PriceOracle")
-    contract = factory.deploy(transaction_context=transaction_context)
-    
-    # Contract's web requests will receive the mocked response
-    result = contract.update_price().transact(transaction_context=transaction_context)
-```
-
-#### Supported HTTP Methods
-
-Mock web responses support all HTTP methods including GET, POST, PUT, DELETE, PATCH, etc.:
-
-```python
-mock_web_response: MockedWebResponse = {
-    "nondet_web_request": {
-        # GET request
-        "https://api.example.com/users/123": {
-            "method": "GET",
-            "status": 200,
-            "body": '{"id": 123, "name": "Alice"}'
-        },
-        # POST request
-        "https://api.example.com/users": {
-            "method": "POST",
-            "status": 201,
-            "body": '{"id": 124, "name": "Bob", "created": true}'
-        },
-        # DELETE request
-        "https://api.example.com/users/123": {
-            "method": "DELETE",
-            "status": 204,
-            "body": ""
-        },
-        # PUT request
-        "https://api.example.com/users/123": {
-            "method": "PUT",
-            "status": 200,
-            "body": '{"id": 123, "name": "Alice Updated"}'
-        },
-        # Error response
-        "https://api.example.com/error": {
-            "method": "GET",
-            "status": 500,
-            "body": "Internal Server Error"
-        }
-    }
-}
-```
-
-#### How It Works
-
-When a contract calls any web method (`gl.nondet.web.get()`, `gl.nondet.web.post()`, etc.):
-1. The mock system checks if the URL exists in the mock configuration
-2. If found, it returns the mocked response with the specified status and body
-3. If not found, the actual web request would be made (or fail if network access is disabled)
-
-#### Complete Example: Twitter/X Username Storage
-
-Here's a real-world example showing how to mock Twitter/X API responses:
-
-```python
-# test_x_username_storage.py
-from gltest import get_contract_factory, get_validator_factory
-from gltest.assertions import tx_execution_succeeded
-from gltest.types import MockedWebResponse
-import json
-import urllib.parse
-
-def test_x_username_storage():
-    # Helper to build URL with query parameters
-    def get_username_url(username: str) -> str:
-        params = {"user.fields": "public_metrics,verified"}
-        return f"https://domain.com/api/twitter/users/by/username/{username}?{urllib.parse.urlencode(params)}"
-    
-    # Define mock responses for different usernames
-    mock_web_response: MockedWebResponse = {
-        "nondet_web_request": {
-            get_username_url("user_a"): {
-                "method": "GET",
-                "status": 200,
-                "body": json.dumps({"username": "user_a", "verified": True})
-            },
-            get_username_url("user_b"): {
-                "method": "GET",
-                "status": 200,
-                "body": json.dumps({"username": "user_b", "verified": False})
-            }
-        }
-    }
-    
-    # Create validators with mock web responses
-    validator_factory = get_validator_factory()
-    validators = validator_factory.batch_create_mock_validators(
-        count=5,
-        mock_web_response=mock_web_response
-    )
-    transaction_context = {"validators": [v.to_dict() for v in validators]}
-    
-    # Deploy and test contract
-    factory = get_contract_factory("XUsernameStorage")
-    contract = factory.deploy(transaction_context=transaction_context)
-    
-    # Test updating username - will use mocked response
-    tx_receipt = contract.update_username(args=["user_a"]).transact(
-        transaction_context=transaction_context
-    )
-    assert tx_execution_succeeded(tx_receipt)
-    
-    # Verify the username was stored
-    username = contract.get_username().call(transaction_context=transaction_context)
-    assert username == "user_a"
-```
-
-#### Combining Mock LLM and Web Responses
-
-You can combine both mock LLM responses and mock web responses in the same test:
-
-```python
-def test_combined_mocks():
-    # Define both mock types
-    mock_llm_response = {
-        "eq_principle_prompt_comparative": {
-            "values match": True
-        }
-    }
-    
-    mock_web_response: MockedWebResponse = {
-        "nondet_web_request": {
-            "https://api.example.com/data": {
-                "method": "GET",
-                "status": 200,
-                "body": '{"value": 42}'
-            }
-        }
-    }
-    
-    # Create validators with both mock types
-    validator_factory = get_validator_factory()
-    validators = validator_factory.batch_create_mock_validators(
-        count=5,
-        mock_llm_response=mock_llm_response,
-        mock_web_response=mock_web_response
-    )
-    
-    # Use in your tests...
-```
-
-#### Best Practices
-
-1. **URL Matching**: URLs must match exactly, including query parameters
-2. **Response Body**: Always provide the body as a string (use `json.dumps()` for JSON data)
-3. **Status Codes**: Use realistic HTTP status codes (200, 404, 500, etc.)
-4. **Method Matching**: Specify the correct HTTP method that your contract uses
-5. **Error Testing**: Mock error responses to test error handling paths
-6. **Deterministic Tests**: Mock web responses ensure tests don't depend on external services
-
-#### Notes
-
-- Mock web responses are only available when using mock validators
-- URL matching is exact - the full URL including query parameters must match
-- The method field should match the HTTP method used by the contract
-- Useful for testing contracts that interact with external APIs without network dependencies
-- All standard HTTP methods are supported (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
-
-### Custom Transaction Context
-
-The GenLayer Testing Suite allows you to customize the transaction execution environment by providing a `transaction_context` parameter with custom validators and GenVM datetime settings.
-
-#### Using Transaction Context
-
-Set custom validators and GenVM datetime for deterministic testing:
-
-```python
-from gltest import get_contract_factory, get_validator_factory
-
-def test_with_custom_transaction_context():
-    factory = get_contract_factory("MyContract")
-    validator_factory = get_validator_factory()
-    
-    # Create custom validators
-    validators = validator_factory.batch_create_validators(
-        count=3,
-        stake=10,
-        provider="openai",
-        model="gpt-4o",
-        config={"temperature": 0.7, "max_tokens": 1000},
-        plugin="openai-compatible",
-        plugin_config={"api_key_env_var": "OPENAI_API_KEY"}
-    )
-    
-    # Create transaction context with custom validators and datetime
-    transaction_context = {
-        "validators": [v.to_dict() for v in validators],
-        "genvm_datetime": "2024-03-15T14:30:00Z"  # ISO format datetime
-    }
-    
-    # Deploy with custom context
-    contract = factory.deploy(
-        args=["initial_value"],
-        transaction_context=transaction_context
-    )
-    
-    # Call methods with custom context
-    result = contract.read_method().call(
-        transaction_context=transaction_context
-    )
-    
-    # Write operations with custom context
-    tx_receipt = contract.write_method(args=["value"]).transact(
-        transaction_context=transaction_context
-    )
 ```
 
 ### Mock LLM Responses
 
-The Mock LLM system allows you to simulate Large Language Model responses in GenLayer tests. This is essential for creating deterministic tests by providing predefined responses instead of relying on actual LLM calls.
-
-#### Basic Structure
-
-The mock system consists of a response dictionary that maps GenLayer methods to their mocked responses:
+Simulate LLM responses for deterministic tests:
 
 ```python
+from gltest import get_contract_factory, get_validator_factory
 from gltest.types import MockedLLMResponse
 
 mock_response: MockedLLMResponse = {
-    "nondet_exec_prompt": {},                               # Optional: mocks gl.nondet.exec_prompt
-    "eq_principle_prompt_comparative": {},        # Optional: mocks gl.eq_principle.prompt_comparative
-    "eq_principle_prompt_non_comparative": {}     # Optional: mocks gl.eq_principle.prompt_non_comparative
+    "nondet_exec_prompt": {
+        "analyze this": "positive sentiment"
+    },
+    "eq_principle_prompt_comparative": {
+        "values match": True
+    }
 }
+
+validator_factory = get_validator_factory()
+validators = validator_factory.batch_create_mock_validators(
+    count=5,
+    mock_llm_response=mock_response
+)
+
+transaction_context = {
+    "validators": [v.to_dict() for v in validators],
+    "genvm_datetime": "2024-01-01T00:00:00Z"
+}
+
+factory = get_contract_factory("LLMContract")
+contract = factory.deploy(transaction_context=transaction_context)
+result = contract.analyze_text(args=["analyze this"]).transact(
+    transaction_context=transaction_context
+)
 ```
 
-#### Method Mappings
+Mock keys map to GenLayer methods:
 
 | Mock Key | GenLayer Method |
 |----------|----------------|
@@ -951,313 +291,134 @@ mock_response: MockedLLMResponse = {
 | `"eq_principle_prompt_comparative"` | `gl.eq_principle.prompt_comparative` |
 | `"eq_principle_prompt_non_comparative"` | `gl.eq_principle.prompt_non_comparative` |
 
-#### How It Works
+The system performs **substring matching** on the internal user message — your mock key must appear within the message.
 
-The mock system works by pattern matching against the user message that gets built internally. When a GenLayer method is called:
+### Mock Web Responses
 
-1. A user message is constructed internally (`<user_message>`)
-2. The mock system searches for strings within that message
-3. If a matching string is found in the mock dictionary, the associated response is returned
-
-##### String Matching Rules
-
-The system performs **substring matching** on the user message. The key in your mock dictionary must be contained within the actual user message.
-
-
-#### Mock Validators with Transaction Context
-
-Combine mock validators with custom datetime for fully deterministic tests:
+Simulate HTTP responses for contracts that call `gl.nondet.web.get()`, etc.:
 
 ```python
-from gltest.types import MockedLLMResponse
+from gltest.types import MockedWebResponse
+import json
 
-def test_with_mocked_context():
-    factory = get_contract_factory("LLMContract")
-    validator_factory = get_validator_factory()
-    
-    # Define mock LLM responses
-    mock_response: MockedLLMResponse = {
-        "nondet_exec_prompt": {
-            "analyze this": "positive sentiment"
-        },
-        "eq_principle_prompt_comparative": {
-            "values match": True
+mock_web_response: MockedWebResponse = {
+    "nondet_web_request": {
+        "https://api.example.com/price": {
+            "method": "GET",
+            "status": 200,
+            "body": json.dumps({"price": 100.50})
         }
     }
-    
-    # Create mock validators
-    mock_validators = validator_factory.batch_create_mock_validators(
-        count=5,
-        mock_llm_response=mock_response
-    )
-    
-    # Set up deterministic context
-    transaction_context = {
-        "validators": [v.to_dict() for v in mock_validators],
-        "genvm_datetime": "2024-01-01T00:00:00Z"  # Fixed datetime for reproducibility
-    }
-    
-    # Deploy and test with deterministic context
-    contract = factory.deploy(transaction_context=transaction_context)
-    
-    # All operations will use the same mocked validators and datetime
-    result = contract.analyze_text(args=["analyze this"]).transact(
-        transaction_context=transaction_context
-    )
-    # Result will consistently return "positive sentiment"
+}
+
+validators = validator_factory.batch_create_mock_validators(
+    count=5,
+    mock_web_response=mock_web_response
+)
 ```
 
+You can combine both `mock_llm_response` and `mock_web_response` in a single `batch_create_mock_validators` call. URL matching is exact (including query parameters).
+
 ### Custom Validators
-
-The GenLayer Testing Suite includes a `get_validator_factory()` function that allows you to create custom validators with specific configurations for testing different LLM providers and consensus scenarios.
-
-#### Creating Custom Validators
 
 ```python
 from gltest import get_validator_factory
 
-def test_with_custom_validators():
-    factory = get_validator_factory()
-    
-    # Create validators with different LLM providers
-    openai_validator = factory.create_validator(
-        stake=10,
-        provider="openai",
-        model="gpt-4o",
-        config={"temperature": 0.8, "max_tokens": 2000},
-        plugin="openai-compatible",
-        plugin_config={"api_key_env_var": "OPENAI_API_KEY"}
-    )
-    
-    ollama_validator = factory.create_validator(
-        stake=8,
-        provider="ollama",
-        model="mistral",
-        config={"temperature": 0.5},
-        plugin="ollama",
-        plugin_config={"api_url": "http://localhost:11434"}
-    )
-    
-    # Use validators in your tests
-    validators = [openai_validator, ollama_validator]
-    # Configure your test environment with these validators
+factory = get_validator_factory()
+
+# Real validators with specific LLM providers
+validators = factory.batch_create_validators(
+    count=5,
+    stake=10,
+    provider="openai",
+    model="gpt-4o",
+    config={"temperature": 0.7},
+    plugin="openai-compatible",
+    plugin_config={"api_key_env_var": "OPENAI_API_KEY"}
+)
+
+# Use in transaction context
+transaction_context = {
+    "validators": [v.to_dict() for v in validators],
+    "genvm_datetime": "2024-03-15T14:30:00Z"
+}
 ```
 
-#### Batch Creation
+### Statistical Analysis
 
-Create multiple validators with the same configuration:
+For LLM-based contracts, `.analyze()` runs multiple simulations to measure consistency:
 
 ```python
-def test_batch_validators():
-    factory = get_validator_factory()
-    
-    # Create 5 validators with identical configuration
-    validators = factory.batch_create_validators(
-        count=5,
-        stake=8,
-        provider="openai",
-        model="gpt-4o",
-        config={"temperature": 0.7, "max_tokens": 1000},
-        plugin="openai-compatible",
-        plugin_config={"api_key_env_var": "OPENAI_API_KEY"}
-    )
+analysis = contract.process_with_llm(args=["input"]).analyze(
+    provider="openai",
+    model="gpt-4o",
+    runs=100,
+)
+
+print(f"Success rate: {analysis.success_rate:.2f}%")
+print(f"Reliability: {analysis.reliability_score:.2f}%")
+print(f"Unique states: {analysis.unique_states}")
 ```
 
-#### Mock Validators
+**[Full Studio Mode Documentation](docs/studio-runner.md)** — configuration reference, all CLI flags, mock LLM/web details, custom validators, statistical analysis, and complete examples.
 
-For deterministic testing, create mock validators that return predefined responses:
+---
+
+## Example Contract
 
 ```python
-def test_with_mock_validators():
-    factory = get_validator_factory()
-    
-    # Define mock responses
-    mock_response = {
-        "nondet_exec_prompt": {
-            "What is 2+2?": "4",
-            "Explain quantum physics": "It's complicated"
-        },
-        "eq_principle_prompt_comparative": {
-            "values must match": True
-        },
-        "eq_principle_prompt_non_comparative": {
-            "Is this valid?": True
-        }
-    }
-    
-    # Create a single mock validator
-    mock_validator = factory.create_mock_validator(mock_response)
-    
-    # Create multiple mock validators
-    mock_validators = factory.batch_create_mock_validators(
-        count=5,
-        mock_llm_response=mock_response
-    )
+from genlayer import *
+
+class Storage(gl.Contract):
+    storage: str
+
+    def __init__(self, initial_storage: str):
+        self.storage = initial_storage
+
+    @gl.public.view
+    def get_storage(self) -> str:
+        return self.storage
+
+    @gl.public.write
+    def update_storage(self, new_storage: str) -> None:
+        self.storage = new_storage
 ```
 
-#### Validator Methods
+### Project Structure
 
-Each validator object provides useful methods:
-- `to_dict()`: Convert validator to dictionary format for API calls
-- `clone()`: Create an identical copy of the validator
-- `batch_clone(count)`: Create multiple identical copies
-
-Example:
-```python
-def test_validator_cloning():
-    factory = get_validator_factory()
-    
-    # Create a base validator
-    base_validator = factory.create_validator(
-        stake=10,
-        provider="openai",
-        model="gpt-4o",
-        config={"temperature": 0.7},
-        plugin="openai-compatible",
-        plugin_config={"api_key_env_var": "OPENAI_API_KEY"}
-    )
-    
-    # Clone it to create identical validators
-    cloned = base_validator.clone()
-    multiple_clones = base_validator.batch_clone(3)
-    
-    # Convert to dictionary for API usage
-    validator_dict = base_validator.to_dict()
+```
+my-project/
+├── contracts/
+│   └── Storage.py
+├── tests/
+│   ├── test_direct.py      # Direct mode tests (fast)
+│   └── test_integration.py  # Studio mode tests
+└── gltest.config.yaml       # Studio mode config
 ```
 
-## 📝 Best Practices
+For more examples, see the [contracts directory](tests/examples/contracts).
 
-1. **Test Organization**
-   - Keep tests in a dedicated `tests` directory
-   - Use descriptive test names
-   - Group related tests using pytest markers
+## Troubleshooting
 
-2. **Contract Deployment**
-   - Always verify deployment success
-   - Use appropriate consensus parameters
-   - Handle deployment errors gracefully
+**Contract not found**: Ensure contracts are in `contracts/` or specify `--contracts-dir`. Contracts must inherit from `gl.Contract`.
 
-3. **Transaction Handling**
-   - Always wait for transaction finalization
-   - Verify transaction status
-   - Handle transaction failures appropriately
+**Transaction timeouts** (Studio mode): Increase `wait_interval` and `wait_retries` in `.transact()`.
 
-4. **State Management**
-   - Reset state between tests
-   - Use fixtures for common setup
-   - Avoid test dependencies
+**Consensus failures** (Studio mode): Increase `consensus_max_rotations` or use `--leader-only` for faster iteration.
 
-## 🔧 Troubleshooting
+**Environment issues**: Verify Python >= 3.12. For Studio mode, check Docker is running (`docker ps`).
 
-### Common Issues
+## Contributing
 
-1. **Deployment Failures**
-   - **Problem**: Contract deployment fails due to various reasons like insufficient funds, invalid contract code, or network issues.
-   - **Solution**: Implement proper error handling
-   ```python
-   try:
-       contract = factory.deploy(args=["initial_value"])
-   except DeploymentError as e:
-       print(f"Deployment failed: {e}")
-   ```
+See our [Contributing Guide](CONTRIBUTING.md).
 
-2. **Transaction Timeouts**
-   - **Problem**: Transactions take too long to complete or fail due to network congestion or consensus delays.
-   - **Solution**: Adjust timeout parameters and implement retry logic:
-   ```python
-   tx_receipt = contract.set_value(
-       args=["new_value"],
-   ).transact(
-       wait_interval=2000,  # Increase wait interval between status checks
-       wait_retries=20,  # Increase number of retry attempts
-   )
-   ```
+## License
 
-3. **Consensus Issues**
-   - **Problem**: Transactions fail due to consensus-related problems like network partitions or slow consensus.
-   - **Solution**: Adjust consensus parameters and try different modes:
-   ```python
-   # Try with increased consensus parameters
-   contract = factory.deploy(
-       consensus_max_rotations=5,  # Increase number of consensus rotations
-   )
-   
-   # For critical operations, use more conservative settings
-   contract = factory.deploy(
-       consensus_max_rotations=10,  # More rotations for better reliability
-       wait_interval=3000,  # Longer wait between checks
-       wait_retries=30  # More retries for consensus
-   )
-   ```
+MIT — see [LICENSE](LICENSE).
 
-4. **Contracts Directory Issues**
-   - **Problem**: `get_contract_factory` can't find your contract files.
-   - **Solution**: Ensure proper directory structure and configuration:
-   ```bash
-   # Default structure
-   your_project/
-   ├── contracts/           # Default contracts directory
-   │   └── my_contract.py   # Your contract file
-   └── tests/
-       └── test_contract.py # Your test file
-   
-   # If using a different directory structure
-   gltest --contracts-dir /path/to/your/contracts
-   ```
-
-5. **Contract File Naming and Structure**
-   - **Problem**: Contracts aren't being recognized or loaded properly.
-   - **Solution**: Follow the correct naming and structure conventions:
-   ```python
-   # Correct file: contracts/my_contract.py
-
-   # Correct structure:
-   from genlayer import *
-   
-   class MyContract(gl.Contract):
-       # Contract code here
-       pass
-   
-
-   # Incorrect structure:
-   class MyContract:  # Missing gl.Contract inheritance
-       pass
-   ```
-
-6. **Environment Setup Issues**
-   - **Problem**: Tests fail due to missing or incorrect environment setup.
-   - **Solution**: Verify your environment:
-   ```bash
-   # Check Python version
-   python --version  # Should be >= 3.12
-   
-   # Check GenLayer Studio status
-   docker ps  # Should show GenLayer Studio running
-   
-   # Verify package installation
-   pip list | grep genlayer-test  # Should show installed version
-   ```
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 💬 Support
+## Support
 
 - [Documentation](https://docs.genlayer.com/api-references/genlayer-test)
-- [Discord Community](https://discord.gg/qjCU4AWnKE)
+- [Discord](https://discord.gg/qjCU4AWnKE)
 - [GitHub Issues](https://github.com/genlayerlabs/genlayer-testing-suite/issues)
 - [Twitter](https://x.com/GenLayer)
-
-
-
