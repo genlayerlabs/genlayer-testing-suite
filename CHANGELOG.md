@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.20.3 (2026-02-19)
+
+### Bug Fixes
+
+- Rollback contract storage on failed transactions
+  ([`a81c6a5`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/a81c6a56daf37ba190d1c8ca96102613a842eefd))
+
+
 ## v0.20.2 (2026-02-19)
 
 ### Bug Fixes
