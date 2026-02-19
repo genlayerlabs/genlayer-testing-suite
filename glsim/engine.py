@@ -56,6 +56,8 @@ class SimEngine:
         self._storages: Dict[str, InmemManager] = {}
         # PostMessage queue (fire-and-forget calls executed after current call)
         self._post_queue: List[Dict] = []
+        self._call_depth: int = 0
+        self._draining: bool = False
         # Virtual filesystem: /contract/ → extracted temp dir (for ZIP packages)
         self._vfs_contract_dir: Optional[str] = None
         # Snapshots
@@ -248,14 +250,19 @@ class SimEngine:
         if method is None:
             raise AttributeError(f"Contract has no method '{method_name}'")
 
-        result = method(*args, **kwargs)
-        self._drain_post_queue()
-        return result
+        self._call_depth += 1
+        try:
+            result = method(*args, **kwargs)
+        finally:
+            self._call_depth -= 1
 
-    def _drain_post_queue(self) -> None:
-        """Execute queued PostMessage calls one at a time."""
-        while self._post_queue:
+        # Drain exactly one queued PostMessage at the top level only.
+        # The _draining flag prevents the drained call from draining further,
+        # matching real GenLayer where PostMessage is async (next block).
+        if self._call_depth == 0 and not self._draining and self._post_queue:
             msg = self._post_queue.pop(0)
+            self._post_queue.clear()
+            self._draining = True
             try:
                 self.call_method(
                     msg['address'], msg['method'],
@@ -264,6 +271,10 @@ class SimEngine:
                 )
             except Exception as e:
                 self.vm._trace(f"PostMessage error: {e}")
+            finally:
+                self._draining = False
+
+        return result
 
     def get_schema(self, contract_address: str) -> Optional[Dict]:
         """Get the ABI/schema for a deployed contract."""
