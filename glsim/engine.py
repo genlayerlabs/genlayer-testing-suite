@@ -169,6 +169,12 @@ class SimEngine:
         self._storages[addr_key] = storage
         self.vm._storage = storage
 
+        # Set gl.message so __init__ can read contract_address if needed
+        self._set_message_context(
+            contract_address=addr_bytes,
+            sender=self.vm.sender,
+        )
+
         # Deploy: reuse cached class for same file to avoid SDK re-import errors
         path_key = str(path)
         cached_cls = self._class_cache.get(path_key)
@@ -224,10 +230,17 @@ class SimEngine:
         self._install_live_handlers()
 
         # Swap to this contract's storage and address
-        self.vm._contract_address = bytes.fromhex(addr[2:])
+        addr_bytes = bytes.fromhex(addr[2:])
+        self.vm._contract_address = addr_bytes
         storage = self._storages.get(addr)
         if storage is not None:
             self.vm._storage = storage
+
+        # Update gl.message so contract code can read contract_address/sender
+        self._set_message_context(
+            contract_address=addr_bytes,
+            sender=self.vm.sender,
+        )
 
         method = getattr(instance, method_name, None)
         if method is None:
@@ -726,6 +739,31 @@ class SimEngine:
             return saved
         except (ImportError, AttributeError):
             return None
+
+    @staticmethod
+    def _set_message_context(contract_address: Any, sender: Any) -> None:
+        """Set gl.message for top-level calls (call_method / deploy)."""
+        if 'genlayer.gl' not in sys.modules:
+            return
+        try:
+            gl = sys.modules['genlayer.gl']
+            from genlayer.py.types import Address
+
+            if isinstance(contract_address, bytes):
+                contract_address = Address(contract_address)
+            if isinstance(sender, bytes):
+                sender = Address(sender)
+
+            if hasattr(gl, 'message') and gl.message is not None:
+                gl.message = gl.MessageType(
+                    contract_address=contract_address,
+                    sender_address=sender,
+                    origin_address=gl.message.origin_address,
+                    value=gl.message.value,
+                    chain_id=gl.message.chain_id,
+                )
+        except (ImportError, AttributeError):
+            pass
 
     @staticmethod
     def _restore_message_context(saved: Optional[Dict]) -> None:
