@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v0.20.0 (2026-02-19)
+
+### Bug Fixes
+
+- Add _validUntil param to addTransaction test helper
+  ([`7028461`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/702846175e5b3478d60ed6b4b252ec5d2c7fd317))
+
+- Set gl.message context in call_method and deploy
+  ([`99db612`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/99db6126de1114d7194a35c6b409b9f3270cc160))
+
+### Documentation
+
+- Restructure README around direct/studio testing modes
+  ([`7110e2c`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/7110e2c69bbce8a8495b17be51129ee8e6c6486b))
+
+### Features
+
+- Add CORS middleware to glsim server
+  ([`00b3088`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/00b30886ebd0cf00484ef5e13523b2d8f423d3d9))
+
+
 ## v0.19.2 (2026-02-10)
 
 ### Bug Fixes
