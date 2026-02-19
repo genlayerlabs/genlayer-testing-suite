@@ -115,6 +115,45 @@ def test_eth_send_raw_transaction_deploy(client):
     assert eth_tx_hash.startswith("0x")
 
 
+def test_eth_get_block_by_number_latest(client):
+    """eth_getBlockByNumber returns latest block in Ethereum-compatible shape."""
+    block = _rpc(client, "eth_getBlockByNumber", ["latest", False])["result"]
+    assert block is not None
+    assert block["number"] == "0x0"
+    assert block["transactions"] == []
+    # Legacy fee mode for compatibility with nodes that don't expose EIP-1559 fields.
+    assert block["baseFeePerGas"] is None
+
+
+def test_eth_get_block_by_number_contains_tx_hash(client):
+    """eth_getBlockByNumber should include tx hashes for committed blocks."""
+    acct = Account.create()
+    code = Path(STORAGE_CONTRACT).read_bytes()
+    data = _build_add_transaction_data(
+        acct.address,
+        "0x" + "00" * 20,
+        code,
+        is_deploy=True,
+        constructor_args=["test_value"],
+    )
+
+    send_resp = _sign_and_send(
+        client,
+        acct,
+        "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+        data,
+    )
+    eth_tx_hash = send_resp["result"]
+
+    latest_block = _rpc(client, "eth_getBlockByNumber", ["latest", False])["result"]
+    assert latest_block is not None
+    assert eth_tx_hash in latest_block["transactions"]
+
+    block_by_number = _rpc(client, "eth_getBlockByNumber", [latest_block["number"], False])["result"]
+    assert block_by_number is not None
+    assert eth_tx_hash in block_by_number["transactions"]
+
+
 def test_eth_get_transaction_receipt_has_new_transaction_event(client):
     """Receipt must have NewTransaction log with gl_tx_id in topics."""
     acct = Account.create()

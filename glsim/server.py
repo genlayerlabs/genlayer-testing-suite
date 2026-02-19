@@ -234,6 +234,92 @@ def _rpc_eth_block_number(state: StateStore, engine: SimEngine, params: dict) ->
     return hex(state.block_number)
 
 
+def _resolve_block_number(state: StateStore, block_identifier: Any) -> int:
+    """Resolve block identifier into a concrete block number."""
+    if block_identifier is None:
+        return state.block_number
+
+    if isinstance(block_identifier, str):
+        tag = block_identifier.lower()
+        if tag in ("latest", "pending", "safe", "finalized"):
+            return state.block_number
+        if tag == "earliest":
+            return 0
+        if tag.startswith("0x"):
+            return int(tag, 16)
+        return int(tag, 10)
+
+    if isinstance(block_identifier, int):
+        return block_identifier
+
+    raise ValueError("invalid block identifier")
+
+
+def _rpc_eth_get_block_by_number(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Return a minimal Ethereum-compatible block object."""
+    block_identifier = params.get("block_number") or _positional(params, 0)
+    include_transactions = params.get("include_transactions")
+    if include_transactions is None:
+        include_transactions = bool(_positional(params, 1))
+
+    block_number = _resolve_block_number(state, block_identifier)
+    if block_number < 0 or block_number > state.block_number:
+        return None
+
+    block_hash = f"0x{block_number:064x}"
+    parent_hash = f"0x{max(block_number - 1, 0):064x}"
+    timestamp_hex = hex(int(datetime.now(timezone.utc).timestamp()))
+
+    block_txs = sorted(
+        (tx for tx in state.transactions.values() if tx.block_number == block_number),
+        key=lambda tx: tx.created_at,
+    )
+
+    if include_transactions:
+        transactions = [
+            {
+                "hash": tx.eth_tx_hash or tx.hash,
+                "nonce": "0x0",
+                "blockHash": block_hash,
+                "blockNumber": hex(block_number),
+                "transactionIndex": hex(index),
+                "from": tx.raw_sender or tx.from_address,
+                "to": CONSENSUS_CONTRACT_ADDR,
+                "value": "0x0",
+                "gas": "0x5208",
+                "gasPrice": "0x0",
+                "input": "0x",
+            }
+            for index, tx in enumerate(block_txs)
+        ]
+    else:
+        transactions = [tx.eth_tx_hash or tx.hash for tx in block_txs]
+
+    return {
+        "number": hex(block_number),
+        "hash": block_hash,
+        "parentHash": parent_hash,
+        "nonce": "0x0000000000000000",
+        "sha3Uncles": "0x" + "00" * 32,
+        "logsBloom": "0x" + "00" * 256,
+        "transactionsRoot": "0x" + "00" * 32,
+        "stateRoot": "0x" + "00" * 32,
+        "receiptsRoot": "0x" + "00" * 32,
+        "miner": "0x" + "00" * 20,
+        "difficulty": "0x0",
+        "totalDifficulty": "0x0",
+        "extraData": "0x",
+        "size": "0x0",
+        "gasLimit": "0x1c9c380",
+        "gasUsed": "0x0",
+        "timestamp": timestamp_hex,
+        "transactions": transactions,
+        "uncles": [],
+        # Explicitly mark as non-EIP1559 for legacy-fee flows.
+        "baseFeePerGas": None,
+    }
+
+
 def _rpc_eth_get_balance(state: StateStore, engine: SimEngine, params: dict) -> Any:
     address = params.get("account_address") or _positional(params, 0)
     if not address:
@@ -674,6 +760,7 @@ RPC_METHODS = {
     "eth_chainId": _rpc_eth_chain_id,
     "net_version": _rpc_net_version,
     "eth_blockNumber": _rpc_eth_block_number,
+    "eth_getBlockByNumber": _rpc_eth_get_block_by_number,
     "eth_getBalance": _rpc_eth_get_balance,
     "eth_getTransactionCount": _rpc_eth_get_tx_count,
     "eth_gasPrice": _rpc_eth_gas_price,

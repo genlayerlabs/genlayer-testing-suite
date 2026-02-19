@@ -63,8 +63,9 @@ client = GenLayerClient(chain=localnet)
 | `gen_call` | Read-only contract calls |
 | `gen_getContractSchema` | Schema for deployed contract |
 | `gen_getContractSchemaForCode` | Schema from source code |
-| `eth_chainId` | Returns `0xf21f` (localnet chain ID) |
+| `eth_chainId` | Returns `0xf22f` (localnet chain ID) |
 | `eth_blockNumber` | Current block number |
+| `eth_getBlockByNumber` | Block lookup used by wallet fee preparation flows |
 | `eth_getBalance` | Account balance |
 | `eth_getTransactionCount` | Account nonce |
 | `eth_gasPrice` / `eth_estimateGas` | Gas stubs (returns 0) |
