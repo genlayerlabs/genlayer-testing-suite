@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.20.4 (2026-02-19)
+
+### Bug Fixes
+
+- **glsim**: Add eth_getBlockByNumber for wallet compatibility
+  ([#61](https://github.com/genlayerlabs/genlayer-testing-suite/pull/61),
+  [`e4b68c3`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/e4b68c3659d5e6c912e7c9313f109919a2abd622))
+
+
 ## v0.20.3 (2026-02-19)
 
 ### Bug Fixes
