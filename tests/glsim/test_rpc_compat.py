@@ -66,12 +66,40 @@ def _build_add_transaction_data(sender_addr, recipient, code_or_calldata, is_dep
         # Call: rlp([calldata_bytes, leader_only])
         rlp_data = rlp_mod.encode([code_or_calldata, b"\x00"])
 
-    params = abi_encode(
-        fn.argument_types,
-        [sender_addr, recipient, 1, 3, rlp_data, 0],
-    )
     from eth_utils.crypto import keccak
-    selector = keccak(text=fn.signature)[:4].hex()
+    if len(fn.argument_types) >= 6:
+        params = abi_encode(
+            fn.argument_types,
+            [sender_addr, recipient, 1, 3, rlp_data, 0],
+        )
+        selector = keccak(text=fn.signature)[:4].hex()
+    else:
+        legacy_types = ("address", "address", "uint256", "uint256", "bytes")
+        params = abi_encode(
+            legacy_types,
+            [sender_addr, recipient, 1, 3, rlp_data],
+        )
+        selector = keccak(text="addTransaction(address,address,uint256,uint256,bytes)")[:4].hex()
+
+    return bytes.fromhex(selector + params.hex())
+
+
+def _build_add_transaction_data_v5(sender_addr, recipient, code_or_calldata, is_deploy=False, constructor_args=None):
+    """Build legacy 5-arg addTransaction calldata (without validUntil)."""
+    if is_deploy:
+        code_bytes = code_or_calldata
+        ctor_args = constructor_args if constructor_args is not None else []
+        constructor_calldata = calldata.encode({"method": None, "args": ctor_args, "kwargs": {}})
+        rlp_data = rlp_mod.encode([code_bytes, constructor_calldata, b"\x00"])
+    else:
+        rlp_data = rlp_mod.encode([code_or_calldata, b"\x00"])
+
+    from eth_utils.crypto import keccak
+    selector = keccak(text="addTransaction(address,address,uint256,uint256,bytes)")[:4].hex()
+    params = abi_encode(
+        ("address", "address", "uint256", "uint256", "bytes"),
+        [sender_addr, recipient, 1, 3, rlp_data],
+    )
     return bytes.fromhex(selector + params.hex())
 
 
@@ -102,6 +130,25 @@ def test_eth_send_raw_transaction_deploy(client):
     code = Path(STORAGE_CONTRACT).read_bytes()
 
     data = _build_add_transaction_data(
+        acct.address,
+        "0x" + "00" * 20,  # zero address = deploy
+        code,
+        is_deploy=True,
+        constructor_args=["test_value"],
+    )
+
+    resp = _sign_and_send(client, acct, "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575", data)
+    assert "result" in resp, f"SendRawTx failed: {resp}"
+    eth_tx_hash = resp["result"]
+    assert eth_tx_hash.startswith("0x")
+
+
+def test_eth_send_raw_transaction_deploy_legacy_v5(client):
+    """Deploy via eth_sendRawTransaction using legacy 5-arg addTransaction ABI."""
+    acct = Account.create()
+    code = Path(STORAGE_CONTRACT).read_bytes()
+
+    data = _build_add_transaction_data_v5(
         acct.address,
         "0x" + "00" * 20,  # zero address = deploy
         code,
