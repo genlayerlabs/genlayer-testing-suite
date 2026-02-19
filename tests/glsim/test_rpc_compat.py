@@ -68,7 +68,7 @@ def _build_add_transaction_data(sender_addr, recipient, code_or_calldata, is_dep
 
     params = abi_encode(
         fn.argument_types,
-        [sender_addr, recipient, 1, 3, rlp_data],
+        [sender_addr, recipient, 1, 3, rlp_data, 0],
     )
     from eth_utils.crypto import keccak
     selector = keccak(text=fn.signature)[:4].hex()
