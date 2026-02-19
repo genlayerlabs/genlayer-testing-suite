@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.20.2 (2026-02-19)
+
+### Bug Fixes
+
+- Prevent unbounded PostMessage recursion with depth guard
+  ([`5652787`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/5652787ab8303c9b5ab80a535e13e6749dd4ac87))
+
+
 ## v0.20.1 (2026-02-19)
 
 ### Bug Fixes
