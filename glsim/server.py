@@ -121,6 +121,12 @@ def _rpc_sim_call(state: StateStore, engine: SimEngine, params: dict) -> Any:
     )
     state.add_transaction(tx)
 
+    # Snapshot contract storage so we can rollback on failure
+    storage_snapshot = {
+        addr: {k: (s, bytearray(buf)) for k, (s, buf) in mgr._parts.items()}
+        for addr, mgr in engine._storages.items()
+    }
+
     try:
         result = engine.call_method(to, method, args, kwargs, sender)
         tx.status = TxStatus.FINALIZED
@@ -128,6 +134,11 @@ def _rpc_sim_call(state: StateStore, engine: SimEngine, params: dict) -> Any:
         state.next_block()
         return {"result": result, "tx_hash": tx_hash}
     except Exception as exc:
+        # Rollback contract storage — transaction should not mutate state
+        for addr, parts in storage_snapshot.items():
+            mgr = engine._storages.get(addr)
+            if mgr is not None:
+                mgr._parts = parts
         tx.status = TxStatus.FAILED
         tx.error = str(exc)
         state.next_block()
