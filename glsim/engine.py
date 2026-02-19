@@ -58,6 +58,9 @@ class SimEngine:
         self._post_queue: List[Dict] = []
         self._call_depth: int = 0
         self._draining: bool = False
+        # Cross-contract activity captured during a top-level call.
+        # Used to expose Studio-like triggered transaction graphs.
+        self._captured_triggered_ops: List[Dict[str, Any]] = []
         # Virtual filesystem: /contract/ → extracted temp dir (for ZIP packages)
         self._vfs_contract_dir: Optional[str] = None
         # Snapshots
@@ -419,6 +422,14 @@ class SimEngine:
         result_bytes = encode_calldata_result(result)
         return result, result_bytes
 
+    def reset_triggered_ops(self) -> None:
+        """Clear captured cross-contract ops for a new top-level transaction."""
+        self._captured_triggered_ops.clear()
+
+    def get_triggered_ops(self) -> List[Dict[str, Any]]:
+        """Return a copy of captured cross-contract ops from the latest call."""
+        return list(self._captured_triggered_ops)
+
     def get_sdk_schema(self, contract_address: str) -> Optional[Dict]:
         """Get schema in SDK-compatible ContractSchema format."""
         cls = self._classes.get(contract_address.lower())
@@ -630,6 +641,10 @@ class SimEngine:
             # Register in state
             schema = self._extract_schema(contract_cls)
             self.state.register_contract(child_addr, str(path), instance, schema)
+            self._captured_triggered_ops.append({
+                "type": "deploy",
+                "address": child_addr,
+            })
 
         finally:
             # Restore parent context
@@ -720,6 +735,11 @@ class SimEngine:
                 'args': args,
                 'kwargs': kwargs,
                 'sender': "0x" + sender.hex() if isinstance(sender, bytes) else str(sender),
+            })
+            self._captured_triggered_ops.append({
+                "type": "post",
+                "address": addr_key,
+                "method": method_name,
             })
 
         return {'ok': None}

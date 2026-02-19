@@ -162,6 +162,100 @@ def test_eth_send_raw_transaction_deploy_legacy_v5(client):
     assert eth_tx_hash.startswith("0x")
 
 
+def test_eth_get_transaction_by_hash_includes_triggered_transactions_graph(client):
+    """Synthetic triggered transaction graph is exposed for Studio-compatible polling."""
+    acct = Account.create()
+    code = Path(STORAGE_CONTRACT).read_bytes()
+
+    # Deploy a parent contract first so we can send a call transaction.
+    deploy_data = _build_add_transaction_data(
+        acct.address,
+        "0x" + "00" * 20,
+        code,
+        is_deploy=True,
+        constructor_args=["initial"],
+    )
+    deploy_resp = _sign_and_send(
+        client,
+        acct,
+        "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+        deploy_data,
+    )
+    deploy_eth_hash = deploy_resp["result"]
+    deploy_receipt = _rpc(client, "eth_getTransactionReceipt", [deploy_eth_hash])["result"]
+    deploy_gl_id = deploy_receipt["logs"][0]["topics"][1]
+    deployed_tx = _rpc(client, "eth_getTransactionByHash", [deploy_gl_id])["result"]
+    contract_addr = deployed_tx["to_address"]
+
+    # Force a deterministic cross-contract deploy capture for this call tx.
+    engine = client.app.state.engine
+    original_call_from_calldata = engine.call_from_calldata
+    synthetic_deploy_addrs = [
+        "0x" + "aa" * 20,
+        "0x" + "bb" * 20,
+        "0x" + "cc" * 20,
+    ]
+
+    def patched_call_from_calldata(contract_address, calldata_bytes, sender=None):
+        result = original_call_from_calldata(contract_address, calldata_bytes, sender)
+        engine._captured_triggered_ops = [
+            {"type": "deploy", "address": addr} for addr in synthetic_deploy_addrs
+        ]
+        return result
+
+    engine.call_from_calldata = patched_call_from_calldata
+    try:
+        call_calldata = calldata.encode({
+            "method": "update_storage",
+            "args": ["updated"],
+            "kwargs": {},
+        })
+        call_data = _build_add_transaction_data(
+            acct.address,
+            contract_addr,
+            call_calldata,
+            is_deploy=False,
+        )
+        call_resp = _sign_and_send(
+            client,
+            acct,
+            "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+            call_data,
+        )
+    finally:
+        engine.call_from_calldata = original_call_from_calldata
+
+    call_eth_hash = call_resp["result"]
+    call_receipt = _rpc(client, "eth_getTransactionReceipt", [call_eth_hash])["result"]
+    call_gl_id = call_receipt["logs"][0]["topics"][1]
+    parent_tx = _rpc(client, "eth_getTransactionByHash", [call_gl_id])["result"]
+
+    # Factory-style parent should reference exactly one primary triggered deployment tx.
+    assert "triggered_transactions" in parent_tx
+    assert len(parent_tx["triggered_transactions"]) == 1
+    campaign_like_tx_hash = parent_tx["triggered_transactions"][0]
+
+    campaign_like_tx = _rpc(client, "eth_getTransactionByHash", [campaign_like_tx_hash])["result"]
+    assert campaign_like_tx is not None
+    assert campaign_like_tx["status"] == "FINALIZED"
+    assert campaign_like_tx["to_address"] == synthetic_deploy_addrs[0]
+
+    # Remaining deploys are exposed as second-level triggered transactions.
+    assert len(campaign_like_tx["triggered_transactions"]) == 2
+    lr = campaign_like_tx["consensus_data"]["leader_receipt"][0]
+    assert lr["pending_transactions"] == campaign_like_tx["triggered_transactions"]
+
+    for triggered_hash, expected_addr in zip(
+        campaign_like_tx["triggered_transactions"],
+        synthetic_deploy_addrs[1:],
+        strict=False,
+    ):
+        triggered_tx = _rpc(client, "eth_getTransactionByHash", [triggered_hash])["result"]
+        assert triggered_tx is not None
+        assert triggered_tx["status"] == "FINALIZED"
+        assert triggered_tx["to_address"] == expected_addr
+
+
 def test_eth_get_block_by_number_latest(client):
     """eth_getBlockByNumber returns latest block in Ethereum-compatible shape."""
     block = _rpc(client, "eth_getBlockByNumber", ["latest", False])["result"]

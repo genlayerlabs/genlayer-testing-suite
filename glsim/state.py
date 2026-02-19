@@ -59,6 +59,7 @@ class Transaction:
     num_validators: int = 1
     consensus_votes: Dict[str, str] = field(default_factory=dict)
     consensus_rotation: int = 0
+    triggered_transactions: List[str] = field(default_factory=list)
 
 
 class StateStore:

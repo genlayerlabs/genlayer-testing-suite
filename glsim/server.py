@@ -386,6 +386,7 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
 
     # Install web mocks from sim_config before executing
     _install_sim_config_mocks(engine, sim_config)
+    captured_triggered_ops: list[dict] = []
 
     if tx_type == "deploy":
         code_hex = decoded.get("code", "")
@@ -397,7 +398,10 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
         tx.calldata_bytes = calldata_bytes
 
         def execute_fn():
+            nonlocal captured_triggered_ops
+            engine.reset_triggered_ops()
             addr, _ = engine.deploy_from_code(code_bytes, calldata_bytes, sender)
+            captured_triggered_ops = engine.get_triggered_ops()
             return addr, b""
 
         consensus = run_consensus(engine, execute_fn, engine.num_validators, engine.max_rotations)
@@ -419,7 +423,10 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
         tx.calldata_bytes = calldata_bytes
 
         def execute_fn():
+            nonlocal captured_triggered_ops
+            engine.reset_triggered_ops()
             result, _ = engine.call_from_calldata(recipient, calldata_bytes, sender)
+            captured_triggered_ops = engine.get_triggered_ops()
             return result, encode_result_bytes(result)
 
         consensus = run_consensus(engine, execute_fn, engine.num_validators, engine.max_rotations)
@@ -430,6 +437,13 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
         else:
             tx.result = consensus.result
             tx.result_bytes = consensus.result_bytes
+
+    if tx.status == TxStatus.FINALIZED and captured_triggered_ops:
+        _materialize_triggered_transactions(
+            state=state,
+            parent_tx=tx,
+            triggered_ops=captured_triggered_ops,
+        )
 
     tx.consensus_votes = _build_consensus_votes(consensus.votes, tx.num_validators)
     tx.consensus_rotation = consensus.rotation
@@ -549,7 +563,7 @@ def _rpc_eth_get_transaction_by_hash(state: StateStore, engine: SimEngine, param
         "eq_outputs": {},
         "genvm_result": {"stdout": "", "stderr": tx.error or ""},
         "contract_state": {},
-        "pending_transactions": [],
+        "pending_transactions": tx.triggered_transactions,
         "gas_used": 0,
         "vote": None,
         "node_config": node_config,
@@ -608,6 +622,7 @@ def _rpc_eth_get_transaction_by_hash(state: StateStore, engine: SimEngine, param
             "calldata": calldata_b64,
             **({"contract_address": tx.to_address} if tx.type == "deploy" else {}),
         },
+        "triggered_transactions": tx.triggered_transactions,
         "consensus_data": consensus_data,
     }
 
@@ -824,6 +839,55 @@ def _tx_to_dict(tx: Transaction) -> dict:
     d = asdict(tx)
     d["status"] = tx.status.value
     return d
+
+
+def _materialize_triggered_transactions(
+    *,
+    state: StateStore,
+    parent_tx: Transaction,
+    triggered_ops: list[dict],
+) -> None:
+    """Create synthetic child transactions for cross-contract deploy operations.
+
+    This mirrors Studio's triggered transaction graph enough for frontend
+    polling flows that follow deployment chains.
+    """
+    deploy_addresses = [
+        str(op.get("address", "")).lower()
+        for op in triggered_ops
+        if op.get("type") == "deploy" and op.get("address")
+    ]
+    if not deploy_addresses:
+        return
+
+    created_hashes: list[str] = []
+    for idx, deploy_addr in enumerate(deploy_addresses):
+        child_hash = state.generate_tx_hash(f"trigger:{parent_tx.hash}:{idx}:{deploy_addr}")
+        child_tx = Transaction(
+            hash=child_hash,
+            from_address=parent_tx.to_address or parent_tx.from_address,
+            to_address=deploy_addr,
+            status=TxStatus.FINALIZED,
+            type="deploy",
+            block_number=parent_tx.block_number + idx + 1,
+            gl_tx_id=state.allocate_gl_tx_id(),
+            raw_sender=parent_tx.raw_sender or parent_tx.from_address,
+            num_validators=parent_tx.num_validators,
+        )
+        child_tx.result = deploy_addr
+        child_tx.consensus_votes = dict(parent_tx.consensus_votes)
+        state.add_transaction(child_tx)
+        state.register_tx_mappings(child_tx)
+        created_hashes.append(child_hash)
+
+    # Studio-style graph:
+    # parent (factory call) -> first deploy (campaign)
+    # first deploy (campaign) -> remaining deploys (e.g. shards)
+    parent_tx.triggered_transactions = [created_hashes[0]]
+    if len(created_hashes) > 1:
+        first_child = state.get_transaction(created_hashes[0])
+        if first_child is not None:
+            first_child.triggered_transactions = created_hashes[1:]
 
 
 def _normalize_params(params) -> dict:
