@@ -54,6 +54,8 @@ class SimEngine:
         self._code_hash_cache: Dict[str, type] = {}
         # Per-contract isolated storage
         self._storages: Dict[str, InmemManager] = {}
+        # PostMessage queue (fire-and-forget calls executed after current call)
+        self._post_queue: List[Dict] = []
         # Virtual filesystem: /contract/ → extracted temp dir (for ZIP packages)
         self._vfs_contract_dir: Optional[str] = None
         # Snapshots
@@ -246,7 +248,22 @@ class SimEngine:
         if method is None:
             raise AttributeError(f"Contract has no method '{method_name}'")
 
-        return method(*args, **kwargs)
+        result = method(*args, **kwargs)
+        self._drain_post_queue()
+        return result
+
+    def _drain_post_queue(self) -> None:
+        """Execute queued PostMessage calls one at a time."""
+        while self._post_queue:
+            msg = self._post_queue.pop(0)
+            try:
+                self.call_method(
+                    msg['address'], msg['method'],
+                    msg.get('args', []), msg.get('kwargs', {}),
+                    sender=msg.get('sender'),
+                )
+            except Exception as e:
+                self.vm._trace(f"PostMessage error: {e}")
 
     def get_schema(self, contract_address: str) -> Optional[Dict]:
         """Get the ABI/schema for a deployed contract."""
@@ -668,47 +685,31 @@ class SimEngine:
             self._restore_message_context(saved_message)
 
     def _handle_post_in_contract(self, vm: Any, data: Dict) -> Dict:
-        """Handle gl.contract_at().emit().method() — fire-and-forget."""
+        """Handle gl.contract_at().emit().method() — enqueue for after current call."""
+        from genlayer.py.types import Address
+
         address = data.get('address')
         calldata_obj = data.get('calldata', {})
         method_name = calldata_obj.get('method')
         args = calldata_obj.get('args', [])
         kwargs = calldata_obj.get('kwargs', {})
 
-        # Normalize address
-        if isinstance(address, bytes):
+        if isinstance(address, Address):
+            addr_key = "0x" + address.as_bytes.hex()
+        elif isinstance(address, bytes):
             addr_key = "0x" + address.hex()
         else:
             addr_key = str(address).lower()
 
-        instance = self._instances.get(addr_key)
-        if instance is None:
-            return {'ok': None}
-
-        parent_storage = vm._storage
-        parent_contract_address = vm._contract_address
-
-        target_storage = self._storages.get(addr_key)
-        if target_storage is not None:
-            vm._storage = target_storage
-        vm._contract_address = bytes.fromhex(addr_key[2:]) if addr_key.startswith("0x") else addr_key
-
-        saved_message = self._swap_message_context(
-            vm,
-            sender=parent_contract_address,
-            contract_address=vm._contract_address,
-        )
-
-        try:
-            if method_name:
-                method = getattr(instance, method_name)
-                method(*args, **kwargs)
-        except Exception as e:
-            vm._trace(f"PostMessage error: {e}")
-        finally:
-            vm._storage = parent_storage
-            vm._contract_address = parent_contract_address
-            self._restore_message_context(saved_message)
+        if method_name and self._instances.get(addr_key) is not None:
+            sender = vm._contract_address
+            self._post_queue.append({
+                'address': addr_key,
+                'method': method_name,
+                'args': args,
+                'kwargs': kwargs,
+                'sender': "0x" + sender.hex() if isinstance(sender, bytes) else str(sender),
+            })
 
         return {'ok': None}
 
