@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.20.1 (2026-02-19)
+
+### Bug Fixes
+
+- Queue PostMessage calls instead of executing inline
+  ([`9948af4`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/9948af4195a4cfea6b0c7c462fbb543fcb16cf94))
+
+
 ## v0.20.0 (2026-02-19)
 
 ### Bug Fixes
