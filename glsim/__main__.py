@@ -2,6 +2,8 @@
 
 import argparse
 
+from .state import DEFAULT_CHAIN_ID
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -22,6 +24,12 @@ def main():
         help="Max leader rotations on disagreement (default: 3)"
     )
     parser.add_argument(
+        "--chain-id",
+        type=int,
+        default=DEFAULT_CHAIN_ID,
+        help=f"Network/chain id reported by RPC (default: {DEFAULT_CHAIN_ID})",
+    )
+    parser.add_argument(
         "--llm-provider", default=None,
         help="Default LLM provider in format provider:model (e.g. openai:gpt-4o)"
     )
@@ -40,6 +48,7 @@ def main():
     app = create_app(
         num_validators=args.validators,
         max_rotations=args.max_rotations,
+        chain_id=args.chain_id,
         llm_provider=args.llm_provider,
         use_browser=not args.no_browser,
         verbose=args.verbose,

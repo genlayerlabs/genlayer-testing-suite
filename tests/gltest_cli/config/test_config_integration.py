@@ -246,7 +246,7 @@ def test_multiple_networks_config(pytester):
 networks:
   default: testnet_asimov_custom
   localnet:
-    id: 61999
+    id: 61127
     url: "http://127.0.0.1:4000/api"
     accounts:
       - "local_account1"
@@ -368,7 +368,7 @@ def test_cli_network_override(pytester):
 networks:
   default: localnet
   localnet:
-    id: 61999
+    id: 61127
     url: "http://127.0.0.1:4000/api"
     accounts:
       - "local_account1"

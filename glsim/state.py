@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+DEFAULT_CHAIN_ID = 61127
+
 
 class TxStatus(str, Enum):
     PENDING = "PENDING"
@@ -65,12 +67,12 @@ class Transaction:
 class StateStore:
     """In-memory state for the simulated network."""
 
-    def __init__(self):
+    def __init__(self, chain_id: int = DEFAULT_CHAIN_ID):
         self.accounts: Dict[str, Account] = {}
         self.contracts: Dict[str, DeployedContract] = {}
         self.transactions: Dict[str, Transaction] = {}
         self.block_number: int = 0
-        self.chain_id: int = 61999  # matches Studio default
+        self.chain_id: int = chain_id
         self._next_gl_tx_id: int = 1
         self._gl_to_hash: Dict[int, str] = {}
         self._eth_hash_to_hash: Dict[str, str] = {}

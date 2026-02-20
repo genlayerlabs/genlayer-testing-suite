@@ -14,7 +14,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .state import StateStore, Transaction, TxStatus
+from .state import DEFAULT_CHAIN_ID, StateStore, Transaction, TxStatus
 from .engine import SimEngine
 from .consensus import run_consensus
 from .tx_decoder import (
@@ -906,6 +906,7 @@ def _normalize_params(params) -> dict:
 def create_app(
     num_validators: int = 1,
     max_rotations: int = 3,
+    chain_id: int = DEFAULT_CHAIN_ID,
     llm_provider: str | None = None,
     use_browser: bool = False,
     verbose: bool = False,
@@ -921,7 +922,7 @@ def create_app(
     except ImportError:
         pass
 
-    state = StateStore()
+    state = StateStore(chain_id=chain_id)
     engine = SimEngine(state, web_handler=web_handler, llm_handler=llm_handler)
     engine.num_validators = num_validators
     engine.max_rotations = max_rotations

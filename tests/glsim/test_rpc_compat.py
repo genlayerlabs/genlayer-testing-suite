@@ -14,6 +14,7 @@ import rlp as rlp_mod
 
 from genlayer_py.abi import calldata
 from genlayer_py.consensus.abi import CONSENSUS_MAIN_ABI
+from glsim.state import DEFAULT_CHAIN_ID
 
 STORAGE_CONTRACT = str(Path(__file__).parent.parent / "examples" / "contracts" / "storage.py")
 WEB_CONTRACT = str(Path(__file__).parent / "web_contract.py")
@@ -113,7 +114,7 @@ def _sign_and_send(client, acct, to_addr, data_bytes):
         "to": to_addr,
         "value": 0,
         "data": data_bytes,
-        "chainId": 61999,
+        "chainId": DEFAULT_CHAIN_ID,
     }
     signed = acct.sign_transaction(tx)
     raw_hex = w3.to_hex(signed.raw_transaction)
@@ -670,7 +671,7 @@ def test_sim_config_mock_web_response(client):
         "to": "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
         "value": 0,
         "data": call_rlp,
-        "chainId": 61999,
+        "chainId": DEFAULT_CHAIN_ID,
     }
     signed = acct.sign_transaction(tx)
     raw_hex = w3.to_hex(signed.raw_transaction)

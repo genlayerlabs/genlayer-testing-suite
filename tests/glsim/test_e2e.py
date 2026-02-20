@@ -1,6 +1,8 @@
 import pytest
 from pathlib import Path
 
+from glsim.state import DEFAULT_CHAIN_ID
+
 STORAGE_CONTRACT = str(Path(__file__).parent.parent / "examples" / "contracts" / "storage.py")
 
 
@@ -51,11 +53,11 @@ def test_ping(client):
 
 def test_eth_chain_id(client):
     data = _rpc(client, "eth_chainId")
-    assert data["result"] == hex(61999)
+    assert data["result"] == hex(DEFAULT_CHAIN_ID)
 
 
 def test_net_version(client):
-    assert _rpc(client, "net_version")["result"] == "61999"
+    assert _rpc(client, "net_version")["result"] == str(DEFAULT_CHAIN_ID)
 
 
 def test_eth_gas_price(client):
@@ -197,4 +199,21 @@ def test_batch_request(client):
     results = resp.json()
     assert len(results) == 2
     assert results[0]["result"] == "pong"
-    assert results[1]["result"] == hex(61999)
+    assert results[1]["result"] == hex(DEFAULT_CHAIN_ID)
+
+
+def test_chain_id_override():
+    from glsim.server import create_app
+    from starlette.testclient import TestClient
+
+    custom_chain_id = 70001
+    app = create_app(
+        num_validators=1,
+        chain_id=custom_chain_id,
+        llm_provider=None,
+        use_browser=False,
+        verbose=False,
+    )
+    with TestClient(app) as client:
+        assert _rpc(client, "eth_chainId")["result"] == hex(custom_chain_id)
+        assert _rpc(client, "net_version")["result"] == str(custom_chain_id)
