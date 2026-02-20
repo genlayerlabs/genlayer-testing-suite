@@ -40,6 +40,8 @@ class SimEngine:
         self.state = state
         self.vm = VMContext()
         self.vm.sender = create_address("default_deployer")
+        # Keep contract-visible chain id aligned with RPC chain id.
+        self.vm._chain_id = state.chain_id
         self._activated = False
         self._activation_ctx = None
         self._web_handler = web_handler
@@ -585,21 +587,34 @@ class SimEngine:
         """Handle gl.deploy_contract() from within a running contract."""
         from genlayer.py import calldata
         from genlayer.py.types import Address
+        from genlayer.py._internal import create2_address
 
         code = data.get('code', b'')
         calldata_obj = data.get('calldata', {})
         args = calldata_obj.get('args', [])
         kwargs = calldata_obj.get('kwargs', {})
+        salt_nonce = int(data.get('salt_nonce', 0) or 0)
 
         # Write code to temp file (handles ZIP packages too)
         code_hash = hashlib.sha256(code).hexdigest()[:16]
         tmp_path = self._unpack_contract_code(code, code_hash)
 
-        # Generate address for child contract
+        # Generate child address:
+        # - deterministic create2-style when salt_nonce != 0
+        # - nonce-based otherwise
         deployer = "0x" + vm._contract_address.hex() if isinstance(vm._contract_address, bytes) else str(vm._contract_address)
-        nonce = self.state.get_nonce(deployer)
-        child_addr = self.state.generate_contract_address(deployer, nonce)
-        self.state.increment_nonce(deployer)
+        if salt_nonce != 0:
+            deployer_addr = Address(bytes.fromhex(deployer[2:]))
+            deterministic_addr = create2_address(
+                deployer_addr,
+                salt_nonce,
+                vm._chain_id,
+            )
+            child_addr = deterministic_addr.as_hex
+        else:
+            nonce = self.state.get_nonce(deployer)
+            child_addr = self.state.generate_contract_address(deployer, nonce)
+            self.state.increment_nonce(deployer)
 
         addr_key = child_addr.lower()
         child_addr_bytes = bytes.fromhex(child_addr[2:])
