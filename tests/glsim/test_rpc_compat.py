@@ -257,6 +257,63 @@ def test_eth_get_transaction_by_hash_includes_triggered_transactions_graph(clien
         assert triggered_tx["to_address"] == expected_addr
 
 
+def test_gen_get_transaction_status_with_positional_hash(client):
+    """gen_getTransactionStatus should return string status for eth tx hash params."""
+    acct = Account.create()
+    code = Path(STORAGE_CONTRACT).read_bytes()
+    data = _build_add_transaction_data(
+        acct.address,
+        "0x" + "00" * 20,
+        code,
+        is_deploy=True,
+        constructor_args=["status_test"],
+    )
+
+    send_resp = _sign_and_send(
+        client,
+        acct,
+        "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+        data,
+    )
+    eth_tx_hash = send_resp["result"]
+
+    status_resp = _rpc(client, "gen_getTransactionStatus", [eth_tx_hash])
+    assert status_resp["result"] == "FINALIZED"
+
+
+def test_gen_get_transaction_status_with_txid_object(client):
+    """gen_getTransactionStatus should support node-style {txId} request objects."""
+    acct = Account.create()
+    code = Path(STORAGE_CONTRACT).read_bytes()
+    data = _build_add_transaction_data(
+        acct.address,
+        "0x" + "00" * 20,
+        code,
+        is_deploy=True,
+        constructor_args=["status_object_test"],
+    )
+
+    send_resp = _sign_and_send(
+        client,
+        acct,
+        "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+        data,
+    )
+    eth_tx_hash = send_resp["result"]
+
+    status_resp = _rpc(client, "gen_getTransactionStatus", [{"txId": eth_tx_hash}])
+    assert status_resp["result"] == "FINALIZED"
+
+
+def test_gen_get_transaction_status_not_found(client):
+    """Unknown transaction should return a JSON-RPC error."""
+    missing_hash = "0x" + "ff" * 32
+    status_resp = _rpc(client, "gen_getTransactionStatus", [missing_hash])
+    assert "error" in status_resp
+    assert status_resp["error"]["code"] == -32000
+    assert status_resp["error"]["message"] == f"Transaction {missing_hash} not found"
+
+
 def test_eth_get_block_by_number_latest(client):
     """eth_getBlockByNumber returns latest block in Ethereum-compatible shape."""
     block = _rpc(client, "eth_getBlockByNumber", ["latest", False])["result"]

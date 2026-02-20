@@ -222,6 +222,32 @@ def _rpc_sim_get_contract_schema(state: StateStore, engine: SimEngine, params: d
     return schema
 
 
+def _rpc_gen_get_transaction_status(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    tx_identifier = params.get("txId") or params.get("transaction_hash") or _positional(params, 0)
+    if isinstance(tx_identifier, dict):
+        tx_identifier = tx_identifier.get("txId") or tx_identifier.get("transaction_hash")
+    if not tx_identifier:
+        raise ValueError("transaction hash is required")
+
+    tx = None
+    try:
+        gl_id = int(tx_identifier, 16) if isinstance(tx_identifier, str) else int(tx_identifier)
+        tx = state.get_tx_by_gl_id(gl_id)
+    except (ValueError, TypeError):
+        pass
+
+    if tx is None and isinstance(tx_identifier, str):
+        tx = state.get_tx_by_eth_hash(tx_identifier)
+    if tx is None:
+        tx = state.get_transaction(tx_identifier)
+    if tx is None and isinstance(tx_identifier, str):
+        tx = state.get_transaction(tx_identifier.lower())
+    if tx is None:
+        raise ValueError(f"Transaction {tx_identifier} not found")
+
+    return tx.status.value
+
+
 def _rpc_eth_chain_id(state: StateStore, engine: SimEngine, params: dict) -> Any:
     return hex(state.chain_id)
 
@@ -785,6 +811,7 @@ RPC_METHODS = {
     "eth_getTransactionByHash": _rpc_eth_get_transaction_by_hash,
     # GenLayer-specific RPCs
     "gen_call": _rpc_gen_call,
+    "gen_getTransactionStatus": _rpc_gen_get_transaction_status,
     "gen_getContractSchema": _rpc_gen_get_contract_schema,
     "gen_getContractSchemaForCode": _rpc_gen_get_contract_schema_for_code,
 }
