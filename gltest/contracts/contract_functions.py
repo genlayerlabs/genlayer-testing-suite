@@ -10,6 +10,7 @@ class ContractFunction:
     call_method: Optional[Callable] = None
     analyze_method: Optional[Callable] = None
     transact_method: Optional[Callable] = None
+    raw_transact_method: Optional[Callable] = None
 
     def call(
         self,
@@ -32,6 +33,7 @@ class ContractFunction:
         wait_retries: Optional[int] = None,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_triggered_transactions_depth: int = 3,
         transaction_context: Optional[TransactionContext] = None,
     ):
         if self.read_only:
@@ -44,6 +46,21 @@ class ContractFunction:
             wait_retries=wait_retries,
             wait_triggered_transactions=wait_triggered_transactions,
             wait_triggered_transactions_status=wait_triggered_transactions_status,
+            wait_triggered_transactions_depth=wait_triggered_transactions_depth,
+            transaction_context=transaction_context,
+        )
+
+    def raw_transact(
+        self,
+        value: int = 0,
+        consensus_max_rotations: Optional[int] = None,
+        transaction_context: Optional[TransactionContext] = None,
+    ):
+        if self.read_only:
+            raise ValueError("Cannot raw_transact read-only method")
+        return self.raw_transact_method(
+            value=value,
+            consensus_max_rotations=consensus_max_rotations,
             transaction_context=transaction_context,
         )
 
