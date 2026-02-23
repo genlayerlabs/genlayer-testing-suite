@@ -2,6 +2,37 @@
 
 <!-- version list -->
 
+## v0.21.0 (2026-02-23)
+
+### Bug Fixes
+
+- **deps**: Remove setuptools from runtime dependencies
+  ([#63](https://github.com/genlayerlabs/genlayer-testing-suite/pull/63),
+  [`1349dfa`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1349dfad60291832eb84e7af7dacbf0a6a36a1b6))
+
+- **docs**: Use uv run for all gltest commands in CLAUDE.md
+  ([#63](https://github.com/genlayerlabs/genlayer-testing-suite/pull/63),
+  [`1349dfa`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1349dfad60291832eb84e7af7dacbf0a6a36a1b6))
+
+### Chores
+
+- Migrate CI and build pipeline to uv
+  ([#63](https://github.com/genlayerlabs/genlayer-testing-suite/pull/63),
+  [`1349dfa`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1349dfad60291832eb84e7af7dacbf0a6a36a1b6))
+
+### Documentation
+
+- Update dev commands to use uv
+  ([#63](https://github.com/genlayerlabs/genlayer-testing-suite/pull/63),
+  [`1349dfa`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1349dfad60291832eb84e7af7dacbf0a6a36a1b6))
+
+### Features
+
+- **ci**: Migrate build, test, and publish pipelines to uv
+  ([#63](https://github.com/genlayerlabs/genlayer-testing-suite/pull/63),
+  [`1349dfa`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1349dfad60291832eb84e7af7dacbf0a6a36a1b6))
+
+
 ## v0.20.4 (2026-02-19)
 
 ### Bug Fixes
