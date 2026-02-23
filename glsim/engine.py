@@ -12,14 +12,22 @@ import copy
 import hashlib
 import inspect
 import io
+import struct
 import sys
 import tempfile
+import threading
 import zipfile
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from gltest.direct.vm import VMContext, InmemManager
-from gltest.direct.loader import deploy_contract, create_address, _allocate_contract
+from gltest.direct.loader import (
+    deploy_contract,
+    load_contract_class,
+    create_address,
+    _allocate_contract,
+    _patch_run_nondet_for_direct_mode,
+)
 
 from .state import StateStore
 from .tx_decoder import decode_calldata_bytes, encode_calldata_result
@@ -68,6 +76,9 @@ class SimEngine:
         # Snapshots
         self._snapshots: Dict[int, Dict] = {}
         self._snapshot_counter: int = 0
+        # Serialise engine operations so background consensus doesn't
+        # collide with concurrent gen_call reads.
+        self._exec_lock = threading.Lock()
 
     def activate(self) -> None:
         """Activate the VM context (call once at startup)."""
@@ -77,6 +88,7 @@ class SimEngine:
         self._activation_ctx.__enter__()
         self._activated = True
         install_genvm_stubs()
+        self._install_cloudpickle_bypass()
         self.install_cross_contract_hook()
         self._install_vfs_open_patch()
 
@@ -172,6 +184,7 @@ class SimEngine:
             self.vm.sender = bytes.fromhex(sender[2:]) if sender.startswith("0x") else sender
 
         self._install_live_handlers()
+        self._ensure_direct_mode_runtime_patches()
 
         # Give this contract its own storage
         storage = InmemManager()
@@ -192,6 +205,11 @@ class SimEngine:
         else:
             self._reset_contract_registry()
             instance = deploy_contract(path, self.vm, *args, sdk_version=None, **kwargs)
+
+        # deploy_contract() may clobber vm._contract_address with sha256(path) —
+        # restore the real address and sync gl.message.
+        self.vm._contract_address = addr_bytes
+        self._sync_gl_message_contract_address(addr_bytes)
 
         self._instances[addr_key] = instance
 
@@ -237,6 +255,7 @@ class SimEngine:
             self.vm.sender = bytes.fromhex(sender[2:]) if sender.startswith("0x") else sender
 
         self._install_live_handlers()
+        self._ensure_direct_mode_runtime_patches()
 
         # Swap to this contract's storage and address
         addr_bytes = bytes.fromhex(addr[2:])
@@ -250,6 +269,7 @@ class SimEngine:
             contract_address=addr_bytes,
             sender=self.vm.sender,
         )
+        self._sync_gl_message_contract_address(addr_bytes)
 
         method = getattr(instance, method_name, None)
         if method is None:
@@ -268,16 +288,22 @@ class SimEngine:
             msg = self._post_queue.pop(0)
             self._post_queue.clear()
             self._draining = True
+            print(f"[PostMessage DRAIN] executing {msg['method']} on {msg['address']}")
             try:
                 self.call_method(
                     msg['address'], msg['method'],
                     msg.get('args', []), msg.get('kwargs', {}),
                     sender=msg.get('sender'),
                 )
+                print(f"[PostMessage DRAIN] {msg['method']} completed OK")
             except Exception as e:
+                print(f"[PostMessage DRAIN] {msg['method']} ERROR: {e}")
                 self.vm._trace(f"PostMessage error: {e}")
             finally:
                 self._draining = False
+        elif self._call_depth == 0 and not self._draining:
+            if not self._post_queue:
+                pass  # No PostMessages queued (normal for reads)
 
         return result
 
@@ -588,6 +614,7 @@ class SimEngine:
         from genlayer.py import calldata
         from genlayer.py.types import Address
         from genlayer.py._internal import create2_address
+        self._ensure_direct_mode_runtime_patches()
 
         code = data.get('code', b'')
         calldata_obj = data.get('calldata', {})
@@ -629,8 +656,22 @@ class SimEngine:
         vm._storage = child_storage
         vm._contract_address = child_addr_bytes
 
+        # Swap gl.message to child context (like _handle_call_in_contract does)
+        # so that child's __init__ sees the correct contract_address & sender.
+        saved_message = self._swap_message_context(
+            vm,
+            sender=parent_contract_address,
+            contract_address=child_addr_bytes,
+        )
+        self._sync_gl_message_contract_address(child_addr_bytes)
+
         try:
-            # Deploy child contract
+            # Deploy child contract.
+            # We avoid deploy_contract() here because it overrides
+            # vm._contract_address with a SHA256 hash (for test isolation),
+            # which corrupts the address for any nested child deploys
+            # during __init__.  Instead, load the class directly and
+            # allocate an instance with the correct vm state.
             path = Path(tmp_path).resolve()
             path_key = str(path)
             cached_cls = self._class_cache.get(path_key)
@@ -639,7 +680,9 @@ class SimEngine:
                 instance = _allocate_contract(cached_cls, vm, *args, **kwargs)
             else:
                 self._reset_contract_registry()
-                instance = deploy_contract(path, vm, *args, sdk_version=None, **kwargs)
+                contract_cls = load_contract_class(path, vm, sdk_version=None)
+                _patch_run_nondet_for_direct_mode()
+                instance = _allocate_contract(contract_cls, vm, *args, **kwargs)
 
             self._instances[addr_key] = instance
 
@@ -665,15 +708,17 @@ class SimEngine:
             # Restore parent context
             vm._storage = parent_storage
             vm._contract_address = parent_contract_address
+            self._restore_message_context(saved_message)
             # Restore parent as the "known" contract class
             self._reset_contract_registry()
 
-        return calldata.encode({'ok': None})
+        return calldata.encode(Address(child_addr_bytes))
 
     def _handle_call_in_contract(self, vm: Any, data: Dict) -> bytes:
         """Handle gl.contract_at().view().method() from within a running contract."""
         from genlayer.py import calldata
         from genlayer.py.types import Address
+        self._ensure_direct_mode_runtime_patches()
 
         address = data.get('address')
         calldata_obj = data.get('calldata', {})
@@ -716,9 +761,11 @@ class SimEngine:
             method = getattr(instance, method_name)
             result = method(*args, **kwargs)
             encoded = calldata.encode(result)
+            print(f"[cross-contract] {addr_key}.{method_name}() → OK (result type={type(result).__name__})")
             return bytes([0]) + encoded  # ResultCode.RETURN = success
         except Exception as e:
             error_msg = str(e)
+            print(f"[cross-contract] {addr_key}.{method_name}() → ERROR: {error_msg}")
             return bytes([1]) + error_msg.encode('utf-8')
         finally:
             vm._storage = parent_storage
@@ -734,6 +781,7 @@ class SimEngine:
         method_name = calldata_obj.get('method')
         args = calldata_obj.get('args', [])
         kwargs = calldata_obj.get('kwargs', {})
+        print(f"[PostMessage] enqueueing {method_name} to {address}")
 
         if isinstance(address, Address):
             addr_key = "0x" + address.as_bytes.hex()
@@ -822,3 +870,61 @@ class SimEngine:
             return
         if 'message' in saved:
             gl.message = saved['message']
+
+    @staticmethod
+    def _install_cloudpickle_bypass() -> None:
+        """Monkey-patch cloudpickle.dumps to bypass serialization in direct mode.
+
+        CampaignIC (and other contracts) may have C-level descriptors that
+        cloudpickle can't serialize. In direct/in-process mode, serialization
+        is unnecessary — we store the callable in a registry and return a
+        marker that wasi_mock._handle_run_nondet() can look up.
+        """
+        try:
+            import cloudpickle
+        except ImportError:
+            return
+        if hasattr(cloudpickle, '_glsim_direct_registry'):
+            return  # already installed
+
+        cloudpickle._glsim_direct_registry = {}
+        cloudpickle._glsim_direct_counter = 0
+        _original_dumps = cloudpickle.dumps
+
+        def _bypass_dumps(obj, protocol=None, buffer_callback=None):
+            try:
+                return _original_dumps(obj, protocol=protocol, buffer_callback=buffer_callback)
+            except Exception:
+                cloudpickle._glsim_direct_counter += 1
+                key = cloudpickle._glsim_direct_counter
+                cloudpickle._glsim_direct_registry[key] = obj
+                return b'__GLSIM_DIRECT__' + struct.pack('!Q', key)
+
+        cloudpickle.dumps = _bypass_dumps
+
+    @staticmethod
+    def _sync_gl_message_contract_address(addr_bytes: bytes) -> None:
+        """Update gl.message.contract_address to match vm._contract_address."""
+        if 'genlayer.gl' not in sys.modules:
+            return
+        try:
+            gl = sys.modules['genlayer.gl']
+            from genlayer.py.types import Address
+            new_addr = Address(addr_bytes)
+            if hasattr(gl, 'message') and gl.message is not None:
+                gl.message = gl.MessageType(
+                    contract_address=new_addr,
+                    sender_address=gl.message.sender_address,
+                    origin_address=gl.message.origin_address,
+                    value=gl.message.value,
+                    chain_id=gl.message.chain_id,
+                )
+            if hasattr(gl, 'message_raw') and gl.message_raw is not None:
+                gl.message_raw['contract_address'] = new_addr
+        except (ImportError, AttributeError):
+            pass
+
+    @staticmethod
+    def _ensure_direct_mode_runtime_patches() -> None:
+        """Keep direct-mode run_nondet patch active even on class-cache deploy paths."""
+        _patch_run_nondet_for_direct_mode()

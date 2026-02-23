@@ -40,6 +40,10 @@ def main():
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Verbose logging"
     )
+    parser.add_argument(
+        "--seed", default=None,
+        help="Deterministic seed for address generation. Random if omitted."
+    )
 
     args = parser.parse_args()
 
@@ -52,6 +56,7 @@ def main():
         llm_provider=args.llm_provider,
         use_browser=not args.no_browser,
         verbose=args.verbose,
+        seed=args.seed,
     )
     run_server(app, host=args.host, port=args.port)
 

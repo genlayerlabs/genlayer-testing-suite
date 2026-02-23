@@ -6,6 +6,7 @@ Tracks accounts, deployed contracts, and transactions.
 from __future__ import annotations
 
 import hashlib
+import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -67,12 +68,13 @@ class Transaction:
 class StateStore:
     """In-memory state for the simulated network."""
 
-    def __init__(self, chain_id: int = DEFAULT_CHAIN_ID):
+    def __init__(self, chain_id: int = DEFAULT_CHAIN_ID, seed: str | None = None):
         self.accounts: Dict[str, Account] = {}
         self.contracts: Dict[str, DeployedContract] = {}
         self.transactions: Dict[str, Transaction] = {}
         self.block_number: int = 0
         self.chain_id: int = chain_id
+        self._seed: str = seed if seed is not None else os.urandom(16).hex()
         self._next_gl_tx_id: int = 1
         self._gl_to_hash: Dict[int, str] = {}
         self._eth_hash_to_hash: Dict[str, str] = {}
@@ -118,11 +120,11 @@ class StateStore:
         return self.block_number
 
     def generate_tx_hash(self, data: str) -> str:
-        h = hashlib.sha256(f"{data}:{time.time_ns()}".encode()).hexdigest()
+        h = hashlib.sha256(f"{self._seed}:{data}:{time.time_ns()}".encode()).hexdigest()
         return f"0x{h}"
 
     def generate_contract_address(self, deployer: str, nonce: int) -> str:
-        h = hashlib.sha256(f"{deployer}:{nonce}".encode()).hexdigest()[:40]
+        h = hashlib.sha256(f"{self._seed}:{deployer}:{nonce}".encode()).hexdigest()[:40]
         return f"0x{h}"
 
     def get_nonce(self, address: str) -> int:

@@ -784,6 +784,16 @@ def _rpc_sim_restore_snapshot(state: StateStore, engine: SimEngine, params: dict
     return engine.restore_snapshot(snapshot_id)
 
 
+def _rpc_sim_install_mocks(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Install persistent mocks that survive across transactions."""
+    llm_mocks = params.get("llm_mocks", {})
+    web_mocks = params.get("web_mocks", {})
+    engine._persistent_llm_mocks = llm_mocks
+    engine._persistent_web_mocks = web_mocks
+    _reinstall_persistent_mocks(engine)
+    return {"llm": len(llm_mocks), "web": len(web_mocks)}
+
+
 RPC_METHODS = {
     "ping": _rpc_ping,
     # Simple sim_* methods (test helpers / direct access)
@@ -797,6 +807,7 @@ RPC_METHODS = {
     "sim_getContractSchema": _rpc_sim_get_contract_schema,
     "sim_createSnapshot": _rpc_sim_create_snapshot,
     "sim_restoreSnapshot": _rpc_sim_restore_snapshot,
+    "sim_installMocks": _rpc_sim_install_mocks,
     # Ethereum-compatible RPCs
     "eth_chainId": _rpc_eth_chain_id,
     "net_version": _rpc_net_version,
@@ -855,11 +866,20 @@ def _build_consensus_votes(votes: list, num_validators: int) -> dict:
 
 
 def _clear_sim_config_mocks(engine: SimEngine) -> None:
-    """Clear any mocks installed from sim_config."""
+    """Clear any mocks installed from sim_config, then re-apply persistent mocks."""
     engine.vm._web_mocks.clear()
     engine.vm._web_mocks_hit.clear()
     engine.vm._llm_mocks.clear()
     engine.vm._llm_mocks_hit.clear()
+    _reinstall_persistent_mocks(engine)
+
+
+def _reinstall_persistent_mocks(engine: SimEngine) -> None:
+    """Re-apply persistent mocks set via sim_installMocks."""
+    for pattern, resp in getattr(engine, '_persistent_llm_mocks', {}).items():
+        engine.vm.mock_llm(pattern, resp)
+    for url_pat, resp in getattr(engine, '_persistent_web_mocks', {}).items():
+        engine.vm.mock_web(url_pat, resp)
 
 
 def _tx_to_dict(tx: Transaction) -> dict:
@@ -937,6 +957,7 @@ def create_app(
     llm_provider: str | None = None,
     use_browser: bool = False,
     verbose: bool = False,
+    seed: str | None = None,
 ) -> FastAPI:
     """Create and configure the glsim FastAPI app."""
 
@@ -949,7 +970,7 @@ def create_app(
     except ImportError:
         pass
 
-    state = StateStore(chain_id=chain_id)
+    state = StateStore(chain_id=chain_id, seed=seed)
     engine = SimEngine(state, web_handler=web_handler, llm_handler=llm_handler)
     engine.num_validators = num_validators
     engine.max_rotations = max_rotations
