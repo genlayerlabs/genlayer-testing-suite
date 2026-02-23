@@ -7,7 +7,7 @@ import re
 import traceback
 from contextlib import asynccontextmanager
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -71,6 +71,7 @@ def _rpc_sim_deploy(state: StateStore, engine: SimEngine, params: dict) -> Any:
     sender = params.get("sender")
 
     deployer = sender or "0x0000000000000000000000000000000000000001"
+    _apply_time_context(engine, state)
     tx_hash = state.generate_tx_hash(f"deploy:{code_path}")
     tx = Transaction(
         hash=tx_hash,
@@ -108,6 +109,7 @@ def _rpc_sim_call(state: StateStore, engine: SimEngine, params: dict) -> Any:
     sender = params.get("sender")
 
     caller = sender or "0x0000000000000000000000000000000000000001"
+    _apply_time_context(engine, state)
     tx_hash = state.generate_tx_hash(f"call:{to}:{method}")
     tx = Transaction(
         hash=tx_hash,
@@ -153,6 +155,7 @@ def _rpc_sim_read(state: StateStore, engine: SimEngine, params: dict) -> Any:
 
     args = params.get("args", [])
     kwargs = params.get("kwargs", {})
+    _apply_time_context(engine, state)
     result = engine.call_method(to, method, args, kwargs)
     return {"result": result}
 
@@ -294,7 +297,8 @@ def _rpc_eth_get_block_by_number(state: StateStore, engine: SimEngine, params: d
 
     block_hash = f"0x{block_number:064x}"
     parent_hash = f"0x{max(block_number - 1, 0):064x}"
-    timestamp_hex = hex(int(datetime.now(timezone.utc).timestamp()))
+    effective_now = datetime.now(timezone.utc) + timedelta(seconds=state._time_offset_seconds)
+    timestamp_hex = hex(int(effective_now.timestamp()))
 
     block_txs = sorted(
         (tx for tx in state.transactions.values() if tx.block_number == block_number),
@@ -410,8 +414,9 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
     state.add_transaction(tx)
     state.register_tx_mappings(tx)
 
-    # Install web mocks from sim_config before executing
+    # Install web mocks and apply time context before executing
     _install_sim_config_mocks(engine, sim_config)
+    _apply_time_context(engine, state, sim_config)
     captured_triggered_ops: list[dict] = []
 
     if tx_type == "deploy":
@@ -629,7 +634,8 @@ def _rpc_eth_get_transaction_by_hash(state: StateStore, engine: SimEngine, param
     status_name = tx.status.value  # "FINALIZED", "PENDING", "FAILED"
     tx_type = 0 if tx.type == "deploy" else 2
 
-    now = datetime.now(timezone.utc).isoformat()
+    effective_now = datetime.now(timezone.utc) + timedelta(seconds=state._time_offset_seconds)
+    now = effective_now.isoformat()
 
     return {
         "hash": tx_hash,
@@ -684,6 +690,7 @@ def _rpc_gen_call(state: StateStore, engine: SimEngine, params: dict) -> Any:
         raise ValueError("No method in calldata")
 
     _install_sim_config_mocks(engine, sim_config)
+    _apply_time_context(engine, state, sim_config)
     try:
         result = engine.call_method(to, method, args, kwargs, sender)
     finally:
@@ -742,6 +749,7 @@ def _rpc_sim_call_sdk(state: StateStore, engine: SimEngine, params: dict) -> Any
             raise ValueError("No method in calldata")
 
         _install_sim_config_mocks(engine, sim_config)
+        _apply_time_context(engine, state, sim_config)
         try:
             result = engine.call_method(to, method, args, kwargs, sender)
         finally:
@@ -794,6 +802,32 @@ def _rpc_sim_install_mocks(state: StateStore, engine: SimEngine, params: dict) -
     return {"llm": len(llm_mocks), "web": len(web_mocks)}
 
 
+def _rpc_sim_increase_time(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Advance time by seconds. Cumulative, like Anvil's evm_increaseTime."""
+    seconds = _positional(params, 0) or params.get("seconds")
+    if seconds is None:
+        raise ValueError("seconds is required")
+    total = state.increase_time(int(seconds))
+    return {"total_offset_seconds": total, "effective_datetime": state.get_effective_datetime()}
+
+
+def _rpc_sim_set_time(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Set effective time to an absolute ISO datetime."""
+    iso_datetime = _positional(params, 0) or params.get("datetime")
+    if not iso_datetime:
+        raise ValueError("datetime (ISO format) is required")
+    total = state.set_time(str(iso_datetime))
+    return {"total_offset_seconds": total, "effective_datetime": state.get_effective_datetime()}
+
+
+def _rpc_sim_get_time(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Get current effective datetime and offset."""
+    return {
+        "total_offset_seconds": state._time_offset_seconds,
+        "effective_datetime": state.get_effective_datetime(),
+    }
+
+
 RPC_METHODS = {
     "ping": _rpc_ping,
     # Simple sim_* methods (test helpers / direct access)
@@ -808,6 +842,9 @@ RPC_METHODS = {
     "sim_createSnapshot": _rpc_sim_create_snapshot,
     "sim_restoreSnapshot": _rpc_sim_restore_snapshot,
     "sim_installMocks": _rpc_sim_install_mocks,
+    "sim_increaseTime": _rpc_sim_increase_time,
+    "sim_setTime": _rpc_sim_set_time,
+    "sim_getTime": _rpc_sim_get_time,
     # Ethereum-compatible RPCs
     "eth_chainId": _rpc_eth_chain_id,
     "net_version": _rpc_net_version,
@@ -835,6 +872,20 @@ RPC_METHODS = {
 def _positional(params: dict, idx: int) -> Any:
     """Get positional param from a dict that may have integer keys."""
     return params.get(idx)
+
+
+def _apply_time_context(engine: SimEngine, state: StateStore, sim_config: dict | None = None) -> None:
+    """Apply time offset or explicit genvm_datetime to the VM before execution.
+
+    Priority: explicit genvm_datetime in sim_config > global time offset > wall clock.
+    """
+    if sim_config and isinstance(sim_config, dict):
+        genvm_dt = sim_config.get("genvm_datetime")
+        if genvm_dt:
+            engine.vm.warp(str(genvm_dt))
+            return
+    if state._time_offset_seconds != 0:
+        engine.vm.warp(state.get_effective_datetime())
 
 
 def _install_sim_config_mocks(engine: SimEngine, sim_config: dict | None) -> None:

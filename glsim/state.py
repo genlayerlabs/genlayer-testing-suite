@@ -9,6 +9,7 @@ import hashlib
 import os
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -78,6 +79,8 @@ class StateStore:
         self._next_gl_tx_id: int = 1
         self._gl_to_hash: Dict[int, str] = {}
         self._eth_hash_to_hash: Dict[str, str] = {}
+        # Cumulative time offset in seconds (Anvil-style evm_increaseTime)
+        self._time_offset_seconds: int = 0
 
     def get_or_create_account(self, address: str) -> Account:
         addr = address.lower()
@@ -155,3 +158,22 @@ class StateStore:
     def get_tx_by_eth_hash(self, eth_hash: str) -> Optional[Transaction]:
         tx_hash = self._eth_hash_to_hash.get(eth_hash.lower())
         return self.transactions.get(tx_hash) if tx_hash else None
+
+    # -- Time manipulation (Anvil-style) --
+
+    def increase_time(self, seconds: int) -> int:
+        """Add seconds to cumulative time offset. Returns new total offset."""
+        self._time_offset_seconds += seconds
+        return self._time_offset_seconds
+
+    def set_time(self, iso_datetime: str) -> int:
+        """Set offset so effective time equals the given datetime. Returns offset."""
+        target = datetime.fromisoformat(iso_datetime.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        self._time_offset_seconds = int((target - now).total_seconds())
+        return self._time_offset_seconds
+
+    def get_effective_datetime(self) -> str:
+        """Get current effective datetime (wall clock + offset) as ISO string."""
+        effective = datetime.now(timezone.utc) + timedelta(seconds=self._time_offset_seconds)
+        return effective.isoformat()

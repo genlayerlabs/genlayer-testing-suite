@@ -116,6 +116,7 @@ class SimEngine:
             "instances_keys": set(self._instances.keys()),
             "storages_keys": set(self._storages.keys()),
             "classes_keys": set(self._classes.keys()),
+            "state_time_offset": self.state._time_offset_seconds,
         }
         return sid
 
@@ -131,6 +132,7 @@ class SimEngine:
         self.state._gl_to_hash = dict(snap["state_gl_to_hash"])
         self.state._eth_hash_to_hash = dict(snap["state_eth_hash_to_hash"])
         self.state.transactions = dict(snap["state_transactions"])
+        self.state._time_offset_seconds = snap.get("state_time_offset", 0)
 
         # Remove contracts/instances added after snapshot
         for key in list(self._instances.keys()):

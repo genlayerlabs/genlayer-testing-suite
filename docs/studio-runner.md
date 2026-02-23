@@ -840,6 +840,87 @@ Run:
 gltest tests/test_storage_studio.py -v
 ```
 
+## GLSim Time Manipulation
+
+When running against GLSim (the local simulator), you can manipulate time globally using Anvil-style RPC methods. This is useful for testing time-dependent contracts (campaign periods, deadlines, vesting schedules) without waiting for real time to pass.
+
+### sim_increaseTime
+
+Advance the clock by a number of seconds. Cumulative — multiple calls stack.
+
+```python
+import requests
+
+# Advance 1 day
+resp = requests.post("http://localhost:4000/api", json={
+    "jsonrpc": "2.0",
+    "method": "sim_increaseTime",
+    "params": [86400],
+    "id": 1,
+})
+# {"total_offset_seconds": 86400, "effective_datetime": "2025-02-24T..."}
+
+# Advance another 2 days (cumulative: now 3 days ahead)
+resp = requests.post("http://localhost:4000/api", json={
+    "jsonrpc": "2.0",
+    "method": "sim_increaseTime",
+    "params": [172800],
+    "id": 2,
+})
+# {"total_offset_seconds": 259200, "effective_datetime": "2025-02-26T..."}
+```
+
+### sim_setTime
+
+Set the effective time to an absolute ISO 8601 datetime. Replaces any existing offset.
+
+```python
+resp = requests.post("http://localhost:4000/api", json={
+    "jsonrpc": "2.0",
+    "method": "sim_setTime",
+    "params": ["2025-06-15T12:00:00+00:00"],
+    "id": 1,
+})
+# {"total_offset_seconds": ..., "effective_datetime": "2025-06-15T12:00:00..."}
+```
+
+### sim_getTime
+
+Query the current time offset and effective datetime.
+
+```python
+resp = requests.post("http://localhost:4000/api", json={
+    "jsonrpc": "2.0",
+    "method": "sim_getTime",
+    "params": [],
+    "id": 1,
+})
+# {"total_offset_seconds": 0, "effective_datetime": "2025-02-23T..."}
+```
+
+### How It Works
+
+GLSim uses the same approach as Anvil's `evm_increaseTime`:
+
+- A **cumulative offset** (in seconds) is added to the real wall-clock time
+- All contract calls see `datetime.now()` shifted by this offset
+- Block timestamps (`eth_getBlockByNumber`) reflect the shifted time
+- `genvm_datetime` in `transaction_context` takes precedence over the global offset for that specific call
+- Offset is preserved across `sim_createSnapshot` / `sim_restoreSnapshot`
+
+### Per-Transaction Override
+
+You can still override time for individual calls using `genvm_datetime` in the transaction context. This takes precedence over the global offset:
+
+```python
+# Global offset is +1 day, but this call sees a specific time
+contract.check_deadline().call(
+    transaction_context={
+        "genvm_datetime": "2025-12-31T23:59:59Z"
+    }
+)
+```
+
 ## Troubleshooting
 
 ### Deployment Failures
