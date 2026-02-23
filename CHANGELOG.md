@@ -2,6 +2,35 @@
 
 <!-- version list -->
 
+## v0.22.0 (2026-02-23)
+
+### Bug Fixes
+
+- **glsim**: Add eth_getBlockByNumber for wallet compatibility
+  ([#62](https://github.com/genlayerlabs/genlayer-testing-suite/pull/62),
+  [`64e9a11`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/64e9a1105e361e21b4a61d5ff98502f86dc1d9e3))
+
+### Chores
+
+- Resolve uv.lock conflict from stash
+  ([#62](https://github.com/genlayerlabs/genlayer-testing-suite/pull/62),
+  [`64e9a11`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/64e9a1105e361e21b4a61d5ff98502f86dc1d9e3))
+
+### Features
+
+- Cloudpickle bypass, gl.message sync, persistent mocks, random seed
+  ([#62](https://github.com/genlayerlabs/genlayer-testing-suite/pull/62),
+  [`64e9a11`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/64e9a1105e361e21b4a61d5ff98502f86dc1d9e3))
+
+- **glsim**: Add Anvil-style time manipulation RPC methods
+  ([#62](https://github.com/genlayerlabs/genlayer-testing-suite/pull/62),
+  [`64e9a11`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/64e9a1105e361e21b4a61d5ff98502f86dc1d9e3))
+
+- **glsim**: Sdk compat, consensus, time manipulation, and eth_getBlockByNumber
+  ([#62](https://github.com/genlayerlabs/genlayer-testing-suite/pull/62),
+  [`64e9a11`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/64e9a1105e361e21b4a61d5ff98502f86dc1d9e3))
+
+
 ## v0.21.0 (2026-02-23)
 
 ### Bug Fixes
