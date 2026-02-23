@@ -2,6 +2,54 @@
 
 <!-- version list -->
 
+## v0.21.0 (2026-02-23)
+
+### Bug Fixes
+
+- **deps**: Remove setuptools from runtime dependencies
+  ([#63](https://github.com/genlayerlabs/genlayer-testing-suite/pull/63),
+  [`1349dfa`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1349dfad60291832eb84e7af7dacbf0a6a36a1b6))
+
+- **docs**: Use uv run for all gltest commands in CLAUDE.md
+  ([#63](https://github.com/genlayerlabs/genlayer-testing-suite/pull/63),
+  [`1349dfa`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1349dfad60291832eb84e7af7dacbf0a6a36a1b6))
+
+### Chores
+
+- Migrate CI and build pipeline to uv
+  ([#63](https://github.com/genlayerlabs/genlayer-testing-suite/pull/63),
+  [`1349dfa`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1349dfad60291832eb84e7af7dacbf0a6a36a1b6))
+
+### Documentation
+
+- Update dev commands to use uv
+  ([#63](https://github.com/genlayerlabs/genlayer-testing-suite/pull/63),
+  [`1349dfa`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1349dfad60291832eb84e7af7dacbf0a6a36a1b6))
+
+### Features
+
+- **ci**: Migrate build, test, and publish pipelines to uv
+  ([#63](https://github.com/genlayerlabs/genlayer-testing-suite/pull/63),
+  [`1349dfa`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1349dfad60291832eb84e7af7dacbf0a6a36a1b6))
+
+
+## v0.20.4 (2026-02-19)
+
+### Bug Fixes
+
+- **glsim**: Add eth_getBlockByNumber for wallet compatibility
+  ([#61](https://github.com/genlayerlabs/genlayer-testing-suite/pull/61),
+  [`e4b68c3`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/e4b68c3659d5e6c912e7c9313f109919a2abd622))
+
+
+## v0.20.3 (2026-02-19)
+
+### Bug Fixes
+
+- Rollback contract storage on failed transactions
+  ([`a81c6a5`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/a81c6a56daf37ba190d1c8ca96102613a842eefd))
+
+
 ## v0.20.2 (2026-02-19)
 
 ### Bug Fixes
