@@ -19,25 +19,25 @@ uv sync
 ### Running Tests
 ```bash
 # Run all tests
-gltest
+uv run gltest
 
 # Run specific test file
-gltest tests/test_mycontract.py
+uv run gltest tests/test_mycontract.py
 
 # Run tests on different networks
-gltest --network localnet  # default
-gltest --network testnet_asimov
+uv run gltest --network localnet  # default
+uv run gltest --network testnet_asimov
 
 # Run with custom contracts directory
-gltest --contracts-dir /path/to/contracts
+uv run gltest --contracts-dir /path/to/contracts
 
 # Run with custom artifacts directory
-gltest --artifacts-dir /path/to/artifacts
+uv run gltest --artifacts-dir /path/to/artifacts
 
 # Run specific test suites
-gltest tests/gltest_cli/
-gltest tests/gltest/
-gltest tests/examples/tests/
+uv run gltest tests/gltest_cli/
+uv run gltest tests/gltest/
+uv run gltest tests/examples/tests/
 ```
 
 ### Code Formatting
