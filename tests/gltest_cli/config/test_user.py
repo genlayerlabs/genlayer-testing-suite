@@ -288,7 +288,10 @@ def test_load_user_config(mock_load_dotenv, mock_file):
     # Check default network
     assert config.default_network == "localnet"
     assert isinstance(config.networks["localnet"], NetworkConfigData)
-    assert config.networks["localnet"].id == 61999
+    assert (
+        config.networks["localnet"].id
+        == get_default_user_config().networks["localnet"].id
+    )
     assert config.networks["localnet"].url == "http://localhost:8545"
     assert config.networks["localnet"].accounts == ["0x123", "0x456"]
     assert config.networks["localnet"].from_account == "0x123"

@@ -63,7 +63,7 @@ client = GenLayerClient(chain=localnet)
 | `gen_call` | Read-only contract calls |
 | `gen_getContractSchema` | Schema for deployed contract |
 | `gen_getContractSchemaForCode` | Schema from source code |
-| `eth_chainId` | Returns `0xf22f` (localnet chain ID) |
+| `eth_chainId` | Returns `0xeec7` by default (configurable via `--chain-id`) |
 | `eth_blockNumber` | Current block number |
 | `eth_getBlockByNumber` | Block lookup used by wallet fee preparation flows |
 | `eth_getBalance` | Account balance |
@@ -190,6 +190,7 @@ Options:
   --host HOST          Bind address (default: 127.0.0.1)
   --validators N       Number of validators (default: 5)
   --max-rotations N    Max leader rotations on disagreement (default: 3)
+  --chain-id ID        Network/chain id reported by RPC (default: 61127)
   --llm-provider P     Default LLM provider, e.g. openai:gpt-4o
   --no-browser         Disable Playwright browser for web requests
   --verbose, -v        Verbose logging

@@ -223,6 +223,8 @@ def test_time(direct_vm, direct_deploy):
     contract.check_deadline()
 ```
 
+**Note**: In GLSim (server mode), use `sim_increaseTime` / `sim_setTime` RPC methods for Anvil-style cumulative time offsets. See [Studio Runner — GLSim Time Manipulation](studio-runner.md#glsim-time-manipulation).
+
 ## Mocking Nondet Operations
 
 Direct mode requires mocking `gl.nondet` operations (web requests, LLM calls).

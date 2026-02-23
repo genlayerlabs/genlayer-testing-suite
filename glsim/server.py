@@ -7,14 +7,14 @@ import re
 import traceback
 from contextlib import asynccontextmanager
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .state import StateStore, Transaction, TxStatus
+from .state import DEFAULT_CHAIN_ID, StateStore, Transaction, TxStatus
 from .engine import SimEngine
 from .consensus import run_consensus
 from .tx_decoder import (
@@ -71,6 +71,7 @@ def _rpc_sim_deploy(state: StateStore, engine: SimEngine, params: dict) -> Any:
     sender = params.get("sender")
 
     deployer = sender or "0x0000000000000000000000000000000000000001"
+    _apply_time_context(engine, state)
     tx_hash = state.generate_tx_hash(f"deploy:{code_path}")
     tx = Transaction(
         hash=tx_hash,
@@ -108,6 +109,7 @@ def _rpc_sim_call(state: StateStore, engine: SimEngine, params: dict) -> Any:
     sender = params.get("sender")
 
     caller = sender or "0x0000000000000000000000000000000000000001"
+    _apply_time_context(engine, state)
     tx_hash = state.generate_tx_hash(f"call:{to}:{method}")
     tx = Transaction(
         hash=tx_hash,
@@ -153,6 +155,7 @@ def _rpc_sim_read(state: StateStore, engine: SimEngine, params: dict) -> Any:
 
     args = params.get("args", [])
     kwargs = params.get("kwargs", {})
+    _apply_time_context(engine, state)
     result = engine.call_method(to, method, args, kwargs)
     return {"result": result}
 
@@ -222,6 +225,32 @@ def _rpc_sim_get_contract_schema(state: StateStore, engine: SimEngine, params: d
     return schema
 
 
+def _rpc_gen_get_transaction_status(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    tx_identifier = params.get("txId") or params.get("transaction_hash") or _positional(params, 0)
+    if isinstance(tx_identifier, dict):
+        tx_identifier = tx_identifier.get("txId") or tx_identifier.get("transaction_hash")
+    if not tx_identifier:
+        raise ValueError("transaction hash is required")
+
+    tx = None
+    try:
+        gl_id = int(tx_identifier, 16) if isinstance(tx_identifier, str) else int(tx_identifier)
+        tx = state.get_tx_by_gl_id(gl_id)
+    except (ValueError, TypeError):
+        pass
+
+    if tx is None and isinstance(tx_identifier, str):
+        tx = state.get_tx_by_eth_hash(tx_identifier)
+    if tx is None:
+        tx = state.get_transaction(tx_identifier)
+    if tx is None and isinstance(tx_identifier, str):
+        tx = state.get_transaction(tx_identifier.lower())
+    if tx is None:
+        raise ValueError(f"Transaction {tx_identifier} not found")
+
+    return tx.status.value
+
+
 def _rpc_eth_chain_id(state: StateStore, engine: SimEngine, params: dict) -> Any:
     return hex(state.chain_id)
 
@@ -268,7 +297,8 @@ def _rpc_eth_get_block_by_number(state: StateStore, engine: SimEngine, params: d
 
     block_hash = f"0x{block_number:064x}"
     parent_hash = f"0x{max(block_number - 1, 0):064x}"
-    timestamp_hex = hex(int(datetime.now(timezone.utc).timestamp()))
+    effective_now = datetime.now(timezone.utc) + timedelta(seconds=state._time_offset_seconds)
+    timestamp_hex = hex(int(effective_now.timestamp()))
 
     block_txs = sorted(
         (tx for tx in state.transactions.values() if tx.block_number == block_number),
@@ -384,8 +414,10 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
     state.add_transaction(tx)
     state.register_tx_mappings(tx)
 
-    # Install web mocks from sim_config before executing
+    # Install web mocks and apply time context before executing
     _install_sim_config_mocks(engine, sim_config)
+    _apply_time_context(engine, state, sim_config)
+    captured_triggered_ops: list[dict] = []
 
     if tx_type == "deploy":
         code_hex = decoded.get("code", "")
@@ -397,7 +429,10 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
         tx.calldata_bytes = calldata_bytes
 
         def execute_fn():
+            nonlocal captured_triggered_ops
+            engine.reset_triggered_ops()
             addr, _ = engine.deploy_from_code(code_bytes, calldata_bytes, sender)
+            captured_triggered_ops = engine.get_triggered_ops()
             return addr, b""
 
         consensus = run_consensus(engine, execute_fn, engine.num_validators, engine.max_rotations)
@@ -419,7 +454,10 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
         tx.calldata_bytes = calldata_bytes
 
         def execute_fn():
+            nonlocal captured_triggered_ops
+            engine.reset_triggered_ops()
             result, _ = engine.call_from_calldata(recipient, calldata_bytes, sender)
+            captured_triggered_ops = engine.get_triggered_ops()
             return result, encode_result_bytes(result)
 
         consensus = run_consensus(engine, execute_fn, engine.num_validators, engine.max_rotations)
@@ -430,6 +468,13 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
         else:
             tx.result = consensus.result
             tx.result_bytes = consensus.result_bytes
+
+    if tx.status == TxStatus.FINALIZED and captured_triggered_ops:
+        _materialize_triggered_transactions(
+            state=state,
+            parent_tx=tx,
+            triggered_ops=captured_triggered_ops,
+        )
 
     tx.consensus_votes = _build_consensus_votes(consensus.votes, tx.num_validators)
     tx.consensus_rotation = consensus.rotation
@@ -549,7 +594,7 @@ def _rpc_eth_get_transaction_by_hash(state: StateStore, engine: SimEngine, param
         "eq_outputs": {},
         "genvm_result": {"stdout": "", "stderr": tx.error or ""},
         "contract_state": {},
-        "pending_transactions": [],
+        "pending_transactions": tx.triggered_transactions,
         "gas_used": 0,
         "vote": None,
         "node_config": node_config,
@@ -589,7 +634,8 @@ def _rpc_eth_get_transaction_by_hash(state: StateStore, engine: SimEngine, param
     status_name = tx.status.value  # "FINALIZED", "PENDING", "FAILED"
     tx_type = 0 if tx.type == "deploy" else 2
 
-    now = datetime.now(timezone.utc).isoformat()
+    effective_now = datetime.now(timezone.utc) + timedelta(seconds=state._time_offset_seconds)
+    now = effective_now.isoformat()
 
     return {
         "hash": tx_hash,
@@ -608,6 +654,7 @@ def _rpc_eth_get_transaction_by_hash(state: StateStore, engine: SimEngine, param
             "calldata": calldata_b64,
             **({"contract_address": tx.to_address} if tx.type == "deploy" else {}),
         },
+        "triggered_transactions": tx.triggered_transactions,
         "consensus_data": consensus_data,
     }
 
@@ -643,6 +690,7 @@ def _rpc_gen_call(state: StateStore, engine: SimEngine, params: dict) -> Any:
         raise ValueError("No method in calldata")
 
     _install_sim_config_mocks(engine, sim_config)
+    _apply_time_context(engine, state, sim_config)
     try:
         result = engine.call_method(to, method, args, kwargs, sender)
     finally:
@@ -701,6 +749,7 @@ def _rpc_sim_call_sdk(state: StateStore, engine: SimEngine, params: dict) -> Any
             raise ValueError("No method in calldata")
 
         _install_sim_config_mocks(engine, sim_config)
+        _apply_time_context(engine, state, sim_config)
         try:
             result = engine.call_method(to, method, args, kwargs, sender)
         finally:
@@ -743,6 +792,42 @@ def _rpc_sim_restore_snapshot(state: StateStore, engine: SimEngine, params: dict
     return engine.restore_snapshot(snapshot_id)
 
 
+def _rpc_sim_install_mocks(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Install persistent mocks that survive across transactions."""
+    llm_mocks = params.get("llm_mocks", {})
+    web_mocks = params.get("web_mocks", {})
+    engine._persistent_llm_mocks = llm_mocks
+    engine._persistent_web_mocks = web_mocks
+    _reinstall_persistent_mocks(engine)
+    return {"llm": len(llm_mocks), "web": len(web_mocks)}
+
+
+def _rpc_sim_increase_time(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Advance time by seconds. Cumulative, like Anvil's evm_increaseTime."""
+    seconds = _positional(params, 0) or params.get("seconds")
+    if seconds is None:
+        raise ValueError("seconds is required")
+    total = state.increase_time(int(seconds))
+    return {"total_offset_seconds": total, "effective_datetime": state.get_effective_datetime()}
+
+
+def _rpc_sim_set_time(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Set effective time to an absolute ISO datetime."""
+    iso_datetime = _positional(params, 0) or params.get("datetime")
+    if not iso_datetime:
+        raise ValueError("datetime (ISO format) is required")
+    total = state.set_time(str(iso_datetime))
+    return {"total_offset_seconds": total, "effective_datetime": state.get_effective_datetime()}
+
+
+def _rpc_sim_get_time(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Get current effective datetime and offset."""
+    return {
+        "total_offset_seconds": state._time_offset_seconds,
+        "effective_datetime": state.get_effective_datetime(),
+    }
+
+
 RPC_METHODS = {
     "ping": _rpc_ping,
     # Simple sim_* methods (test helpers / direct access)
@@ -756,6 +841,10 @@ RPC_METHODS = {
     "sim_getContractSchema": _rpc_sim_get_contract_schema,
     "sim_createSnapshot": _rpc_sim_create_snapshot,
     "sim_restoreSnapshot": _rpc_sim_restore_snapshot,
+    "sim_installMocks": _rpc_sim_install_mocks,
+    "sim_increaseTime": _rpc_sim_increase_time,
+    "sim_setTime": _rpc_sim_set_time,
+    "sim_getTime": _rpc_sim_get_time,
     # Ethereum-compatible RPCs
     "eth_chainId": _rpc_eth_chain_id,
     "net_version": _rpc_net_version,
@@ -770,6 +859,7 @@ RPC_METHODS = {
     "eth_getTransactionByHash": _rpc_eth_get_transaction_by_hash,
     # GenLayer-specific RPCs
     "gen_call": _rpc_gen_call,
+    "gen_getTransactionStatus": _rpc_gen_get_transaction_status,
     "gen_getContractSchema": _rpc_gen_get_contract_schema,
     "gen_getContractSchemaForCode": _rpc_gen_get_contract_schema_for_code,
 }
@@ -782,6 +872,20 @@ RPC_METHODS = {
 def _positional(params: dict, idx: int) -> Any:
     """Get positional param from a dict that may have integer keys."""
     return params.get(idx)
+
+
+def _apply_time_context(engine: SimEngine, state: StateStore, sim_config: dict | None = None) -> None:
+    """Apply time offset or explicit genvm_datetime to the VM before execution.
+
+    Priority: explicit genvm_datetime in sim_config > global time offset > wall clock.
+    """
+    if sim_config and isinstance(sim_config, dict):
+        genvm_dt = sim_config.get("genvm_datetime")
+        if genvm_dt:
+            engine.vm.warp(str(genvm_dt))
+            return
+    if state._time_offset_seconds != 0:
+        engine.vm.warp(state.get_effective_datetime())
 
 
 def _install_sim_config_mocks(engine: SimEngine, sim_config: dict | None) -> None:
@@ -813,17 +917,75 @@ def _build_consensus_votes(votes: list, num_validators: int) -> dict:
 
 
 def _clear_sim_config_mocks(engine: SimEngine) -> None:
-    """Clear any mocks installed from sim_config."""
+    """Clear any mocks installed from sim_config, then re-apply persistent mocks."""
     engine.vm._web_mocks.clear()
     engine.vm._web_mocks_hit.clear()
     engine.vm._llm_mocks.clear()
     engine.vm._llm_mocks_hit.clear()
+    _reinstall_persistent_mocks(engine)
+
+
+def _reinstall_persistent_mocks(engine: SimEngine) -> None:
+    """Re-apply persistent mocks set via sim_installMocks."""
+    for pattern, resp in getattr(engine, '_persistent_llm_mocks', {}).items():
+        engine.vm.mock_llm(pattern, resp)
+    for url_pat, resp in getattr(engine, '_persistent_web_mocks', {}).items():
+        engine.vm.mock_web(url_pat, resp)
 
 
 def _tx_to_dict(tx: Transaction) -> dict:
     d = asdict(tx)
     d["status"] = tx.status.value
     return d
+
+
+def _materialize_triggered_transactions(
+    *,
+    state: StateStore,
+    parent_tx: Transaction,
+    triggered_ops: list[dict],
+) -> None:
+    """Create synthetic child transactions for cross-contract deploy operations.
+
+    This mirrors Studio's triggered transaction graph enough for frontend
+    polling flows that follow deployment chains.
+    """
+    deploy_addresses = [
+        str(op.get("address", "")).lower()
+        for op in triggered_ops
+        if op.get("type") == "deploy" and op.get("address")
+    ]
+    if not deploy_addresses:
+        return
+
+    created_hashes: list[str] = []
+    for idx, deploy_addr in enumerate(deploy_addresses):
+        child_hash = state.generate_tx_hash(f"trigger:{parent_tx.hash}:{idx}:{deploy_addr}")
+        child_tx = Transaction(
+            hash=child_hash,
+            from_address=parent_tx.to_address or parent_tx.from_address,
+            to_address=deploy_addr,
+            status=TxStatus.FINALIZED,
+            type="deploy",
+            block_number=parent_tx.block_number + idx + 1,
+            gl_tx_id=state.allocate_gl_tx_id(),
+            raw_sender=parent_tx.raw_sender or parent_tx.from_address,
+            num_validators=parent_tx.num_validators,
+        )
+        child_tx.result = deploy_addr
+        child_tx.consensus_votes = dict(parent_tx.consensus_votes)
+        state.add_transaction(child_tx)
+        state.register_tx_mappings(child_tx)
+        created_hashes.append(child_hash)
+
+    # Studio-style graph:
+    # parent (factory call) -> first deploy (campaign)
+    # first deploy (campaign) -> remaining deploys (e.g. shards)
+    parent_tx.triggered_transactions = [created_hashes[0]]
+    if len(created_hashes) > 1:
+        first_child = state.get_transaction(created_hashes[0])
+        if first_child is not None:
+            first_child.triggered_transactions = created_hashes[1:]
 
 
 def _normalize_params(params) -> dict:
@@ -842,9 +1004,11 @@ def _normalize_params(params) -> dict:
 def create_app(
     num_validators: int = 1,
     max_rotations: int = 3,
+    chain_id: int = DEFAULT_CHAIN_ID,
     llm_provider: str | None = None,
     use_browser: bool = False,
     verbose: bool = False,
+    seed: str | None = None,
 ) -> FastAPI:
     """Create and configure the glsim FastAPI app."""
 
@@ -857,7 +1021,7 @@ def create_app(
     except ImportError:
         pass
 
-    state = StateStore()
+    state = StateStore(chain_id=chain_id, seed=seed)
     engine = SimEngine(state, web_handler=web_handler, llm_handler=llm_handler)
     engine.num_validators = num_validators
     engine.max_rotations = max_rotations

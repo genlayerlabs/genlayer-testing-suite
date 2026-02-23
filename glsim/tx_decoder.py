@@ -8,17 +8,37 @@ from __future__ import annotations
 
 import rlp
 from eth_account import Account as EthAccount
+from eth_abi import decode as abi_decode
 from eth_utils.crypto import keccak
 from genlayer_py.consensus.consensus_main.decoder import (  # type: ignore[import-untyped]
     decode_add_transaction_data,
+    decode_tx_data,
 )
 from genlayer_py.abi import calldata  # type: ignore[import-untyped]
 
 
 # addTransaction(address,address,uint256,uint256,bytes) selector
-ADD_TX_SELECTOR = keccak(
+ADD_TX_SELECTOR_V5 = keccak(
     text="addTransaction(address,address,uint256,uint256,bytes)"
 )[:4].hex()
+
+# addTransaction(address,address,uint256,uint256,bytes,uint256) selector
+ADD_TX_SELECTOR_V6 = keccak(
+    text="addTransaction(address,address,uint256,uint256,bytes,uint256)"
+)[:4].hex()
+
+# Backward-compatible alias kept for older imports.
+ADD_TX_SELECTOR = ADD_TX_SELECTOR_V5
+
+ADD_TX_ARGUMENT_TYPES_V5 = ("address", "address", "uint256", "uint256", "bytes")
+ADD_TX_ARGUMENT_TYPES_V6 = (
+    "address",
+    "address",
+    "uint256",
+    "uint256",
+    "bytes",
+    "uint256",
+)
 
 # NewTransaction(bytes32,address,address) event topic
 NEW_TRANSACTION_TOPIC = "0x" + keccak(
@@ -30,6 +50,38 @@ CONSENSUS_CONTRACT_ADDR = "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575"
 
 # Zero address = deploy target
 ADDRESS_ZERO = "0x" + "00" * 20
+
+
+def _format_add_transaction_result(abi_decoded: tuple) -> dict:
+    encoded_tx_data_bytes = abi_decoded[4]
+    encoded_tx_data = "0x" + encoded_tx_data_bytes.hex()
+    decoded_tx_data = decode_tx_data(encoded_tx_data_bytes)
+    return {
+        "sender_address": abi_decoded[0],
+        "recipient_address": abi_decoded[1],
+        "num_of_initial_validators": abi_decoded[2],
+        "max_rotations": abi_decoded[3],
+        "tx_data": {
+            "encoded": encoded_tx_data,
+            "decoded": decoded_tx_data,
+        },
+        "valid_until": abi_decoded[5] if len(abi_decoded) > 5 else None,
+    }
+
+
+def _decode_add_transaction_data_compat(input_data: bytes) -> dict:
+    selector = input_data[:4].hex()
+
+    if selector == ADD_TX_SELECTOR_V5:
+        decoded = abi_decode(ADD_TX_ARGUMENT_TYPES_V5, input_data[4:])
+        return _format_add_transaction_result(decoded)
+
+    if selector == ADD_TX_SELECTOR_V6:
+        decoded = abi_decode(ADD_TX_ARGUMENT_TYPES_V6, input_data[4:])
+        return _format_add_transaction_result(decoded)
+
+    # Fall back to upstream SDK decoder for unexpected selectors/future ABI variants.
+    return decode_add_transaction_data("0x" + input_data.hex())
 
 
 def decode_raw_transaction(raw_hex: str) -> dict:
@@ -67,7 +119,7 @@ def decode_genlayer_payload(input_data: bytes) -> dict:
     """Decode addTransaction ABI call data into GenLayer tx fields.
 
     The input_data is the 'data' field from the raw Ethereum transaction,
-    which is ABI-encoded: addTransaction(sender, recipient, nValidators, maxRotations, txData).
+    which is ABI-encoded as addTransaction() in either 5-arg or 6-arg form.
 
     Uses genlayer_py decoders to further decode the inner RLP payload.
 
@@ -77,8 +129,7 @@ def decode_genlayer_payload(input_data: bytes) -> dict:
         and for deploy: code (bytes), constructor_args
         and for call: call_data (decoded calldata dict)
     """
-    hex_data = "0x" + input_data.hex()
-    result = decode_add_transaction_data(hex_data)
+    result = _decode_add_transaction_data_compat(input_data)
 
     decoded_tx = result["tx_data"]["decoded"]
     tx_type = decoded_tx.get("type", "call") if decoded_tx else "call"

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import io
 import os
+import struct
 import threading
 import warnings
 from typing import TYPE_CHECKING, Any
@@ -286,6 +287,9 @@ def _handle_llm_request(vm: "VMContext", data: Any) -> Any:
     )
 
 
+_DIRECT_MARKER = b'__GLSIM_DIRECT__'
+
+
 def _handle_run_nondet(vm: "VMContext", data: Any) -> Any:
     """Handle RunNondet request by executing the leader function directly.
 
@@ -299,9 +303,12 @@ def _handle_run_nondet(vm: "VMContext", data: Any) -> Any:
     if not data_leader:
         raise ValueError("RunNondet missing data_leader")
 
-    # Unpickle and execute the leader function
-    # The lambda expects a stage_data argument, but in leader mode it's None
-    leader_fn = cloudpickle.loads(data_leader)
+    # Check for cloudpickle bypass marker (set by engine._install_cloudpickle_bypass)
+    if data_leader[:len(_DIRECT_MARKER)] == _DIRECT_MARKER:
+        key = struct.unpack('!Q', data_leader[len(_DIRECT_MARKER):])[0]
+        leader_fn = cloudpickle._glsim_direct_registry.pop(key)
+    else:
+        leader_fn = cloudpickle.loads(data_leader)
 
     try:
         result = leader_fn(None)
