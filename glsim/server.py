@@ -395,7 +395,6 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
     tx_type = gl_payload["tx_type"]
     sender = gl_payload["sender"]
     recipient = gl_payload["recipient"]
-
     # Allocate GenLayer tx ID
     gl_tx_id = state.allocate_gl_tx_id()
     internal_hash = state.generate_tx_hash(f"gl:{gl_tx_id}")
@@ -793,13 +792,28 @@ def _rpc_sim_restore_snapshot(state: StateStore, engine: SimEngine, params: dict
 
 
 def _rpc_sim_install_mocks(state: StateStore, engine: SimEngine, params: dict) -> Any:
-    """Install persistent mocks that survive across transactions."""
+    """Install persistent mocks that survive across transactions.
+
+    When strict=true, unmocked web/LLM requests raise an error instead of
+    falling through to live handlers.
+    """
     llm_mocks = params.get("llm_mocks", {})
     web_mocks = params.get("web_mocks", {})
+    strict = params.get("strict", False)
     engine._persistent_llm_mocks = llm_mocks
     engine._persistent_web_mocks = web_mocks
+    engine.vm._strict_mock_mode = bool(strict)
     _reinstall_persistent_mocks(engine)
-    return {"llm": len(llm_mocks), "web": len(web_mocks)}
+    return {"llm": len(llm_mocks), "web": len(web_mocks), "strict": bool(strict)}
+
+
+def _rpc_sim_get_mocks(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Return currently installed persistent mocks."""
+    return {
+        "llm": dict(getattr(engine, '_persistent_llm_mocks', {})),
+        "web": dict(getattr(engine, '_persistent_web_mocks', {})),
+        "strict": bool(getattr(engine.vm, '_strict_mock_mode', False)),
+    }
 
 
 def _rpc_sim_increase_time(state: StateStore, engine: SimEngine, params: dict) -> Any:
@@ -842,6 +856,7 @@ RPC_METHODS = {
     "sim_createSnapshot": _rpc_sim_create_snapshot,
     "sim_restoreSnapshot": _rpc_sim_restore_snapshot,
     "sim_installMocks": _rpc_sim_install_mocks,
+    "sim_getMocks": _rpc_sim_get_mocks,
     "sim_increaseTime": _rpc_sim_increase_time,
     "sim_setTime": _rpc_sim_set_time,
     "sim_getTime": _rpc_sim_get_time,

@@ -43,6 +43,13 @@ class _VecDB:
     def __init__(self):
         self._entries: List[_VecDBEntry] = []
 
+    def __getattr__(self, name: str):
+        # Deserialized instances skip __init__; lazily init _entries
+        if name == "_entries":
+            self._entries: List[_VecDBEntry] = []
+            return self._entries
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
     def insert(self, embedding: Any, value: Any) -> None:
         self._entries.append(_VecDBEntry(embedding=embedding, value=value))
 

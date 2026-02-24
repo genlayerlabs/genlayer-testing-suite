@@ -205,10 +205,20 @@ def _handle_web_request(vm: "VMContext", data: Any) -> Any:
             "body": body,
         }}}
 
+    # Strict mock mode: fail fast on unmocked requests (no live fallthrough)
+    strict = getattr(vm, '_strict_mock_mode', False)
+    if strict:
+        registered = [f"{r.get('method', 'GET')} {p.pattern}" for p, r in vm._web_mocks]
+        raise MockNotFoundError(
+            f"[strict] No web mock for {method} {url}\n"
+            f"  Registered: {registered or '(none)'}"
+        )
+
     # Live handler fallback (glsim mode)
     live_handler = getattr(vm, '_live_web_handler', None)
     if live_handler is not None:
-        return live_handler(data)
+        result = live_handler(data)
+        return result
 
     registered = [f"{r.get('method', 'GET')} {p.pattern}" for p, r in vm._web_mocks]
     raise MockNotFoundError(
@@ -236,6 +246,15 @@ def _handle_web_render(vm: "VMContext", data: Any) -> Any:
         if mode == "screenshot":
             return {"ok": {"image": b""}}
         return {"ok": {"text": body}}
+
+    # Strict mock mode: fail fast on unmocked requests
+    strict = getattr(vm, '_strict_mock_mode', False)
+    if strict:
+        registered = [f"GET {p.pattern}" for p, r in vm._web_mocks]
+        raise MockNotFoundError(
+            f"[strict] No web mock for WebRender {url}\n"
+            f"  Registered: {registered or '(none)'}"
+        )
 
     # Live handler fallback — do a GET, return body as text
     live_handler = getattr(vm, '_live_web_handler', None)
@@ -274,6 +293,15 @@ def _handle_llm_request(vm: "VMContext", data: Any) -> Any:
             except (ValueError, TypeError):
                 pass
         return {"ok": response}
+
+    # Strict mock mode: fail fast on unmocked requests
+    strict = getattr(vm, '_strict_mock_mode', False)
+    if strict:
+        registered = [p.pattern for p, _ in vm._llm_mocks]
+        raise MockNotFoundError(
+            f"[strict] No LLM mock for prompt: {prompt[:100]}...\n"
+            f"  Registered: {registered or '(none)'}"
+        )
 
     # Live handler fallback (glsim mode)
     live_handler = getattr(vm, '_live_llm_handler', None)
