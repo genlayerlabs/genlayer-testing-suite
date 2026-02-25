@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v0.23.0 (2026-02-25)
+
+### Features
+
+- **direct**: Add calldata roundtrip for constructor and method args
+  ([`2ff9d07`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/2ff9d077b38329b0626d32cfd5d0b4080d071c03))
+
+- **glsim**: Add sim_getMocks handler, strict mock mode, VecDB fix
+  ([`5dc39cf`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/5dc39cf5cac17c16745d61c5d23a55654184e478))
+
+
 ## v0.22.0 (2026-02-23)
 
 ### Bug Fixes
