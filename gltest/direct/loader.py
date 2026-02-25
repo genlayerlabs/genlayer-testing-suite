@@ -13,6 +13,7 @@ from __future__ import annotations
 import sys
 import typing
 import hashlib
+import functools
 import importlib.util
 from pathlib import Path
 from typing import Any, Optional, Type, TYPE_CHECKING
@@ -81,9 +82,16 @@ def deploy_contract(
     # Patch run_nondet to skip pickling in direct mode
     _patch_run_nondet_for_direct_mode()
 
+    # Roundtrip args through calldata encode/decode to match production.
+    # In production, constructor args are serialized via calldata before
+    # reaching the contract. This catches type mismatches (e.g. int dict
+    # keys, non-encodable objects) that work in direct mode but fail in
+    # production.
+    args, kwargs = _calldata_roundtrip_args(args, kwargs)
+
     instance = _allocate_contract(contract_cls, vm, *args, **kwargs)
 
-    return instance
+    return _make_contract_proxy(instance)
 
 
 def _patch_get_type_hints_for_pep695() -> None:
@@ -322,6 +330,96 @@ def _find_contract_class(module: Any) -> Optional[Type[Any]]:
         return candidates[0]
 
     return None
+
+
+def _calldata_roundtrip_args(
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> tuple[tuple[Any, ...], dict[str, Any]]:
+    """Roundtrip constructor args through calldata encode/decode.
+
+    In production, constructor args are serialized via calldata before reaching
+    the contract. This roundtrip enforces the same constraints in direct mode
+    so type mismatches (e.g. int dict keys) fail fast instead of only surfacing
+    at deploy time.
+    """
+    try:
+        from genlayer.py import calldata
+    except ImportError:
+        return args, kwargs
+
+    # Build calldata object matching production format
+    # (see genlayer_py.contracts.utils.make_calldata_object)
+    obj: dict[str, Any] = {}
+    if args:
+        obj["args"] = list(args)
+    if kwargs:
+        obj["kwargs"] = kwargs
+
+    if not obj:
+        return args, kwargs
+
+    encoded = calldata.encode(obj)
+    decoded = calldata.decode(encoded)
+
+    new_args = tuple(decoded.get("args", []))
+    new_kwargs = decoded.get("kwargs", {})
+    return new_args, new_kwargs
+
+
+_proxy_class_cache: dict[type, type] = {}
+
+
+def _make_contract_proxy(instance: Any) -> Any:
+    """Wrap a contract instance in a proxy that roundtrips public method args.
+
+    The proxy sits between test code and the real contract instance. Public
+    method calls from tests go through calldata encode/decode (catching type
+    mismatches like int dict keys). Internal self-calls inside the contract
+    bypass the proxy entirely because ``self`` is the real instance.
+
+    Everything else (storage properties, private attrs, setattr) passes
+    through transparently to the real instance.
+    """
+    contract_cls = type(instance)
+
+    proxy_cls = _proxy_class_cache.get(contract_cls)
+    if proxy_cls is None:
+        proxy_cls = type(contract_cls.__name__, (), {
+            '__slots__': ('_instance',),
+            '__module__': contract_cls.__module__,
+            '__qualname__': contract_cls.__qualname__,
+        })
+
+        def _proxy_getattr(self: Any, name: str) -> Any:
+            inst = object.__getattribute__(self, '_instance')
+            attr = getattr(inst, name)
+            if not name.startswith('_') and callable(attr):
+                @functools.wraps(attr)
+                def _wrapped(*args: Any, **kwargs: Any) -> Any:
+                    args, kwargs = _calldata_roundtrip_args(args, kwargs)
+                    return attr(*args, **kwargs)
+                return _wrapped
+            return attr
+
+        def _proxy_setattr(self: Any, name: str, value: Any) -> None:
+            if name == '_instance':
+                object.__setattr__(self, name, value)
+            else:
+                setattr(object.__getattribute__(self, '_instance'), name, value)
+
+        def _proxy_repr(self: Any) -> str:
+            inst = object.__getattribute__(self, '_instance')
+            return f'<CalldataProxy for {inst!r}>'
+
+        proxy_cls.__getattr__ = _proxy_getattr
+        proxy_cls.__setattr__ = _proxy_setattr
+        proxy_cls.__repr__ = _proxy_repr
+        _proxy_class_cache[contract_cls] = proxy_cls
+
+    proxy = object.__new__(proxy_cls)
+    object.__setattr__(proxy, '_instance', instance)
+    return proxy
 
 
 def _allocate_contract(
