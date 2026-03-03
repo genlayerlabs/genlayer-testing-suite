@@ -145,12 +145,29 @@ def _patch_run_nondet_for_direct_mode() -> None:
         if vm._check_pickling:
             _validate_pickling(leader_fn, "leader_fn")
             _validate_pickling(validator_fn, "validator_fn")
-        result = leader_fn()
+        vm._in_nondet = True
+        try:
+            result = leader_fn()
+        finally:
+            vm._in_nondet = False
+        vm._captured_validators.append((result, leader_fn, validator_fn))
+        return result
+
+    def _direct_run_nondet_unsafe(leader_fn, validator_fn, /):
+        from . import wasi_mock
+        vm = wasi_mock.get_vm()
+        vm._in_nondet = True
+        try:
+            result = leader_fn()
+        finally:
+            vm._in_nondet = False
         vm._captured_validators.append((result, leader_fn, validator_fn))
         return result
 
     gl_vm.run_nondet = _direct_run_nondet
+    gl_vm.run_nondet_unsafe = _direct_run_nondet_unsafe
     gl_vm._direct_mode_patched = True
+    gl_vm._direct_mode_unsafe_patched = True
 
     # Also mock embeddings (ONNX model not available in direct mode)
     _mock_embeddings_for_direct_mode()

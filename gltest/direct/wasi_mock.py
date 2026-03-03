@@ -82,6 +82,9 @@ def get_self_balance() -> int:
     return vm._balances.get(addr_bytes, 0)
 
 
+_CROSS_CONTRACT_OPS = frozenset({"DeployContract", "CallContract", "PostMessage"})
+
+
 def gl_call(data: bytes, /) -> int:
     """
     Execute a GenVM call operation.
@@ -97,6 +100,18 @@ def gl_call(data: bytes, /) -> int:
     except Exception as e:
         vm._trace(f"gl_call decode error: {e}")
         return 2**32 - 1
+
+    # Enforce: cross-contract calls are forbidden inside nondet context
+    # (eq_principle / run_nondet). GenVM raises SystemError: 6 (forbidden).
+    if getattr(vm, '_in_nondet', False) and isinstance(request, dict):
+        for op in _CROSS_CONTRACT_OPS:
+            if op in request:
+                raise RuntimeError(
+                    f"Cross-contract call ({op}) is forbidden inside "
+                    f"eq_principle/run_nondet. GenVM raises SystemError: 6 "
+                    f"(forbidden) for this. Move the cross-contract call "
+                    f"outside the nondet block."
+                )
 
     response = _handle_gl_call(vm, request)
 
@@ -338,6 +353,7 @@ def _handle_run_nondet(vm: "VMContext", data: Any) -> Any:
     else:
         leader_fn = cloudpickle.loads(data_leader)
 
+    vm._in_nondet = True
     try:
         result = leader_fn(None)
         # Wrap result in Return format (code 0 + calldata)
@@ -347,6 +363,8 @@ def _handle_run_nondet(vm: "VMContext", data: Any) -> Any:
         # Wrap error in UserError format (code 1 + message)
         error_msg = str(e)
         return bytes([1]) + error_msg.encode('utf-8')
+    finally:
+        vm._in_nondet = False
 
 
 def patched_fdopen(fd_arg: int, mode: str = "r", *args, **kwargs):
