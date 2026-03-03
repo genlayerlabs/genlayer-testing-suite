@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.24.0 (2026-03-03)
+
+### Features
+
+- **direct**: Enforce cross-contract call restriction inside nondet context
+  ([`475966e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/475966e46c42652de71f7249bbcd534a1223f6c2))
+
+
 ## v0.23.0 (2026-02-25)
 
 ### Features
