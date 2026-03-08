@@ -54,7 +54,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
 
       - name: Setup | Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
 
       - name: Setup | Install Python
         run: uv python install 3.12
@@ -96,7 +96,7 @@ jobs:
 
     steps:
       - name: Setup | Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
 
       - name: Download | Distribution Artifacts
         uses: actions/download-artifact@v4
