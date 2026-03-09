@@ -164,6 +164,20 @@ def _patch_run_nondet_for_direct_mode() -> None:
         vm._captured_validators.append((result, leader_fn, validator_fn))
         return result
 
+    # lazy-api compat: eq_principle.strict_eq calls vm.run_nondet_unsafe.lazy()
+    # The SDK uses @_lazy_api which attaches .lazy to the eager function.
+    # .lazy must return a Lazy[T] wrapper instead of the raw value.
+    from genlayer.py.types import Lazy
+
+    def _lazy_run_nondet(leader_fn, validator_fn, /, **kwargs):
+        return Lazy(lambda: _direct_run_nondet(leader_fn, validator_fn, **kwargs))
+
+    def _lazy_run_nondet_unsafe(leader_fn, validator_fn, /):
+        return Lazy(lambda: _direct_run_nondet_unsafe(leader_fn, validator_fn))
+
+    _direct_run_nondet.lazy = _lazy_run_nondet
+    _direct_run_nondet_unsafe.lazy = _lazy_run_nondet_unsafe
+
     gl_vm.run_nondet = _direct_run_nondet
     gl_vm.run_nondet_unsafe = _direct_run_nondet_unsafe
     gl_vm._direct_mode_patched = True

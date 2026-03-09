@@ -290,7 +290,7 @@ class SimEngine:
             msg = self._post_queue.pop(0)
             self._post_queue.clear()
             self._draining = True
-            print(f"[PostMessage DRAIN] executing {msg['method']} on {msg['address']}")
+            print(f"[PostMessage DRAIN] executing {msg['method']} on {msg['address']} (sender={msg.get('sender')})")
             try:
                 self.call_method(
                     msg['address'], msg['method'],
@@ -740,6 +740,7 @@ class SimEngine:
         instance = self._instances.get(addr_key)
         if instance is None:
             error_msg = f"Contract not found at {addr_key}"
+            print(f"[cross-contract] MISS: {addr_key} not in _instances ({list(self._instances.keys())})")
             return bytes([1]) + error_msg.encode('utf-8')
 
         # Save parent context
