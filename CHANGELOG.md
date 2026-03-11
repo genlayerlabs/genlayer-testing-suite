@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.25.0 (2026-03-11)
+
+### Features
+
+- **direct**: Add lazy-api compat for eq_principle.strict_eq
+  ([`b39f8ea`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/b39f8ea615676bdc392567f07740b8d8526756e4))
+
+
 ## v0.24.0 (2026-03-03)
 
 ### Features
