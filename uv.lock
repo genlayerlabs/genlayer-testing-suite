@@ -688,19 +688,19 @@ wheels = [
 
 [[package]]
 name = "genlayer-py"
-version = "0.9.0"
+version = "0.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "web3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/ca/58d286f63ccd56049127dc6e800fb8be3fc01aa96fa13defcc03f2982648/genlayer_py-0.9.0.tar.gz", hash = "sha256:10669d34f080f40873b476651a8e710ef0c1658e012857446c08a939a9e86096", size = 72639, upload-time = "2025-09-09T14:30:00.716Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/d3/8822d3b478e9ff60995b67bf77a230d77c0991c655b5cd8f0bfc89af2c45/genlayer_py-0.11.0.tar.gz", hash = "sha256:1f0e39f20458fb7d28e40d53f7e4252a7c4ff1a8ce59105d6a977f75906d86a6", size = 31085, upload-time = "2026-03-11T11:53:50.009Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/c7/18c3dbf1a9c432e5584ee0bd6e8dc2ffbeeda99d1338e925d61da229adca/genlayer_py-0.9.0-py3-none-any.whl", hash = "sha256:e98530d4e3eaa5faf399a5fcb4af3e085921d10e250132ba150ade638cd91939", size = 110748, upload-time = "2025-09-09T14:29:59.634Z" },
+    { url = "https://files.pythonhosted.org/packages/88/e4/b75e22fae6341ce536b22643f34e8fa0aefa78089da81134dfecd442795d/genlayer_py-0.11.0-py3-none-any.whl", hash = "sha256:d7f1ab105acf44878d856bc74c91dcce0ba57fa5eebedc4f14ff8b1d5019897e", size = 43964, upload-time = "2026-03-11T11:53:48.228Z" },
 ]
 
 [[package]]
 name = "genlayer-test"
-version = "0.20.2"
+version = "0.25.0"
 source = { editable = "." }
 dependencies = [
     { name = "colorama" },
@@ -708,7 +708,6 @@ dependencies = [
     { name = "pytest" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
-    { name = "setuptools" },
 ]
 
 [package.optional-dependencies]
@@ -724,12 +723,11 @@ requires-dist = [
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "eth-account", marker = "extra == 'sim'", specifier = ">=0.10" },
     { name = "fastapi", marker = "extra == 'sim'", specifier = ">=0.100" },
-    { name = "genlayer-py", specifier = "==0.9.0" },
+    { name = "genlayer-py", specifier = "==0.11.0" },
     { name = "httpx", marker = "extra == 'sim'", specifier = ">=0.24" },
     { name = "pytest" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
-    { name = "setuptools", specifier = ">=77.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'sim'", specifier = ">=0.20" },
 ]
 provides-extras = ["sim"]
@@ -1374,15 +1372,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/1b/2d/439b0728a92964a04d9c88ea1ca9ebb128893fbbd5834faa31f987f2fd4c/rlp-4.1.0.tar.gz", hash = "sha256:be07564270a96f3e225e2c107db263de96b5bc1f27722d2855bd3459a08e95a9", size = 33429, upload-time = "2025-02-04T22:05:59.089Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/99/fb/e4c0ced9893b84ac95b7181d69a9786ce5879aeb3bbbcbba80a164f85d6a/rlp-4.1.0-py3-none-any.whl", hash = "sha256:8eca394c579bad34ee0b937aecb96a57052ff3716e19c7a578883e767bc5da6f", size = 19973, upload-time = "2025-02-04T22:05:57.05Z" },
-]
-
-[[package]]
-name = "setuptools"
-version = "80.10.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/76/95/faf61eb8363f26aa7e1d762267a8d602a1b26d4f3a1e758e92cb3cb8b054/setuptools-80.10.2.tar.gz", hash = "sha256:8b0e9d10c784bf7d262c4e5ec5d4ec94127ce206e8738f29a437945fbc219b70", size = 1200343, upload-time = "2026-01-25T22:38:17.252Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/b8/f1f62a5e3c0ad2ff1d189590bfa4c46b4f3b6e49cef6f26c6ee4e575394d/setuptools-80.10.2-py3-none-any.whl", hash = "sha256:95b30ddfb717250edb492926c92b5221f7ef3fbcc2b07579bcd4a27da21d0173", size = 1064234, upload-time = "2026-01-25T22:38:15.216Z" },
 ]
 
 [[package]]
