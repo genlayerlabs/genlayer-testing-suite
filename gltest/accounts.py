@@ -5,10 +5,12 @@ from typing import List
 
 
 def create_accounts(n_accounts: int):
+    """Creates n new accounts with random private keys."""
     return [create_account() for _ in range(n_accounts)]
 
 
 def get_accounts() -> List[LocalAccount]:
+    """Returns all configured accounts for the current network."""
     general_config = get_general_config()
     selected_network = general_config.get_network_name()
     accounts = general_config.get_accounts_keys(selected_network)
@@ -16,6 +18,7 @@ def get_accounts() -> List[LocalAccount]:
 
 
 def get_default_account() -> LocalAccount:
+    """Returns the default account for the current network."""
     general_config = get_general_config()
     selected_network = general_config.get_network_name()
     default_account_key = general_config.get_default_account_key(selected_network)

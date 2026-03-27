@@ -16,6 +16,7 @@ class ContractFunction:
         transaction_hash_variant: TransactionHashVariant = TransactionHashVariant.LATEST_NONFINAL,
         transaction_context: Optional[TransactionContext] = None,
     ):
+        """Executes a read-only contract method call."""
         if not self.read_only:
             raise ValueError("call() not implemented for non-readonly method")
         return self.call_method(
@@ -34,6 +35,7 @@ class ContractFunction:
         wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
         transaction_context: Optional[TransactionContext] = None,
     ):
+        """Executes a state-changing contract method through consensus. Returns the transaction receipt."""
         if self.read_only:
             raise ValueError("Cannot transact read-only method")
         return self.transact_method(
@@ -57,6 +59,7 @@ class ContractFunction:
         runs: int = 100,
         genvm_datetime: Optional[str] = None,
     ):
+        """Runs statistical analysis of method behavior across multiple executions."""
         if self.read_only:
             raise ValueError("Cannot analyze read-only method")
         return self.analyze_method(
