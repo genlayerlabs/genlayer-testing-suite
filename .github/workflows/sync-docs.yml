@@ -68,6 +68,6 @@ jobs:
             echo "No changes to commit"
             exit 0
           fi
-          git add pages/api-references/genlayer-test
+          git add pages/api-references/genlayer-test pages/api-references/genlayer-test.md
           git commit -m "docs(test): sync API reference ${{ steps.version.outputs.value }}"
           git push
