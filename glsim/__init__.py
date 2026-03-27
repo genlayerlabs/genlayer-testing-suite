@@ -9,4 +9,4 @@ Supports real LLM and web calls without Docker or WASM.
     glsim --port 4000
 """
 
-__version__ = "0.27.1"
+__version__ = "0.27.2"

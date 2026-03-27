@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.27.2 (2026-03-27)
+
+### Bug Fixes
+
+- **ci**: Use sibling file pattern for docs sync
+  ([`6fd22b6`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/6fd22b611904783a41f947bb73329ccbedf2dc07))
+
+
 ## v0.27.1 (2026-03-27)
 
 ### Bug Fixes
