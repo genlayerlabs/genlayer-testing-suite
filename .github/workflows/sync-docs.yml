@@ -63,6 +63,7 @@ jobs:
           cp "${{ github.workspace }}/docs/api-references/integration.md" pages/api-references/genlayer-test/integration.md
           cp "${{ github.workspace }}/docs/api-references/direct.md" pages/api-references/genlayer-test/direct.md
           cp "${{ github.workspace }}/docs/api-references/glsim.md" pages/api-references/genlayer-test/glsim.md
+          echo '{"integration": "Integration Testing", "direct": "Direct Mode", "glsim": "glsim"}' > pages/api-references/genlayer-test/_meta.json
           if [ -z "$(git status --porcelain)" ]; then
             echo "No changes to commit"
             exit 0

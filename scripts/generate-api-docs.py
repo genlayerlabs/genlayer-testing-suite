@@ -45,10 +45,13 @@ def generate_method_doc(name, method, prefix=""):
 
     if params:
         lines.append("**Parameters:**\n")
+        lines.append("| Parameter | Type | Required | Default |")
+        lines.append("|-----------|------|----------|---------|")
         for pname, type_str, required, default in params:
-            req_str = "required" if required else "optional"
-            type_info = f" (`{type_str}`)" if type_str else ""
-            lines.append(f"- **{pname}**{type_info} — {req_str}{default}")
+            req_str = "Yes" if required else "No"
+            type_display = f"`{type_str}`" if type_str else ""
+            default_display = f"`{default.strip(' = ')}`" if default else ""
+            lines.append(f"| `{pname}` | {type_display} | {req_str} | {default_display} |")
         lines.append("")
 
     ret = format_type(sig.return_annotation)
@@ -73,17 +76,11 @@ def main():
     output_dir = os.path.join(os.path.dirname(__file__), "..", "docs", "api-references")
     os.makedirs(output_dir, exist_ok=True)
 
-    # === index.md ===
-    index = """# GenLayer Testing Suite API Reference
-
-The GenLayer Testing Suite provides tools for testing intelligent contracts:
-
-- [Integration Testing](./integration) — Deploy and test contracts against a running network
-- [Direct Mode](./direct) — Fast Foundry-style testing without a network
-- [glsim](./glsim) — Lightweight local GenLayer network
-"""
+    # === index.md (copy README as overview page) ===
+    readme_path = os.path.join(os.path.dirname(__file__), "..", "README.md")
+    readme_content = open(readme_path).read()
     with open(os.path.join(output_dir, "index.md"), "w") as f:
-        f.write(index)
+        f.write(readme_content)
 
     # === integration.md ===
     from gltest.contracts.contract_factory import ContractFactory
