@@ -1,0 +1,313 @@
+# Integration Testing
+
+Test contracts against a running GenLayer network (localnet, studionet, or testnet).
+
+## Setup Functions
+
+### `get_contract_factory`
+
+Get a ContractFactory instance for a contract.
+
+Args:
+    contract_name: Name of the contract to load from artifacts
+    contract_file_path: Path to the contract file to load directly
+
+Note: Exactly one of contract_name or contract_file_path must be provided.
+
+```python
+get_contract_factory(contract_name: Union = None, contract_file_path: Union = None)
+```
+
+**Parameters:**
+
+- **contract_name** (`Union`) — optional = None
+- **contract_file_path** (`Union`) — optional = None
+
+**Returns:** `ContractFactory`
+
+---
+### `get_default_account`
+
+Returns the default account for the current network.
+
+**Returns:** `LocalAccount`
+
+---
+### `get_accounts`
+
+Returns all configured accounts for the current network.
+
+**Returns:** `List`
+
+---
+### `create_accounts`
+
+Creates n new accounts with random private keys.
+
+```python
+create_accounts(n_accounts: int)
+```
+
+**Parameters:**
+
+- **n_accounts** (`int`) — required
+
+---
+### `get_gl_client`
+
+Get the GenLayer client instance.
+
+---
+### `get_validator_factory`
+
+
+
+**Returns:** `ValidatorFactory`
+
+---
+## ContractFactory
+
+A factory for deploying contracts.
+
+### `factory.deploy`
+
+Deploy the contract and return a Contract instance (convenience method).
+
+This is a convenience method that handles receipt validation
+and contract instantiation automatically.
+
+```python
+factory.deploy(args: Union = None, account: Union = None, consensus_max_rotations: Union = None, wait_interval: Union = None, wait_retries: Union = None, wait_transaction_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, transaction_context: Union = None)
+```
+
+**Parameters:**
+
+- **args** (`Union`) — optional = None
+- **account** (`Union`) — optional = None
+- **consensus_max_rotations** (`Union`) — optional = None
+- **wait_interval** (`Union`) — optional = None
+- **wait_retries** (`Union`) — optional = None
+- **wait_transaction_status** (`TransactionStatus`) — optional = <TransactionStatus.ACCEPTED: 'ACCEPTED'>
+- **wait_triggered_transactions** (`bool`) — optional = False
+- **wait_triggered_transactions_status** (`TransactionStatus`) — optional = <TransactionStatus.ACCEPTED: 'ACCEPTED'>
+- **transaction_context** (`Union`) — optional = None
+
+**Returns:** `Contract`
+
+---
+
+### `factory.deploy_contract_tx`
+
+Deploy the contract and return the transaction receipt.
+
+```python
+factory.deploy_contract_tx(args: Union = None, account: Union = None, consensus_max_rotations: Union = None, wait_interval: Union = None, wait_retries: Union = None, wait_transaction_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, transaction_context: Union = None)
+```
+
+**Parameters:**
+
+- **args** (`Union`) — optional = None
+- **account** (`Union`) — optional = None
+- **consensus_max_rotations** (`Union`) — optional = None
+- **wait_interval** (`Union`) — optional = None
+- **wait_retries** (`Union`) — optional = None
+- **wait_transaction_status** (`TransactionStatus`) — optional = <TransactionStatus.ACCEPTED: 'ACCEPTED'>
+- **wait_triggered_transactions** (`bool`) — optional = False
+- **wait_triggered_transactions_status** (`TransactionStatus`) — optional = <TransactionStatus.ACCEPTED: 'ACCEPTED'>
+- **transaction_context** (`Union`) — optional = None
+
+**Returns:** `GenLayerTransaction`
+
+---
+
+### `factory.build_contract`
+
+Build contract from address
+
+```python
+factory.build_contract(contract_address: Union, account: Union = None)
+```
+
+**Parameters:**
+
+- **contract_address** (`Union`) — required
+- **account** (`Union`) — optional = None
+
+**Returns:** `Contract`
+
+---
+## ContractFunction
+
+ContractFunction(method_name: str, read_only: bool, call_method: Callable | None = None, analyze_method: Callable | None = None, transact_method: Callable | None = None)
+
+### `contract.method_name.call`
+
+Executes a read-only contract method call.
+
+```python
+contract.method_name.call(transaction_hash_variant: TransactionHashVariant = <TransactionHashVariant.LATEST_NONFINAL: 'latest-nonfinal'>, transaction_context: Union = None)
+```
+
+**Parameters:**
+
+- **transaction_hash_variant** (`TransactionHashVariant`) — optional = <TransactionHashVariant.LATEST_NONFINAL: 'latest-nonfinal'>
+- **transaction_context** (`Union`) — optional = None
+
+---
+
+### `contract.method_name.transact`
+
+Executes a state-changing contract method through consensus. Returns the transaction receipt.
+
+```python
+contract.method_name.transact(value: int = 0, consensus_max_rotations: Union = None, wait_transaction_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, wait_interval: Union = None, wait_retries: Union = None, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, transaction_context: Union = None)
+```
+
+**Parameters:**
+
+- **value** (`int`) — optional = 0
+- **consensus_max_rotations** (`Union`) — optional = None
+- **wait_transaction_status** (`TransactionStatus`) — optional = <TransactionStatus.ACCEPTED: 'ACCEPTED'>
+- **wait_interval** (`Union`) — optional = None
+- **wait_retries** (`Union`) — optional = None
+- **wait_triggered_transactions** (`bool`) — optional = False
+- **wait_triggered_transactions_status** (`TransactionStatus`) — optional = <TransactionStatus.ACCEPTED: 'ACCEPTED'>
+- **transaction_context** (`Union`) — optional = None
+
+---
+
+### `contract.method_name.analyze`
+
+Runs statistical analysis of method behavior across multiple executions.
+
+```python
+contract.method_name.analyze(provider: str, model: str, config: Union = None, plugin: Union = None, plugin_config: Union = None, runs: int = 100, genvm_datetime: Union = None)
+```
+
+**Parameters:**
+
+- **provider** (`str`) — required
+- **model** (`str`) — required
+- **config** (`Union`) — optional = None
+- **plugin** (`Union`) — optional = None
+- **plugin_config** (`Union`) — optional = None
+- **runs** (`int`) — optional = 100
+- **genvm_datetime** (`Union`) — optional = None
+
+---
+## ValidatorFactory
+
+
+
+### `validator_factory.create_validator`
+
+
+
+```python
+validator_factory.create_validator(stake: int, provider: str, model: str, config: Dict, plugin: str, plugin_config: Dict)
+```
+
+**Parameters:**
+
+- **stake** (`int`) — required
+- **provider** (`str`) — required
+- **model** (`str`) — required
+- **config** (`Dict`) — required
+- **plugin** (`str`) — required
+- **plugin_config** (`Dict`) — required
+
+**Returns:** `Validator`
+
+---
+
+### `validator_factory.batch_create_validators`
+
+
+
+```python
+validator_factory.batch_create_validators(count: int, stake: int, provider: str, model: str, config: Dict, plugin: str, plugin_config: Dict)
+```
+
+**Parameters:**
+
+- **count** (`int`) — required
+- **stake** (`int`) — required
+- **provider** (`str`) — required
+- **model** (`str`) — required
+- **config** (`Dict`) — required
+- **plugin** (`str`) — required
+- **plugin_config** (`Dict`) — required
+
+**Returns:** `List`
+
+---
+
+### `validator_factory.create_mock_validator`
+
+
+
+```python
+validator_factory.create_mock_validator(mock_llm_response: Union = None, mock_web_response: Union = None)
+```
+
+**Parameters:**
+
+- **mock_llm_response** (`Union`) — optional = None
+- **mock_web_response** (`Union`) — optional = None
+
+**Returns:** `Validator`
+
+---
+
+### `validator_factory.batch_create_mock_validators`
+
+
+
+```python
+validator_factory.batch_create_mock_validators(count: int, mock_llm_response: Union = None, mock_web_response: Union = None)
+```
+
+**Parameters:**
+
+- **count** (`int`) — required
+- **mock_llm_response** (`Union`) — optional = None
+- **mock_web_response** (`Union`) — optional = None
+
+**Returns:** `List`
+
+---
+## Validator
+
+Validator(stake: int, provider: str, model: str, config: Dict[str, Any], plugin: str, plugin_config: Dict[str, Any], mock_enabled: bool, mock_llm_response: gltest.types.MockedLLMResponse | None, mock_web_response: gltest.types.MockedWebResponse | None)
+
+### `validator.to_dict`
+
+
+
+**Returns:** `Dict`
+
+---
+
+### `validator.clone`
+
+
+
+**Returns:** `Validator`
+
+---
+
+### `validator.batch_clone`
+
+
+
+```python
+validator.batch_clone(count: int)
+```
+
+**Parameters:**
+
+- **count** (`int`) — required
+
+**Returns:** `List`
+
+---
