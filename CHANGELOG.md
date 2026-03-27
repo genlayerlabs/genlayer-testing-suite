@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.27.3 (2026-03-27)
+
+### Bug Fixes
+
+- **ci**: Git add sibling file in docs sync
+  ([`1cc3f41`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/1cc3f41ecae8fae2f7b5115d66d5fdaa03413bf2))
+
+
 ## v0.27.2 (2026-03-27)
 
 ### Bug Fixes
