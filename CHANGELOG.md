@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.26.0 (2026-03-27)
+
+### Features
+
+- Add API reference generation and docs sync
+  ([`525178f`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/525178f2f698d0e5b288a623614d38162e92fe3b))
+
+
 ## v0.25.0 (2026-03-11)
 
 ### Features
