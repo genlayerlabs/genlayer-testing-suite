@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.27.1 (2026-03-27)
+
+### Bug Fixes
+
+- **docs**: Strip badges and emojis from README when syncing to docs
+  ([`46c750f`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/46c750f6eb93cc51bf70eb5d9fa345d6d21df38b))
+
+
 ## v0.27.0 (2026-03-27)
 
 ### Features
