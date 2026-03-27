@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.27.0 (2026-03-27)
+
+### Features
+
+- **docs**: Param tables, README as index, _meta.json in sync
+  ([`c9cf186`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/c9cf18626158946daca83371c657f086fcd58465))
+
+
 ## v0.26.0 (2026-03-27)
 
 ### Features
