@@ -3,9 +3,18 @@
 
 import inspect
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+
+def clean_readme(content):
+    lines = content.split("\n")
+    lines = [l for l in lines if not re.match(r'^\[!\[.*\]\(https://(img\.shields\.io|dcbadge|badge\.fury)', l)]
+    content = "\n".join(lines)
+    content = re.sub(r'(## )\S*[\U0001F000-\U0001FFFF\u2600-\u27BF\u200d]+\s*', r'\1', content)
+    return content
 
 
 def format_type(annotation):
@@ -78,7 +87,7 @@ def main():
 
     # === index.md (copy README as overview page) ===
     readme_path = os.path.join(os.path.dirname(__file__), "..", "README.md")
-    readme_content = open(readme_path).read()
+    readme_content = clean_readme(open(readme_path).read())
     with open(os.path.join(output_dir, "index.md"), "w") as f:
         f.write(readme_content)
 
