@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.28.0 (2026-03-30)
+
+### Features
+
+- **gltest**: Add appeal support to Contract class
+  ([#72](https://github.com/genlayerlabs/genlayer-testing-suite/pull/72),
+  [`c20cd3e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/c20cd3e00ec616fcd2c929a75f67d9138e391ca0))
+
+
 ## v0.27.3 (2026-03-27)
 
 ### Bug Fixes
