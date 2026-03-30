@@ -218,6 +218,51 @@ class Contract:
             bound_method = types.MethodType(method_func, self)
             setattr(self, method_name, bound_method)
 
+    def appeal(
+        self,
+        tx_hash: str,
+        value: int = 0,
+        wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_interval: Optional[int] = None,
+        wait_retries: Optional[int] = None,
+    ):
+        """
+        Appeal a transaction. Triggers re-execution through consensus.
+
+        Args:
+            tx_hash: Hash of the transaction to appeal
+            value: Appeal bond value (in wei)
+            wait_transaction_status: Status to wait for after appeal
+            wait_interval: Polling interval override
+            wait_retries: Max retries override
+
+        Returns:
+            Transaction receipt after re-acceptance
+        """
+        general_config = get_general_config()
+        actual_wait_interval = (
+            wait_interval
+            if wait_interval is not None
+            else general_config.get_default_wait_interval()
+        )
+        actual_wait_retries = (
+            wait_retries
+            if wait_retries is not None
+            else general_config.get_default_wait_retries()
+        )
+        client = get_gl_client()
+        client.appeal_transaction(
+            transaction_id=tx_hash,
+            account=self.account,
+            value=value,
+        )
+        return client.wait_for_transaction_receipt(
+            transaction_hash=tx_hash,
+            status=wait_transaction_status,
+            interval=actual_wait_interval,
+            retries=actual_wait_retries,
+        )
+
     def connect(self, account: LocalAccount) -> "Contract":
         """
         Create a new instance of the contract with the same methods and a different account.
