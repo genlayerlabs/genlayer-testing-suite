@@ -1,4 +1,5 @@
 # Re-export genlayer-py types
+from __future__ import annotations
 from genlayer_py.types import (
     CalldataAddress,
     GenLayerTransaction,
@@ -6,7 +7,8 @@ from genlayer_py.types import (
     CalldataEncodable,
     TransactionHashVariant,
 )
-from typing import List, TypedDict, Dict, Any
+from typing import List, TypedDict, Dict, Any, Optional, Literal
+from dataclasses import dataclass, field
 
 
 class MockedLLMResponse(TypedDict):
@@ -49,3 +51,38 @@ class TransactionContext(TypedDict, total=False):
 
     validators: List[ValidatorConfig]  # List to create virtual validators
     genvm_datetime: str  # ISO format datetime string
+
+
+@dataclass
+class TransactionTree:
+    """A tree structure representing a transaction and its triggered children."""
+
+    receipt: GenLayerTransaction
+    children: List[TransactionTree] = field(default_factory=list)
+
+    def flatten(self) -> List[GenLayerTransaction]:
+        """Flatten the tree into a list of receipts (breadth-first order)."""
+        result = [self.receipt]
+        for child in self.children:
+            result.extend(child.flatten())
+        return result
+
+    def get_children_receipts(
+        self, triggered_on: Optional[Literal["accepted", "finalized"]] = None
+    ) -> List[GenLayerTransaction]:
+        """Get receipts of direct children, optionally filtered by triggered_on status.
+
+        Args:
+            triggered_on: Optional status to filter by ("accepted" or "finalized").
+                          If None, returns all children receipts.
+
+        Returns:
+            A list of receipts from direct children.
+        """
+        if triggered_on is None:
+            return [child.receipt for child in self.children]
+        return [
+            child.receipt
+            for child in self.children
+            if child.receipt.get("triggered_on") == triggered_on
+        ]
