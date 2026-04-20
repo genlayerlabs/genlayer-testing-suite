@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v0.29.0 (2026-04-20)
+
+### Bug Fixes
+
+- **gltest**: Address CodeRabbit feedback for testnet_bradbury
+  ([#74](https://github.com/genlayerlabs/genlayer-testing-suite/pull/74),
+  [`b1b9596`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/b1b9596db76fd49d2b86687dc4e95c19d8e81045))
+
+### Features
+
+- **gltest**: Add testnet_bradbury to preconfigured networks
+  ([#74](https://github.com/genlayerlabs/genlayer-testing-suite/pull/74),
+  [`b1b9596`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/b1b9596db76fd49d2b86687dc4e95c19d8e81045))
+
+
 ## v0.28.0 (2026-03-30)
 
 ### Features
