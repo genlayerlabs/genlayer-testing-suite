@@ -89,10 +89,10 @@ def pytest_configure(config):
             )
             user_config = get_default_user_config()
 
-            # Special handling for testnet_asimov - check if accounts are configured
-            if network_name == "testnet_asimov":
+            # Special handling for remote testnets - check if accounts are configured
+            if network_name in ("testnet_asimov", "testnet_bradbury"):
                 logger.error(
-                    "For testnet_asimov, you need to configure accounts in gltest.config.yaml, see https://docs.genlayer.com/api-references/genlayer-test"
+                    f"For {network_name}, you need to configure accounts in gltest.config.yaml, see https://docs.genlayer.com/api-references/genlayer-test"
                 )
                 pytest.exit("gltest configuration error")
         else:

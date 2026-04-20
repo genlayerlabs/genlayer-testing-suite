@@ -20,7 +20,7 @@ def test_help_message(pytester):
             "  --leader-only         Run contracts in leader-only mode",
             "  --chain-type=CHAIN_TYPE",
             "                        Chain type (possible values: localnet, studionet,",
-            "                        testnet_asimov)",
+            "                        testnet_asimov, testnet_bradbury)",
         ]
     )
 
@@ -126,6 +126,25 @@ def test_network_testnet(pytester):
     )
 
     # The test should exit with an error code when testnet_asimov is used without accounts
+    assert result.ret != 0
+
+
+def test_network_testnet_bradbury(pytester):
+    pytester.makepyfile(
+        """
+        from gltest_cli.config.general import get_general_config
+
+        def test_network():
+            general_config = get_general_config()
+            assert general_config.get_network_name() == "testnet_bradbury"
+    """
+    )
+
+    result = pytester.runpytest(
+        "--network=testnet_bradbury", "--rpc-url=http://test.example.com:9151", "-v"
+    )
+
+    # The test should exit with an error code when testnet_bradbury is used without accounts
     assert result.ret != 0
 
 
@@ -346,7 +365,7 @@ def test_chain_none_default(pytester):
             assert general_config.plugin_config.chain_type is None
             # get_chain_type should still work using network config
             chain_type = general_config.get_chain_type()
-            assert chain_type in ["localnet", "studionet", "testnet_asimov"]
+            assert chain_type in ["localnet", "studionet", "testnet_asimov", "testnet_bradbury"]
     """
     )
 

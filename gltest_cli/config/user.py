@@ -18,7 +18,7 @@ from gltest_cli.config.constants import (
     DEFAULT_LEADER_ONLY,
     CHAINS,
 )
-from genlayer_py.chains import localnet, studionet, testnet_asimov
+from genlayer_py.chains import localnet, studionet, testnet_asimov, testnet_bradbury
 from gltest_cli.config.types import UserConfig, NetworkConfigData, PathConfig
 
 VALID_ROOT_KEYS = ["networks", "paths", "environment"]
@@ -70,6 +70,16 @@ def get_default_user_config() -> UserConfig:
             default_wait_interval=DEFAULT_WAIT_INTERVAL,
             default_wait_retries=DEFAULT_WAIT_RETRIES,
             chain_type="testnet_asimov",
+        ),
+        "testnet_bradbury": NetworkConfigData(
+            id=testnet_bradbury.id,
+            url=testnet_bradbury.rpc_urls["default"]["http"][0],
+            accounts=None,
+            from_account=None,
+            leader_only=DEFAULT_LEADER_ONLY,
+            default_wait_interval=DEFAULT_WAIT_INTERVAL,
+            default_wait_retries=DEFAULT_WAIT_RETRIES,
+            chain_type="testnet_bradbury",
         ),
     }
 
@@ -176,7 +186,7 @@ def validate_network_config(network_name: str, network_config: dict):
             raise ValueError(f"network {network_name} must have accounts")
         if "chain_type" not in network_config:
             raise ValueError(
-                f"network {network_name} must have a chain_type. Valid values: localnet, studionet, testnet_asimov"
+                f"network {network_name} must have a chain_type. Valid values: {', '.join(CHAINS)}"
             )
 
 

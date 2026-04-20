@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
-from genlayer_py.chains import localnet, studionet, testnet_asimov
+from genlayer_py.chains import localnet, studionet, testnet_asimov, testnet_bradbury
 from genlayer_py.types import GenLayerChain
 from gltest_cli.config.constants import PRECONFIGURED_NETWORKS
 from gltest_cli.config.constants import (
@@ -189,6 +189,7 @@ class GeneralConfig:
             "localnet": localnet,
             "studionet": studionet,
             "testnet_asimov": testnet_asimov,
+            "testnet_bradbury": testnet_bradbury,
         }
         chain_type = self.get_chain_type()
         return chain_map[chain_type]
