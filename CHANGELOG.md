@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.29.2 (2026-04-20)
+
+### Bug Fixes
+
+- **gltest**: Widen genlayer-py to >=0.13.0,<0.17.0
+  ([#76](https://github.com/genlayerlabs/genlayer-testing-suite/pull/76),
+  [`462df02`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/462df02b8d27a2b48c9c81ded2185b03be98b09f))
+
+
 ## v0.29.1 (2026-04-20)
 
 ### Bug Fixes
