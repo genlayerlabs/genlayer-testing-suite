@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.29.1 (2026-04-20)
+
+### Bug Fixes
+
+- **gltest**: Bump genlayer-py to >=0.12.1 for Bradbury RPC fix
+  ([#75](https://github.com/genlayerlabs/genlayer-testing-suite/pull/75),
+  [`08c9d60`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/08c9d60f30d1a1afbed2214f39492be352a20a8b))
+
+
 ## v0.29.0 (2026-04-20)
 
 ### Bug Fixes
