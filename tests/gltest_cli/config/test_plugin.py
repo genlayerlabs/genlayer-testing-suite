@@ -129,6 +129,25 @@ def test_network_testnet(pytester):
     assert result.ret != 0
 
 
+def test_network_testnet_bradbury(pytester):
+    pytester.makepyfile(
+        """
+        from gltest_cli.config.general import get_general_config
+
+        def test_network():
+            general_config = get_general_config()
+            assert general_config.get_network_name() == "testnet_bradbury"
+    """
+    )
+
+    result = pytester.runpytest(
+        "--network=testnet_bradbury", "--rpc-url=http://test.example.com:9151", "-v"
+    )
+
+    # The test should exit with an error code when testnet_bradbury is used without accounts
+    assert result.ret != 0
+
+
 def test_artifacts_dir(pytester):
     """Test that artifacts directory CLI parameter works correctly."""
     pytester.makepyfile(
