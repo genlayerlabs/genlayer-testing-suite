@@ -20,7 +20,7 @@ def test_help_message(pytester):
             "  --leader-only         Run contracts in leader-only mode",
             "  --chain-type=CHAIN_TYPE",
             "                        Chain type (possible values: localnet, studionet,",
-            "                        testnet_asimov)",
+            "                        testnet_asimov, testnet_bradbury)",
         ]
     )
 
@@ -346,7 +346,7 @@ def test_chain_none_default(pytester):
             assert general_config.plugin_config.chain_type is None
             # get_chain_type should still work using network config
             chain_type = general_config.get_chain_type()
-            assert chain_type in ["localnet", "studionet", "testnet_asimov"]
+            assert chain_type in ["localnet", "studionet", "testnet_asimov", "testnet_bradbury"]
     """
     )
 
