@@ -14,7 +14,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "pytest",
-    "genlayer-py>=0.11.0,<0.12.0",
+    "genlayer-py>=0.12.1,<0.13.0",
     "colorama>=0.4.6",
     "pyyaml",
     "python-dotenv"
