@@ -37,7 +37,7 @@ jobs:
           private-key: ${{ secrets.PUBLISH_CI_APP_KEY }}
 
       - name: Setup | Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
