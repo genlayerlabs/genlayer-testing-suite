@@ -1,6 +1,7 @@
-"""Unit tests for direct-runner GenVM version resolution."""
+"""Unit tests for direct-runner GenVM version and artifact resolution."""
 
 import json
+import urllib.error
 
 from gltest.direct import sdk_loader
 
@@ -49,13 +50,13 @@ class TestResolveVersion:
 class TestGetLatestVersion:
     """get_latest_version() skips pre-releases and assetless releases."""
 
-    def test_skips_releases_without_universal_asset(self, monkeypatch):
+    def test_skips_releases_without_a_bundle_asset(self, monkeypatch):
         releases = [
-            {"tag_name": "v0.3.0-rc0", "prerelease": False, "assets": [
+            {"tag_name": "v0.9.9", "prerelease": False, "assets": [
                 {"name": "genvm-linux-amd64.tar.xz"},
             ]},
             {"tag_name": "v0.2.16", "prerelease": False, "assets": [
-                {"name": sdk_loader.UNIVERSAL_ASSET},
+                {"name": "genvm-universal.tar.xz"},
             ]},
         ]
         monkeypatch.setattr(
@@ -64,13 +65,28 @@ class TestGetLatestVersion:
 
         assert sdk_loader.get_latest_version() == "v0.2.16"
 
+    def test_accepts_renamed_runners_all_asset(self, monkeypatch):
+        releases = [
+            {"tag_name": "v0.3.0", "prerelease": False, "assets": [
+                {"name": "genvm-runners-all.tar.xz"},
+            ]},
+            {"tag_name": "v0.2.16", "prerelease": False, "assets": [
+                {"name": "genvm-universal.tar.xz"},
+            ]},
+        ]
+        monkeypatch.setattr(
+            "urllib.request.urlopen", lambda *a, **k: _FakeResponse(releases)
+        )
+
+        assert sdk_loader.get_latest_version() == "v0.3.0"
+
     def test_skips_prereleases(self, monkeypatch):
         releases = [
             {"tag_name": "v0.3.0-rc0", "prerelease": True, "assets": [
-                {"name": sdk_loader.UNIVERSAL_ASSET},
+                {"name": "genvm-runners-all.tar.xz"},
             ]},
             {"tag_name": "v0.2.16", "prerelease": False, "assets": [
-                {"name": sdk_loader.UNIVERSAL_ASSET},
+                {"name": "genvm-universal.tar.xz"},
             ]},
         ]
         monkeypatch.setattr(
@@ -86,3 +102,75 @@ class TestGetLatestVersion:
         monkeypatch.setattr("urllib.request.urlopen", _boom)
 
         assert sdk_loader.get_latest_version() == sdk_loader.FALLBACK_VERSION
+
+
+class TestDownloadArtifacts:
+    """download_artifacts() resolves whichever bundle asset a release ships."""
+
+    @staticmethod
+    def _http_404(url):
+        return urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+
+    def test_returns_cached_tarball_without_downloading(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(sdk_loader, "CACHE_DIR", tmp_path)
+        cached = tmp_path / "genvm-universal-v0.2.16.tar.xz"
+        cached.write_bytes(b"cached")
+
+        def _fail(*a, **k):
+            raise AssertionError("should not download a cached tarball")
+
+        monkeypatch.setattr(sdk_loader, "_download_to", _fail)
+
+        assert sdk_loader.download_artifacts("v0.2.16") == cached
+
+    def test_uses_first_available_asset(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(sdk_loader, "CACHE_DIR", tmp_path)
+        tried = []
+
+        def _download(url, dest):
+            tried.append(url)
+            dest.write_bytes(b"bundle")
+
+        monkeypatch.setattr(sdk_loader, "_download_to", _download)
+
+        result = sdk_loader.download_artifacts("v0.3.0")
+
+        assert result == tmp_path / "genvm-universal-v0.3.0.tar.xz"
+        assert result.read_bytes() == b"bundle"
+        assert tried == [
+            f"{sdk_loader.GITHUB_RELEASES_URL}/download/v0.3.0/genvm-runners-all.tar.xz"
+        ]
+
+    def test_falls_back_to_old_asset_on_404(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(sdk_loader, "CACHE_DIR", tmp_path)
+        tried = []
+
+        def _download(url, dest):
+            tried.append(url)
+            if url.endswith("genvm-runners-all.tar.xz"):
+                raise self._http_404(url)
+            dest.write_bytes(b"bundle")
+
+        monkeypatch.setattr(sdk_loader, "_download_to", _download)
+
+        result = sdk_loader.download_artifacts("v0.2.16")
+
+        assert result.read_bytes() == b"bundle"
+        assert [u.rsplit("/", 1)[-1] for u in tried] == list(
+            sdk_loader.RUNNER_BUNDLE_ASSETS
+        )
+
+    def test_raises_when_no_asset_found(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(sdk_loader, "CACHE_DIR", tmp_path)
+
+        def _download(url, dest):
+            raise self._http_404(url)
+
+        monkeypatch.setattr(sdk_loader, "_download_to", _download)
+
+        try:
+            sdk_loader.download_artifacts("v9.9.9")
+        except FileNotFoundError as e:
+            assert "v9.9.9" in str(e)
+        else:
+            raise AssertionError("expected FileNotFoundError")
