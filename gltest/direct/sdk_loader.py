@@ -11,12 +11,19 @@ import sys
 import json
 import tarfile
 import tempfile
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Optional, Dict, List
 
 CACHE_DIR = Path.home() / ".cache" / "gltest-direct"
 GITHUB_RELEASES_URL = "https://github.com/genlayerlabs/genvm/releases"
+GITHUB_API_RELEASES = "https://api.github.com/repos/genlayerlabs/genvm/releases"
+
+# GenVM 0.3.0 renamed this bundle from genvm-universal.tar.xz; newest name first.
+RUNNER_BUNDLE_ASSETS = ("genvm-runners-all.tar.xz", "genvm-universal.tar.xz")
+GENVM_VERSION_ENV = "GENVM_VERSION"
+FALLBACK_VERSION = "v0.2.16"
 
 RUNNER_TYPE = "py-genlayer"
 STD_LIB_TYPE = "py-lib-genlayer-std"
@@ -43,23 +50,50 @@ def parse_contract_header(contract_path: Path) -> Dict[str, str]:
 
 
 def get_latest_version() -> str:
-    """Get latest genvm release version from GitHub."""
+    """Newest non-prerelease GenVM release that ships a known runner bundle."""
     try:
         req = urllib.request.Request(
-            f"{GITHUB_RELEASES_URL}/latest",
-            method="HEAD",
+            f"{GITHUB_API_RELEASES}?per_page=100",
+            headers={
+                "User-Agent": "gltest-direct",
+                "Accept": "application/vnd.github+json",
+            },
         )
-        req.add_header("User-Agent", "gltest-direct")
         with urllib.request.urlopen(req, timeout=10) as resp:
-            final_url = resp.url
-            version = final_url.split("/")[-1]
-            return version
-    except Exception:
-        return "v0.2.12"
+            releases = json.loads(resp.read().decode("utf-8"))
+        for release in releases:  # GitHub returns releases newest-first
+            if release.get("prerelease") or release.get("draft"):
+                continue
+            asset_names = {asset.get("name") for asset in release.get("assets", [])}
+            if asset_names.intersection(RUNNER_BUNDLE_ASSETS):
+                return release["tag_name"]
+    except Exception as exc:
+        print(
+            f"Warning: could not resolve latest GenVM version ({exc}); "
+            f"falling back to {FALLBACK_VERSION}",
+            file=sys.stderr,
+        )
+    return FALLBACK_VERSION
+
+
+def resolve_version() -> str:
+    """GenVM version to use: GENVM_VERSION env var > newest cached > latest release."""
+    pinned = os.environ.get(GENVM_VERSION_ENV)
+    if pinned:
+        return pinned
+    cached = list_cached_versions()
+    if cached:
+        return cached[0]
+    return get_latest_version()
+
+
+def _version_sort_key(version: str) -> tuple:
+    """Numeric-component sort key so v0.2.16 ranks above v0.2.9."""
+    return tuple(int(n) for n in re.findall(r"\d+", version))
 
 
 def list_cached_versions() -> List[str]:
-    """List all cached genvm versions."""
+    """List all cached genvm versions, newest first."""
     if not CACHE_DIR.exists():
         return []
 
@@ -68,20 +102,11 @@ def list_cached_versions() -> List[str]:
         match = re.search(r"genvm-universal-(.+)\.tar\.xz", f.name)
         if match:
             versions.append(match.group(1))
-    return sorted(versions, reverse=True)
+    return sorted(versions, key=_version_sort_key, reverse=True)
 
 
-def download_artifacts(version: str) -> Path:
-    """Download genvm release tarball if not cached."""
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-    tarball_name = f"genvm-universal-{version}.tar.xz"
-    tarball_path = CACHE_DIR / tarball_name
-
-    if tarball_path.exists():
-        return tarball_path
-
-    url = f"{GITHUB_RELEASES_URL}/download/{version}/genvm-universal.tar.xz"
+def _download_to(url: str, dest: Path) -> None:
+    """Stream ``url`` to ``dest``, replacing it atomically on success."""
     print(f"Downloading {url}...")
 
     req = urllib.request.Request(url)
@@ -105,8 +130,33 @@ def download_artifacts(version: str) -> Path:
             tmp_path = tmp.name
 
     print()
-    os.rename(tmp_path, tarball_path)
-    return tarball_path
+    os.rename(tmp_path, dest)
+
+
+def download_artifacts(version: str) -> Path:
+    """Download the GenVM runner bundle for ``version`` if not cached."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    tarball_path = CACHE_DIR / f"genvm-universal-{version}.tar.xz"
+    if tarball_path.exists():
+        return tarball_path
+
+    last_error: Optional[Exception] = None
+    for asset in RUNNER_BUNDLE_ASSETS:
+        url = f"{GITHUB_RELEASES_URL}/download/{version}/{asset}"
+        try:
+            _download_to(url, tarball_path)
+            return tarball_path
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                last_error = e
+                continue
+            raise
+
+    raise FileNotFoundError(
+        f"No GenVM runner bundle for {version}; tried "
+        f"{', '.join(RUNNER_BUNDLE_ASSETS)}"
+    ) from last_error
 
 
 def extract_runner(
@@ -208,8 +258,7 @@ def setup_sdk_paths(
         contract_deps = parse_contract_header(contract_path)
 
     if version is None:
-        cached = list_cached_versions()
-        version = cached[0] if cached else get_latest_version()
+        version = resolve_version()
 
     tarball = download_artifacts(version)
 
