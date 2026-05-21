@@ -1,28 +1,19 @@
 # genlayer-testing-suite
 
-## Releases — CRITICAL
+## Releases
 
-This repo uses `python-semantic-release` (config: `releaserc.toml`, CI: `.github/workflows/publish.yml`).
+This repo uses a branch-per-major release model. There is no `main`. Releases are deliberate, not automatic.
 
-**NEVER do any of the following:**
-- Manually edit version strings in `pyproject.toml` or `glsim/__init__.py`
-- Manually create git tags (`git tag vX.Y.Z`)
-- Manually run `semantic-release` locally
-- Commit messages like `chore: bump version to X.Y.Z`
+See `.claude/skills/release/SKILL.md` for the full release flow. Short version:
 
-**How releases work:**
-1. Push conventional commits to `main` (`feat:` → minor, `fix:` → patch)
-2. CI runs `semantic-release version` which auto-bumps versions, creates commit + tag, pushes
-3. CI builds and publishes to PyPI via twine
+- Branches are per-major: `v0.29` (current stable), `v<next>-dev` when next-major work is in progress.
+- Releases go through `scripts/release.sh` on the target branch. The script bumps `pyproject.toml` + `glsim/__init__.py`, updates `CHANGELOG.md` via python-semantic-release, commits, tags `vX.Y.Z`, and pushes.
+- `publish.yml` fires on the tag push and ships to PyPI.
+- **Semver-zero rule**: this package is on 0.x, so minor IS the breaking-change boundary. `0.29 → 0.30` is a major bump and needs a new branch — `scripts/release.sh` refuses `minor`/`major` keywords without `--allow-major`.
 
 **When user says "release":**
-- Verify all changes are committed and pushed to `main` with proper conventional commit prefixes
-- That's it. CI handles the rest. Do NOT touch versions or tags.
-- If CI fails, inspect the workflow logs (`gh run view`) — don't try to manually publish
-
-**Version files managed by semantic-release:**
-- `pyproject.toml:project.version`
-- `glsim/__init__.py:__version__`
+- Invoke the release skill. It will confirm version + branch, run pre-flight checks, then call `scripts/release.sh`.
+- If CI on the tag fails, inspect the workflow logs (`gh run view`) — fix the issue, delete the bad tag, re-run the script.
 
 ## Architecture
 
@@ -33,7 +24,7 @@ This repo uses `python-semantic-release` (config: `releaserc.toml`, CI: `.github
 
 ## Conventional Commits
 
-All commits must use conventional format:
-- `feat(scope): description` — new feature (minor bump)
-- `fix(scope): description` — bug fix (patch bump)
-- `chore/docs/refactor/test: description` — no version bump
+Commits should still use conventional format because the release script generates the changelog from them:
+- `feat(scope): description` — new feature
+- `fix(scope): description` — bug fix
+- `chore/docs/refactor/test: description` — no changelog entry

@@ -27,6 +27,28 @@ Have ideas for new features or use cases? We're eager to hear them! But first:
 
 
 
+## Branch model
+
+This repo uses a branch-per-major release model. There is no `main`.
+
+- **`v0.29`** — current stable major (semver-zero, so 0.29 IS the major; 0.30 would be a major bump that gets its own branch).
+- **`v<next>-dev`** — when next-major work is in progress.
+- Default branch on github.com is the current stable.
+
+If you have a `main` branch from a previous checkout:
+
+```sh
+git checkout v0.29
+git branch -D main
+git remote prune origin
+```
+
+## Releases
+
+Releases are deliberate, not automatic. `scripts/release.sh` bumps the version, updates `CHANGELOG.md`, commits, tags, and pushes; CI takes over from the tag push and publishes to PyPI. See `.claude/skills/release/SKILL.md` for the full flow.
+
+**Semver-zero rule**: this package is on 0.x, so minor IS the breaking-change boundary. `0.29 → 0.30` is a major bump and needs a new branch — the script refuses `minor`/`major` keywords without `--allow-major`.
+
 ### Bug fixing and Feature development
 
 #### 1. Set yourself up to start coding
