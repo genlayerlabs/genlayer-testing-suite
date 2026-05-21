@@ -20,14 +20,9 @@ CACHE_DIR = Path.home() / ".cache" / "gltest-direct"
 GITHUB_RELEASES_URL = "https://github.com/genlayerlabs/genvm/releases"
 GITHUB_API_RELEASES = "https://api.github.com/repos/genlayerlabs/genvm/releases"
 
-# Release asset names for the runner bundle, newest naming first. GenVM 0.3.0
-# renamed genvm-universal.tar.xz to genvm-runners-all.tar.xz; both archives have
-# the same internal runners/{type}/{hash}.tar layout, so either works.
+# GenVM 0.3.0 renamed this bundle from genvm-universal.tar.xz; newest name first.
 RUNNER_BUNDLE_ASSETS = ("genvm-runners-all.tar.xz", "genvm-universal.tar.xz")
-# Pins the GenVM release instead of tracking GitHub's "latest" — lets CI stay
-# deterministic across GenVM releases that may restructure or drop assets.
 GENVM_VERSION_ENV = "GENVM_VERSION"
-# Used only when the GitHub API is unreachable.
 FALLBACK_VERSION = "v0.2.16"
 
 RUNNER_TYPE = "py-genlayer"
@@ -55,12 +50,7 @@ def parse_contract_header(contract_path: Path) -> Dict[str, str]:
 
 
 def get_latest_version() -> str:
-    """Newest GenVM release that ships a runner bundle the loader supports.
-
-    Skips pre-releases and releases without a known runner-bundle asset, so
-    GitHub's bare "latest" cannot point at a release the direct runner is
-    unable to consume.
-    """
+    """Newest non-prerelease GenVM release that ships a known runner bundle."""
     try:
         req = urllib.request.Request(
             f"{GITHUB_API_RELEASES}?per_page=100",
@@ -83,12 +73,7 @@ def get_latest_version() -> str:
 
 
 def resolve_version() -> str:
-    """Resolve which GenVM version the direct runner should use.
-
-    Priority: ``GENVM_VERSION`` env var > newest cached version > latest
-    release. The env var lets callers pin a deterministic version instead of
-    tracking whatever GitHub currently marks as the latest release.
-    """
+    """GenVM version to use: GENVM_VERSION env var > newest cached > latest release."""
     pinned = os.environ.get(GENVM_VERSION_ENV)
     if pinned:
         return pinned
@@ -140,12 +125,7 @@ def _download_to(url: str, dest: Path) -> None:
 
 
 def download_artifacts(version: str) -> Path:
-    """Download the GenVM runner bundle for ``version`` if not cached.
-
-    A release publishes the bundle under one of ``RUNNER_BUNDLE_ASSETS``; try
-    each name and use whichever exists. The cache filename is normalized so
-    the rest of the loader does not care which asset name was used.
-    """
+    """Download the GenVM runner bundle for ``version`` if not cached."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     tarball_path = CACHE_DIR / f"genvm-universal-{version}.tar.xz"
