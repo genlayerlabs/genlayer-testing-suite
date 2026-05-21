@@ -31,3 +31,8 @@ jobs:
 
       - name: Action | Run gltest tests
         run: uv run gltest tests/gltest/
+
+      # Direct-runner unit tests only; the integration tests in this folder
+      # download the GenVM SDK and are intentionally left out of CI.
+      - name: Action | Run direct runner unit tests
+        run: uv run gltest tests/gltest_direct/test_sdk_loader.py
