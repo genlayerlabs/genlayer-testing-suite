@@ -95,13 +95,25 @@ class TestGetLatestVersion:
 
         assert sdk_loader.get_latest_version() == "v0.2.16"
 
-    def test_returns_fallback_when_api_unreachable(self, monkeypatch):
+    def test_returns_fallback_when_api_unreachable(self, monkeypatch, capsys):
         def _boom(*a, **k):
             raise OSError("network down")
 
         monkeypatch.setattr("urllib.request.urlopen", _boom)
 
         assert sdk_loader.get_latest_version() == sdk_loader.FALLBACK_VERSION
+        assert "could not resolve latest GenVM version" in capsys.readouterr().err
+
+
+class TestListCachedVersions:
+    """list_cached_versions() orders versions numerically, newest first."""
+
+    def test_orders_versions_numerically(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(sdk_loader, "CACHE_DIR", tmp_path)
+        for version in ("v0.2.9", "v0.2.16", "v0.10.0"):
+            (tmp_path / f"genvm-universal-{version}.tar.xz").write_bytes(b"")
+
+        assert sdk_loader.list_cached_versions() == ["v0.10.0", "v0.2.16", "v0.2.9"]
 
 
 class TestDownloadArtifacts:

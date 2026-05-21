@@ -67,8 +67,12 @@ def get_latest_version() -> str:
             asset_names = {asset.get("name") for asset in release.get("assets", [])}
             if asset_names.intersection(RUNNER_BUNDLE_ASSETS):
                 return release["tag_name"]
-    except Exception:
-        pass
+    except Exception as exc:
+        print(
+            f"Warning: could not resolve latest GenVM version ({exc}); "
+            f"falling back to {FALLBACK_VERSION}",
+            file=sys.stderr,
+        )
     return FALLBACK_VERSION
 
 
@@ -83,8 +87,13 @@ def resolve_version() -> str:
     return get_latest_version()
 
 
+def _version_sort_key(version: str) -> tuple:
+    """Numeric-component sort key so v0.2.16 ranks above v0.2.9."""
+    return tuple(int(n) for n in re.findall(r"\d+", version))
+
+
 def list_cached_versions() -> List[str]:
-    """List all cached genvm versions."""
+    """List all cached genvm versions, newest first."""
     if not CACHE_DIR.exists():
         return []
 
@@ -93,7 +102,7 @@ def list_cached_versions() -> List[str]:
         match = re.search(r"genvm-universal-(.+)\.tar\.xz", f.name)
         if match:
             versions.append(match.group(1))
-    return sorted(versions, reverse=True)
+    return sorted(versions, key=_version_sort_key, reverse=True)
 
 
 def _download_to(url: str, dest: Path) -> None:
