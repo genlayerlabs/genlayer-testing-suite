@@ -31,3 +31,7 @@ jobs:
 
       - name: Action | Run gltest tests
         run: uv run gltest tests/gltest/
+
+      # Unit tests only — integration tests here download the GenVM SDK.
+      - name: Action | Run direct runner unit tests
+        run: uv run gltest tests/gltest_direct/test_sdk_loader.py
