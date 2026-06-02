@@ -9,6 +9,18 @@ from __future__ import annotations
 import json
 import os
 from typing import Any, Callable, Dict, Optional
+from urllib.parse import urlsplit, urlunsplit
+
+
+def _normalize_local_runtime_url(url: str) -> str:
+    """Map Docker's host alias to loopback for local, non-container glsim runs."""
+    parts = urlsplit(url)
+    if parts.hostname != "host.docker.internal":
+        return url
+
+    host = "127.0.0.1"
+    netloc = host if parts.port is None else f"{host}:{parts.port}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
 def create_web_handler(use_browser: bool = True) -> Callable:
@@ -47,6 +59,7 @@ def create_web_handler(use_browser: bool = True) -> Callable:
         return state["context"]
 
     def _browser_fetch(url: str) -> Dict:
+        url = _normalize_local_runtime_url(url)
         ctx = _get_browser()
         page = ctx.new_page()
         try:
@@ -62,6 +75,7 @@ def create_web_handler(use_browser: bool = True) -> Callable:
             page.close()
 
     def _httpx_fetch(url: str, method: str, headers: dict, body: bytes | None) -> Dict:
+        url = _normalize_local_runtime_url(url)
         client = _get_httpx()
         resp = client.request(method, url, headers=headers, content=body)
         return {

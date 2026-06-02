@@ -34,6 +34,7 @@ sim = [
     "uvicorn[standard]>=0.20",
     "httpx>=0.24",
     "eth-account>=0.10",
+    "numpy>=1.26",
 ]
 
 [tool.setuptools.packages.find]

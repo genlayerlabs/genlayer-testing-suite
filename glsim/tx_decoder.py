@@ -27,6 +27,15 @@ ADD_TX_SELECTOR_V6 = keccak(
     text="addTransaction(address,address,uint256,uint256,bytes,uint256)"
 )[:4].hex()
 
+# addTransaction(AddTransactionParams) selector
+ADD_TX_SELECTOR_WITH_FEES = keccak(
+    text=(
+        "addTransaction((address,address,uint256,uint256,uint256,uint256,uint256,"
+        "(uint256,uint256,uint256,uint256,uint256,uint256,uint256[],uint256,uint256,uint256),"
+        "bytes,(uint8,bool,uint256,address,bytes32,uint256,bytes)[]))"
+    )
+)[:4].hex()
+
 # Backward-compatible alias kept for older imports.
 ADD_TX_SELECTOR = ADD_TX_SELECTOR_V5
 
@@ -38,6 +47,13 @@ ADD_TX_ARGUMENT_TYPES_V6 = (
     "uint256",
     "bytes",
     "uint256",
+)
+ADD_TX_ARGUMENT_TYPES_WITH_FEES = (
+    (
+        "(address,address,uint256,uint256,uint256,uint256,uint256,"
+        "(uint256,uint256,uint256,uint256,uint256,uint256,uint256[],uint256,uint256,uint256),"
+        "bytes,(uint8,bool,uint256,address,bytes32,uint256,bytes)[])"
+    ),
 )
 
 # NewTransaction(bytes32,address,address) event topic
@@ -69,8 +85,55 @@ def _format_add_transaction_result(abi_decoded: tuple) -> dict:
     }
 
 
+def _format_fee_aware_add_transaction_result(params: tuple) -> dict:
+    encoded_tx_data_bytes = params[8]
+    encoded_tx_data = "0x" + encoded_tx_data_bytes.hex()
+    decoded_tx_data = decode_tx_data(encoded_tx_data_bytes)
+    return {
+        "sender_address": params[0],
+        "recipient_address": params[1],
+        "num_of_initial_validators": params[2],
+        "max_rotations": params[3],
+        "tx_data": {
+            "encoded": encoded_tx_data,
+            "decoded": decoded_tx_data,
+        },
+        "valid_until": params[4],
+        "salt_nonce": params[5],
+        "user_value": params[6],
+        "fees_distribution": {
+            "leaderTimeunitsAllocation": params[7][0],
+            "validatorTimeunitsAllocation": params[7][1],
+            "appealRounds": params[7][2],
+            "executionBudgetPerRound": params[7][3],
+            "executionConsumed": params[7][4],
+            "totalMessageFees": params[7][5],
+            "rotations": list(params[7][6]),
+            "maxPriceGenPerTimeUnit": params[7][7],
+            "storageFeeMaxGasPrice": params[7][8],
+            "receiptFeeMaxGasPrice": params[7][9],
+        },
+        "message_allocations": [
+            {
+                "messageType": allocation[0],
+                "onAcceptance": allocation[1],
+                "parentIndex": allocation[2],
+                "recipient": allocation[3],
+                "callKey": allocation[4],
+                "budget": allocation[5],
+                "feeParams": allocation[6],
+            }
+            for allocation in params[9]
+        ],
+    }
+
+
 def _decode_add_transaction_data_compat(input_data: bytes) -> dict:
     selector = input_data[:4].hex()
+
+    if selector == ADD_TX_SELECTOR_WITH_FEES:
+        decoded = abi_decode(ADD_TX_ARGUMENT_TYPES_WITH_FEES, input_data[4:])
+        return _format_fee_aware_add_transaction_result(decoded[0])
 
     if selector == ADD_TX_SELECTOR_V5:
         decoded = abi_decode(ADD_TX_ARGUMENT_TYPES_V5, input_data[4:])
@@ -139,6 +202,11 @@ def decode_genlayer_payload(input_data: bytes) -> dict:
         "recipient": result["recipient_address"],
         "n_validators": result["num_of_initial_validators"],
         "max_rotations": result["max_rotations"],
+        "valid_until": result.get("valid_until"),
+        "salt_nonce": result.get("salt_nonce"),
+        "user_value": result.get("user_value"),
+        "fees_distribution": result.get("fees_distribution"),
+        "message_allocations": result.get("message_allocations", []),
         "tx_type": tx_type,
         "decoded_tx_data": decoded_tx,
         "raw_tx_data": bytes.fromhex(result["tx_data"]["encoded"][2:]),

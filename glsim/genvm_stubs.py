@@ -43,6 +43,14 @@ class _VecDB:
     def __init__(self):
         self._entries: List[_VecDBEntry] = []
 
+    @property
+    def entries(self) -> List[_VecDBEntry]:
+        return self._entries
+
+    @entries.setter
+    def entries(self, value: List[_VecDBEntry]) -> None:
+        self._entries = value
+
     def __getattr__(self, name: str):
         # Deserialized instances skip __init__; lazily init _entries
         if name == "_entries":

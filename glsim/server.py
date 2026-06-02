@@ -373,6 +373,97 @@ def _rpc_eth_estimate_gas(state: StateStore, engine: SimEngine, params: dict) ->
     return "0x5208"
 
 
+def _rpc_sim_get_fee_config(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Return a Studio-compatible fee config for SDK fee helpers.
+
+    GLSim stays gasless by default, but exposing the same RPC shape lets SDKs
+    build and test fee-aware calldata without a real FeeManager deployment.
+    """
+    return {
+        "enabled": False,
+        "policy": {
+            "genPerTimeUnit": "0",
+            "storageUnitPrice": "0",
+            "receiptGasPrice": "0",
+            "messageFeeParamsBudgetFloor": "0",
+            "intrinsicGas": "21000",
+            "bootloaderOverhead": "60000",
+            "fixedProposeReceiptGas": "210000",
+            "gasPerChangedSlot": "1000",
+            "calldataGasPerByte": "16",
+        },
+    }
+
+
+def _hex_bytes(value: Any) -> Any:
+    if isinstance(value, bytes):
+        return "0x" + value.hex()
+    return value
+
+
+def _normalise_message_allocation(allocation: dict[str, Any]) -> dict[str, Any]:
+    return {key: _hex_bytes(value) for key, value in allocation.items()}
+
+
+def _int_field(value: Any) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, str):
+        return int(value, 16) if value.startswith("0x") else int(value)
+    return int(value)
+
+
+def _fee_accounting_from_parts(
+    *,
+    fee_value: Any,
+    fees_distribution: dict[str, Any] | None,
+    message_allocations: list[dict[str, Any]] | None,
+) -> dict[str, Any] | None:
+    if not fee_value and not fees_distribution:
+        return None
+
+    distribution = fees_distribution or {}
+    total_message_fees = _int_field(distribution.get("totalMessageFees"))
+    paid_fee_value = _int_field(fee_value)
+    primary_budget = max(0, paid_fee_value - total_message_fees)
+    message_refund = total_message_fees
+    primary_refund = primary_budget
+
+    return {
+        "status": "active",
+        "source": "glsim",
+        "paid_fee_value": paid_fee_value,
+        "primary_fee_budget": primary_budget,
+        "primary_fee_required": 0,
+        "primary_fee_consumed": 0,
+        "primary_fee_refunded": primary_refund,
+        "execution_fee_consumed": 0,
+        "message_fee_budget": total_message_fees,
+        "message_fee_consumed": 0,
+        "message_fee_refunded": message_refund,
+        "total_refunded": primary_refund + message_refund,
+        "fees_distribution": distribution,
+        "message_allocations": [
+            _normalise_message_allocation(allocation)
+            for allocation in (message_allocations or [])
+        ],
+    }
+
+
+def _fee_accounting_for_tx(tx: Transaction) -> dict[str, Any] | None:
+    """Return Studio-like transaction-side fee accounting for fee-aware GLSim txs.
+
+    GLSim does not model validator reward distribution. This mirrors the
+    user-facing deposit/budget/refund shape so SDK and app tests can assert
+    fee-aware calldata handling without depending on the real node.
+    """
+    return _fee_accounting_from_parts(
+        fee_value=tx.fee_value,
+        fees_distribution=tx.fees_distribution,
+        message_allocations=tx.message_allocations,
+    )
+
+
 # ---------------------------------------------------------------------------
 # SDK-compatible RPC methods
 # ---------------------------------------------------------------------------
@@ -398,6 +489,11 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
     # Allocate GenLayer tx ID
     gl_tx_id = state.allocate_gl_tx_id()
     internal_hash = state.generate_tx_hash(f"gl:{gl_tx_id}")
+    user_value = (
+        gl_payload["user_value"]
+        if gl_payload.get("user_value") is not None
+        else eth_tx["value"]
+    )
 
     tx = Transaction(
         hash=internal_hash,
@@ -409,6 +505,13 @@ def _rpc_eth_send_raw_transaction(state: StateStore, engine: SimEngine, params: 
         eth_tx_hash=eth_tx_hash,
         raw_sender=eth_tx["from"],
         num_validators=gl_payload["n_validators"],
+        value=user_value,
+        fee_value=max(0, eth_tx["value"] - user_value),
+        valid_until=gl_payload.get("valid_until"),
+        salt_nonce=gl_payload.get("salt_nonce"),
+        fees_distribution=gl_payload.get("fees_distribution"),
+        message_allocations=gl_payload.get("message_allocations", []),
+        message_allocations_count=len(gl_payload.get("message_allocations", [])),
     )
     state.add_transaction(tx)
     state.register_tx_mappings(tx)
@@ -635,6 +738,7 @@ def _rpc_eth_get_transaction_by_hash(state: StateStore, engine: SimEngine, param
 
     effective_now = datetime.now(timezone.utc) + timedelta(seconds=state._time_offset_seconds)
     now = effective_now.isoformat()
+    fee_accounting = _fee_accounting_for_tx(tx)
 
     return {
         "hash": tx_hash,
@@ -643,7 +747,17 @@ def _rpc_eth_get_transaction_by_hash(state: StateStore, engine: SimEngine, param
         "to_address": tx.to_address or ADDRESS_ZERO,
         "type": tx_type,
         "nonce": 0,
-        "value": 0,
+        "value": tx.value,
+        "fee_value": tx.fee_value,
+        "valid_until": tx.valid_until,
+        "salt_nonce": tx.salt_nonce,
+        "fees_distribution": tx.fees_distribution,
+        **({"message_allocations": [
+            _normalise_message_allocation(allocation)
+            for allocation in tx.message_allocations
+        ]} if tx.message_allocations else {}),
+        "message_allocations_count": tx.message_allocations_count,
+        **({"fee_accounting": fee_accounting} if fee_accounting else {}),
         "gaslimit": 0,
         "r": 0,
         "s": 0,
@@ -758,7 +872,13 @@ def _rpc_sim_call_sdk(state: StateStore, engine: SimEngine, params: dict) -> Any
         # Return a simplified transaction receipt
         calldata_b64 = base64.b64encode(calldata_bytes).decode()
         result_b64 = base64.b64encode(result_bytes).decode()
-        return {
+        fees = req.get("fees") if isinstance(req.get("fees"), dict) else {}
+        fee_accounting = _fee_accounting_from_parts(
+            fee_value=fees.get("feeValue", fees.get("fee_value", req.get("value", 0))),
+            fees_distribution=fees.get("distribution"),
+            message_allocations=fees.get("messageAllocations") or fees.get("message_allocations"),
+        )
+        receipt = {
             "status": "FINALIZED",
             "result": result,
             "consensus_data": {
@@ -769,9 +889,50 @@ def _rpc_sim_call_sdk(state: StateStore, engine: SimEngine, params: dict) -> Any
                 }],
             },
         }
+        if fee_accounting:
+            receipt["fee_accounting"] = fee_accounting
+            receipt["genvm_result"] = {"fee_accounting": fee_accounting}
+        return receipt
 
     # Fall through to existing sim_call format
     return _rpc_sim_call(state, engine, params)
+
+
+def _rpc_sim_estimate_transaction_fees(state: StateStore, engine: SimEngine, params: dict) -> Any:
+    """Studio-compatible fee-estimate RPC for SDK one-call helpers.
+
+    GLSim remains gasless; this method validates the simulated write path and
+    returns a preset that preserves the provided fee distribution/allocations.
+    """
+    req = _positional(params, 0)
+    if not isinstance(req, dict):
+        raise ValueError("sim_estimateTransactionFees expects a request object")
+
+    receipt = _rpc_sim_call_sdk(state, engine, params)
+    if not isinstance(receipt, dict):
+        raise ValueError("sim_estimateTransactionFees requires SDK-format sim_call params")
+
+    fees = req.get("fees") if isinstance(req.get("fees"), dict) else {}
+    distribution = fees.get("distribution") or {}
+    message_allocations = fees.get("messageAllocations") or fees.get("message_allocations") or []
+    fee_value = fees.get("feeValue", fees.get("fee_value", req.get("value", 0)))
+    fee_accounting = receipt.get("fee_accounting") or _fee_accounting_from_parts(
+        fee_value=fee_value,
+        fees_distribution=distribution,
+        message_allocations=message_allocations,
+    )
+
+    return {
+        "feeAccounting": fee_accounting,
+        "recommendedPreset": {
+            "distribution": distribution,
+            "messageAllocations": [
+                _normalise_message_allocation(allocation)
+                for allocation in message_allocations
+            ],
+            "feeValue": str(_int_field(fee_value)),
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -847,9 +1008,11 @@ RPC_METHODS = {
     # Simple sim_* methods (test helpers / direct access)
     "sim_deploy": _rpc_sim_deploy,
     "sim_call": _rpc_sim_call_sdk,  # SDK-compatible sim_call with fallback
+    "sim_estimateTransactionFees": _rpc_sim_estimate_transaction_fees,
     "sim_read": _rpc_sim_read,
     "sim_fundAccount": _rpc_sim_fund_account,
     "sim_getBalance": _rpc_sim_get_balance,
+    "sim_getFeeConfig": _rpc_sim_get_fee_config,
     "sim_getTransactionByHash": _rpc_sim_get_tx_by_hash,
     "sim_getTransactionReceipt": _rpc_sim_get_tx_receipt,
     "sim_getContractSchema": _rpc_sim_get_contract_schema,

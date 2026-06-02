@@ -70,6 +70,15 @@ client = GenLayerClient(chain=localnet)
 | `eth_getTransactionCount` | Account nonce |
 | `eth_gasPrice` / `eth_estimateGas` | Gas stubs (returns 0) |
 
+Fee-aware v0.6 `addTransaction(AddTransactionParams)` calls are decoded by
+`eth_sendRawTransaction`. Transaction lookups expose Studio-compatible
+`value`, `fee_value`, fee distribution, message allocations, and transaction-side
+`fee_accounting` budget/refund fields. GLSim intentionally does not model
+validator reward distribution. SDK-format `sim_call` accepts the same `fees`
+request object and returns `fee_accounting` under both the top-level response
+and `genvm_result.fee_accounting`, so SDK fee-estimate-from-simulation helpers
+can be tested against GLSim.
+
 ### Simulator-specific
 
 | RPC Method | Description |
@@ -79,6 +88,8 @@ client = GenLayerClient(chain=localnet)
 | `sim_read` | Read-only contract call (non-SDK path) |
 | `sim_fundAccount` | Fund an account with tokens |
 | `sim_getBalance` | Get account balance |
+| `sim_getFeeConfig` | Studio-compatible gasless fee policy for SDK helpers |
+| `sim_estimateTransactionFees` | Studio-compatible gasless fee preset from a simulated write |
 | `sim_getContractSchema` | Get schema for deployed contract |
 | `sim_createSnapshot` | Snapshot full state (for test fixtures) |
 | `sim_restoreSnapshot` | Restore to a previous snapshot |
@@ -198,10 +209,10 @@ Options:
 
 ## Prerequisites
 
-For contracts that use numpy (e.g. Rally's CampaignIC):
+Install the GLSim extra to get the HTTP server and runtime helpers:
 
 ```bash
-pip install numpy
+pip install "genlayer-test[sim]"
 ```
 
 The GenVM SDK artifacts are auto-downloaded on first contract deployment (~50MB, cached).

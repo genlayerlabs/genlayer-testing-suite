@@ -61,6 +61,13 @@ class Transaction:
     calldata_bytes: bytes = field(default=b"", repr=False)
     result_bytes: bytes = field(default=b"", repr=False)
     num_validators: int = 1
+    value: int = 0
+    fee_value: int = 0
+    valid_until: Optional[int] = None
+    salt_nonce: Optional[int] = None
+    fees_distribution: Optional[Dict[str, Any]] = None
+    message_allocations: List[Dict[str, Any]] = field(default_factory=list)
+    message_allocations_count: int = 0
     consensus_votes: Dict[str, str] = field(default_factory=dict)
     consensus_rotation: int = 0
     triggered_transactions: List[str] = field(default_factory=list)

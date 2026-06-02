@@ -215,12 +215,15 @@ class SimEngine:
 
         self._instances[addr_key] = instance
 
-        # Extract and cache the contract class
-        contract_cls = type(instance)
-        for cls in type(instance).__mro__:
-            if hasattr(cls, '__annotations__') and cls.__module__.startswith("_contract_"):
-                contract_cls = cls
-                break
+        # Extract and cache the source contract class, not the storage proxy class.
+        type_desc = getattr(instance, "__dict__", {}).get("__type_desc__")
+        contract_cls = getattr(type_desc, "cls", None)
+        if contract_cls is None:
+            contract_cls = type(instance)
+            for cls in type(instance).__mro__:
+                if hasattr(cls, '__annotations__') and cls.__module__.startswith("_contract_"):
+                    contract_cls = cls
+                    break
         self._classes[addr_key] = contract_cls
         self._class_cache[path_key] = contract_cls
         # Also cache by content hash for gen_getContractSchemaForCode
@@ -462,6 +465,13 @@ class SimEngine:
 
     def get_sdk_schema(self, contract_address: str) -> Optional[Dict]:
         """Get schema in SDK-compatible ContractSchema format."""
+        contract = self.state.get_contract(contract_address)
+        if contract is not None:
+            try:
+                return self.get_sdk_schema_for_code(Path(contract.code_path).read_bytes())
+            except OSError:
+                pass
+
         cls = self._classes.get(contract_address.lower())
         if cls is None:
             return None
@@ -474,7 +484,9 @@ class SimEngine:
         # Check code-hash cache first (populated by deploy_from_code)
         cached_cls = self._code_hash_cache.get(code_hash)
         if cached_cls is not None:
-            return self._extract_sdk_schema(cached_cls)
+            schema = self._extract_sdk_schema(cached_cls)
+            if schema["methods"]:
+                return schema
 
         # Check path-based cache
         tmp_path = str(Path(tempfile.gettempdir()) / f"glsim_contract_{code_hash}.py")
@@ -484,7 +496,9 @@ class SimEngine:
 
         cached_cls = self._class_cache.get(path_key)
         if cached_cls is not None:
-            return self._extract_sdk_schema(cached_cls)
+            schema = self._extract_sdk_schema(cached_cls)
+            if schema["methods"]:
+                return schema
 
         # Load the class without deploying
         from gltest.direct.loader import load_contract_class
