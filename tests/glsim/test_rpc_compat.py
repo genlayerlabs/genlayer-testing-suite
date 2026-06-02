@@ -18,6 +18,15 @@ from glsim.state import DEFAULT_CHAIN_ID
 
 STORAGE_CONTRACT = str(Path(__file__).parent.parent / "examples" / "contracts" / "storage.py")
 WEB_CONTRACT = str(Path(__file__).parent / "web_contract.py")
+MESSAGE_ALLOCATION_ROOT_PARENT_INDEX = (1 << 256) - 1
+CALL_KEY_WILDCARD = b"\x00" * 32
+FEE_AWARE_ADD_TX_ARGUMENT_TYPES = (
+    (
+        "(address,address,uint256,uint256,uint256,uint256,uint256,"
+        "(uint256,uint256,uint256,uint256,uint256,uint256,uint256[],uint256,uint256,uint256),"
+        "bytes,(uint8,bool,uint256,address,bytes32,uint256,bytes)[])"
+    ),
+)
 
 
 @pytest.fixture
@@ -104,7 +113,73 @@ def _build_add_transaction_data_v5(sender_addr, recipient, code_or_calldata, is_
     return bytes.fromhex(selector + params.hex())
 
 
-def _sign_and_send(client, acct, to_addr, data_bytes):
+def _build_add_transaction_data_with_fees(
+    sender_addr,
+    recipient,
+    code_or_calldata,
+    is_deploy=False,
+    constructor_args=None,
+    user_value=0,
+    valid_until=123,
+    fee_total=0,
+):
+    """Build fee-aware addTransaction(AddTransactionParams) calldata."""
+    if is_deploy:
+        code_bytes = code_or_calldata
+        ctor_args = constructor_args if constructor_args is not None else []
+        constructor_calldata = calldata.encode({"method": None, "args": ctor_args, "kwargs": {}})
+        rlp_data = rlp_mod.encode([code_bytes, constructor_calldata, b"\x00"])
+    else:
+        rlp_data = rlp_mod.encode([code_or_calldata, b"\x00"])
+
+    from eth_utils.crypto import keccak
+    selector = keccak(
+        text=(
+            "addTransaction((address,address,uint256,uint256,uint256,uint256,uint256,"
+            "(uint256,uint256,uint256,uint256,uint256,uint256,uint256[],uint256,uint256,uint256),"
+            "bytes,(uint8,bool,uint256,address,bytes32,uint256,bytes)[]))"
+        )
+    )[:4].hex()
+    fees_distribution = (
+        0,  # leaderTimeunitsAllocation
+        0,  # validatorTimeunitsAllocation
+        0,  # appealRounds
+        0,  # executionBudgetPerRound
+        0,  # executionConsumed
+        fee_total,
+        [0],  # rotations
+        0,  # maxPriceGenPerTimeUnit
+        0,  # storageFeeMaxGasPrice
+        0,  # receiptFeeMaxGasPrice
+    )
+    message_allocations = [
+        (
+            1,  # Internal
+            False,
+            MESSAGE_ALLOCATION_ROOT_PARENT_INDEX,
+            recipient if recipient != "0x" + "00" * 20 else sender_addr,
+            CALL_KEY_WILDCARD,
+            fee_total,
+            b"\x12\x34",
+        )
+    ] if fee_total else []
+    params_tuple = (
+        sender_addr,
+        recipient,
+        1,
+        3,
+        valid_until,
+        0,
+        user_value,
+        fees_distribution,
+        rlp_data,
+        message_allocations,
+    )
+    params = abi_encode(FEE_AWARE_ADD_TX_ARGUMENT_TYPES, [params_tuple])
+    return bytes.fromhex(selector + params.hex())
+
+
+def _sign_and_send(client, acct, to_addr, data_bytes, value=0):
     """Sign tx and send via eth_sendRawTransaction."""
     w3 = Web3()
     tx = {
@@ -112,7 +187,7 @@ def _sign_and_send(client, acct, to_addr, data_bytes):
         "gasPrice": 0,
         "gas": 21000,
         "to": to_addr,
-        "value": 0,
+        "value": value,
         "data": data_bytes,
         "chainId": DEFAULT_CHAIN_ID,
     }
@@ -161,6 +236,147 @@ def test_eth_send_raw_transaction_deploy_legacy_v5(client):
     assert "result" in resp, f"SendRawTx failed: {resp}"
     eth_tx_hash = resp["result"]
     assert eth_tx_hash.startswith("0x")
+
+
+def test_eth_send_raw_transaction_deploy_fee_aware_metadata(client):
+    """Deploy via v0.6 fee-aware addTransaction and expose value/fee metadata."""
+    acct = Account.create()
+    code = Path(STORAGE_CONTRACT).read_bytes()
+
+    data = _build_add_transaction_data_with_fees(
+        acct.address,
+        "0x" + "00" * 20,
+        code,
+        is_deploy=True,
+        constructor_args=["fee_value"],
+        user_value=12,
+        valid_until=123,
+        fee_total=58,
+    )
+
+    resp = _sign_and_send(
+        client,
+        acct,
+        "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+        data,
+        value=70,
+    )
+    assert "result" in resp, f"SendRawTx failed: {resp}"
+    receipt = _rpc(client, "eth_getTransactionReceipt", [resp["result"]])["result"]
+    gl_tx_id_hex = receipt["logs"][0]["topics"][1]
+    tx = _rpc(client, "eth_getTransactionByHash", [gl_tx_id_hex])["result"]
+
+    assert tx["value"] == 12
+    assert tx["fee_value"] == 58
+    assert tx["valid_until"] == 123
+    assert tx["fees_distribution"]["totalMessageFees"] == 58
+    assert tx["message_allocations_count"] == 1
+    assert tx["message_allocations"][0]["feeParams"] == "0x1234"
+
+    fee_accounting = tx["fee_accounting"]
+    assert fee_accounting["status"] == "active"
+    assert fee_accounting["source"] == "glsim"
+    assert fee_accounting["paid_fee_value"] == 58
+    assert fee_accounting["primary_fee_budget"] == 0
+    assert fee_accounting["message_fee_budget"] == 58
+    assert fee_accounting["message_fee_consumed"] == 0
+    assert fee_accounting["message_fee_refunded"] == 58
+    assert fee_accounting["total_refunded"] == 58
+    assert fee_accounting["fees_distribution"]["totalMessageFees"] == 58
+    assert fee_accounting["message_allocations"][0]["budget"] == 58
+
+
+def test_sim_get_fee_config_exposes_studio_compatible_gasless_policy(client):
+    response = _rpc(client, "sim_getFeeConfig")
+
+    assert response["result"]["enabled"] is False
+    assert response["result"]["policy"]["genPerTimeUnit"] == "0"
+    assert response["result"]["policy"]["storageUnitPrice"] == "0"
+    assert response["result"]["policy"]["receiptGasPrice"] == "0"
+    assert response["result"]["policy"]["messageFeeParamsBudgetFloor"] == "0"
+
+
+def test_sdk_sim_call_includes_fee_accounting_from_fee_options(client):
+    addr = _deploy_simple(client, "before")
+    call_bytes = calldata.encode({"method": "update_storage", "args": ["after"], "kwargs": {}})
+    data_hex = "0x" + rlp_mod.encode([call_bytes, b"\x00"]).hex()
+
+    response = _rpc(
+        client,
+        "sim_call",
+        [{
+            "to": addr,
+            "from": "0x1111111111111111111111111111111111111111",
+            "data": data_hex,
+            "fees": {
+                "feeValue": "70",
+                "distribution": {"totalMessageFees": "58"},
+                "messageAllocations": [{
+                    "messageType": 1,
+                    "onAcceptance": True,
+                    "parentIndex": str(MESSAGE_ALLOCATION_ROOT_PARENT_INDEX),
+                    "recipient": addr,
+                    "callKey": "0x" + CALL_KEY_WILDCARD.hex(),
+                    "budget": "58",
+                    "feeParams": "0x1234",
+                }],
+            },
+        }],
+    )
+
+    receipt = response["result"]
+    assert receipt["result"] is None
+    fee_accounting = receipt["genvm_result"]["fee_accounting"]
+    assert receipt["fee_accounting"] == fee_accounting
+    assert fee_accounting["status"] == "active"
+    assert fee_accounting["source"] == "glsim"
+    assert fee_accounting["paid_fee_value"] == 70
+    assert fee_accounting["primary_fee_budget"] == 12
+    assert fee_accounting["message_fee_budget"] == 58
+    assert fee_accounting["message_fee_consumed"] == 0
+    assert fee_accounting["message_fee_refunded"] == 58
+    assert fee_accounting["total_refunded"] == 70
+    assert fee_accounting["message_allocations"][0]["budget"] == "58"
+    assert fee_accounting["message_allocations"][0]["feeParams"] == "0x1234"
+
+
+def test_sim_estimate_transaction_fees_returns_recommended_preset(client):
+    addr = _deploy_simple(client, "before")
+    call_bytes = calldata.encode({"method": "update_storage", "args": ["after"], "kwargs": {}})
+    data_hex = "0x" + rlp_mod.encode([call_bytes, b"\x00"]).hex()
+    external_call_key = "0xaabbccdd" + ("0" * 56)
+
+    response = _rpc(
+        client,
+        "sim_estimateTransactionFees",
+        [{
+            "to": addr,
+            "from": "0x1111111111111111111111111111111111111111",
+            "data": data_hex,
+            "fees": {
+                "feeValue": "70",
+                "distribution": {"totalMessageFees": "58"},
+                "messageAllocations": [{
+                    "messageType": 0,
+                    "onAcceptance": False,
+                    "parentIndex": str(MESSAGE_ALLOCATION_ROOT_PARENT_INDEX),
+                    "recipient": addr,
+                    "callKey": external_call_key,
+                    "budget": "58",
+                    "feeParams": "0x1234",
+                }],
+            },
+        }],
+    )
+
+    estimate = response["result"]
+    preset = estimate["recommendedPreset"]
+    assert preset["distribution"]["totalMessageFees"] == "58"
+    assert preset["feeValue"] == "70"
+    assert preset["messageAllocations"][0]["messageType"] == 0
+    assert preset["messageAllocations"][0]["callKey"] == external_call_key
+    assert estimate["feeAccounting"]["paid_fee_value"] == 70
+    assert estimate["feeAccounting"]["message_fee_budget"] == 58
 
 
 def test_eth_get_transaction_by_hash_includes_triggered_transactions_graph(client):
