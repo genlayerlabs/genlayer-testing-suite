@@ -21,6 +21,13 @@ from typing import Any, Optional, Type, TYPE_CHECKING
 if TYPE_CHECKING:
     from .vm import VMContext
 
+from .sdk_compat import (
+    import_address,
+    import_calldata,
+    import_lazy,
+    install_star_import_compat,
+)
+
 
 def load_contract_class(
     contract_path: Path,
@@ -50,10 +57,13 @@ def load_contract_class(
     #    (genlayer reads message from fd 0 at import time)
     _inject_message_to_fd0(vm)
 
-    # 4. Patch get_type_hints for PEP 695 compat (Python 3.12.0-3.12.7)
+    # 4. Keep older star-import contracts usable with current GenVM SDKs.
+    install_star_import_compat()
+
+    # 5. Patch get_type_hints for PEP 695 compat (Python 3.12.0-3.12.7)
     _patch_get_type_hints_for_pep695()
 
-    # 5. Load the contract module
+    # 6. Load the contract module
     module = _load_module(contract_path)
 
     contract_cls = _find_contract_class(module)
@@ -167,7 +177,7 @@ def _patch_run_nondet_for_direct_mode() -> None:
     # lazy-api compat: eq_principle.strict_eq calls vm.run_nondet_unsafe.lazy()
     # The SDK uses @_lazy_api which attaches .lazy to the eager function.
     # .lazy must return a Lazy[T] wrapper instead of the raw value.
-    from genlayer.py.types import Lazy
+    Lazy = import_lazy()
 
     def _lazy_run_nondet(leader_fn, validator_fn, /, **kwargs):
         return Lazy(lambda: _direct_run_nondet(leader_fn, validator_fn, **kwargs))
@@ -240,8 +250,8 @@ def _inject_message_to_fd0(vm: "VMContext") -> None:
     import tempfile
 
     try:
-        from genlayer.py import calldata
-        from genlayer.py.types import Address
+        calldata = import_calldata()
+        Address = import_address()
     except ImportError:
         return
 
@@ -375,7 +385,7 @@ def _calldata_roundtrip_args(
     at deploy time.
     """
     try:
-        from genlayer.py import calldata
+        calldata = import_calldata()
     except ImportError:
         return args, kwargs
 
@@ -461,16 +471,25 @@ def _allocate_contract(
 ) -> Any:
     """Allocate and initialize a contract instance."""
     try:
-        from genlayer.py.storage import Root, ROOT_SLOT_ID
-        from genlayer.py.storage._internal.generate import (
-            ORIGINAL_INIT_ATTR,
-            _storage_build,
-            Lit,
-        )
+        try:
+            from genlayer.py.storage import Root, ROOT_SLOT_ID
+            from genlayer.py.storage._internal.generate import (
+                ORIGINAL_INIT_ATTR,
+                _storage_build,
+                Lit,
+            )
 
-        # Build the storage type descriptor
-        td = _storage_build(contract_cls, {})
-        assert not isinstance(td, Lit)
+            td = _storage_build(contract_cls, {})
+            assert not isinstance(td, Lit)
+        except ImportError:
+            from genlayer.storage import Root, ROOT_SLOT_ID
+            from genlayer.storage._internal.generate import (
+                ORIGINAL_INIT_ATTR,
+                _BuilderCtx,
+                _storage_build,
+            )
+
+            td = _storage_build(_BuilderCtx.empty(), contract_cls)
 
         # Use the VM's storage manager
         slot = vm._storage.get_store_slot(ROOT_SLOT_ID)
@@ -493,7 +512,10 @@ def _allocate_contract(
         pass
 
     try:
-        from genlayer.py.storage import Root
+        try:
+            from genlayer.py.storage import Root
+        except ImportError:
+            from genlayer.storage import Root
 
         Root.MANAGER = vm._storage
 
@@ -520,7 +542,7 @@ def create_address(seed: str) -> Any:
     addr_bytes = hashlib.sha256(seed.encode()).digest()[:20]
 
     try:
-        from genlayer.py.types import Address
+        Address = import_address()
         return Address(addr_bytes)
     except ImportError:
         return addr_bytes
