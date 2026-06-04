@@ -21,6 +21,7 @@ from typing import Any, Optional, Pattern, List, Tuple, Dict
 from unittest.mock import patch
 
 from ..types import MockedWebResponseData
+from .sdk_compat import import_address_u256, sync_message_context
 
 _sentinel = object()
 
@@ -597,7 +598,7 @@ class VMContext:
 
         try:
             gl = sys.modules['genlayer.gl']
-            from genlayer.py.types import Address, u256
+            Address, u256 = import_address_u256()
 
             # Convert sender to Address if needed
             sender = self.sender
@@ -618,6 +619,7 @@ class VMContext:
             if hasattr(gl, 'message_raw') and gl.message_raw is not None:
                 gl.message_raw['sender_address'] = sender
                 gl.message_raw['origin_address'] = origin
+            sync_message_context(sender_address=sender, origin_address=origin)
 
             # Replace gl.message with new NamedTuple (immutable, must recreate)
             if hasattr(gl, 'message') and gl.message is not None:

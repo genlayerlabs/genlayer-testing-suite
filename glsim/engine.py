@@ -28,6 +28,7 @@ from gltest.direct.loader import (
     _allocate_contract,
     _patch_run_nondet_for_direct_mode,
 )
+from gltest.direct.sdk_compat import import_address, import_calldata, sync_message_context
 
 from .state import StateStore
 from .tx_decoder import decode_calldata_bytes, encode_calldata_result
@@ -627,9 +628,12 @@ class SimEngine:
 
     def _handle_deploy_in_contract(self, vm: Any, data: Dict) -> bytes:
         """Handle gl.deploy_contract() from within a running contract."""
-        from genlayer.py import calldata
-        from genlayer.py.types import Address
-        from genlayer.py._internal import create2_address
+        calldata = import_calldata()
+        Address = import_address()
+        try:
+            from genlayer.py._internal import create2_address
+        except ImportError:
+            from genlayer._internal import create2_address
         self._ensure_direct_mode_runtime_patches()
 
         code = data.get('code', b'')
@@ -732,8 +736,8 @@ class SimEngine:
 
     def _handle_call_in_contract(self, vm: Any, data: Dict) -> bytes:
         """Handle gl.contract_at().view().method() from within a running contract."""
-        from genlayer.py import calldata
-        from genlayer.py.types import Address
+        calldata = import_calldata()
+        Address = import_address()
         self._ensure_direct_mode_runtime_patches()
 
         address = data.get('address')
@@ -791,7 +795,7 @@ class SimEngine:
 
     def _handle_post_in_contract(self, vm: Any, data: Dict) -> Dict:
         """Handle gl.contract_at().emit().method() — enqueue for after current call."""
-        from genlayer.py.types import Address
+        Address = import_address()
 
         address = data.get('address')
         calldata_obj = data.get('calldata', {})
@@ -831,7 +835,7 @@ class SimEngine:
             return None
         try:
             gl = sys.modules['genlayer.gl']
-            from genlayer.py.types import Address
+            Address = import_address()
 
             if isinstance(sender, bytes):
                 sender = Address(sender)
@@ -848,6 +852,10 @@ class SimEngine:
                     value=gl.message.value,
                     chain_id=gl.message.chain_id,
                 )
+                sync_message_context(
+                    contract_address=contract_address,
+                    sender_address=sender,
+                )
             return saved
         except (ImportError, AttributeError):
             return None
@@ -859,7 +867,7 @@ class SimEngine:
             return
         try:
             gl = sys.modules['genlayer.gl']
-            from genlayer.py.types import Address
+            Address = import_address()
 
             if isinstance(contract_address, bytes):
                 contract_address = Address(contract_address)
@@ -874,6 +882,10 @@ class SimEngine:
                     value=gl.message.value,
                     chain_id=gl.message.chain_id,
                 )
+                sync_message_context(
+                    contract_address=contract_address,
+                    sender_address=sender,
+                )
         except (ImportError, AttributeError):
             pass
 
@@ -887,6 +899,13 @@ class SimEngine:
             return
         if 'message' in saved:
             gl.message = saved['message']
+            sync_message_context(
+                contract_address=gl.message.contract_address,
+                sender_address=gl.message.sender_address,
+                origin_address=gl.message.origin_address,
+                value=gl.message.value,
+                chain_id=gl.message.chain_id,
+            )
 
     @staticmethod
     def _install_cloudpickle_bypass() -> None:
@@ -926,7 +945,7 @@ class SimEngine:
             return
         try:
             gl = sys.modules['genlayer.gl']
-            from genlayer.py.types import Address
+            Address = import_address()
             new_addr = Address(addr_bytes)
             if hasattr(gl, 'message') and gl.message is not None:
                 gl.message = gl.MessageType(
@@ -938,6 +957,7 @@ class SimEngine:
                 )
             if hasattr(gl, 'message_raw') and gl.message_raw is not None:
                 gl.message_raw['contract_address'] = new_addr
+            sync_message_context(contract_address=new_addr)
         except (ImportError, AttributeError):
             pass
 
