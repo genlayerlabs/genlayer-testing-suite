@@ -1,11 +1,11 @@
 # v0.1.0
 # { "Depends": "py-genlayer:latest" }
 
-from genlayer import *
+import genlayer as gl
 import json
 
 
-class WebContract(gl.Contract):
+class WebContract(gl.contract.Contract):
     result: str
 
     def __init__(self):

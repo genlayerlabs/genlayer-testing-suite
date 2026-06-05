@@ -260,8 +260,8 @@ class TestNondetRestrictions:
         # Deploy contract to get SDK loaded and run_nondet patched
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        import genlayer.gl.vm as gl_vm
-        from genlayer.py import calldata
+        import genlayer.vm as gl_vm
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         def bad_leader():
@@ -281,8 +281,8 @@ class TestNondetRestrictions:
         """DeployContract inside run_nondet raises RuntimeError."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        import genlayer.gl.vm as gl_vm
-        from genlayer.py import calldata
+        import genlayer.vm as gl_vm
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         def bad_leader():
@@ -297,8 +297,8 @@ class TestNondetRestrictions:
         """PostMessage inside run_nondet raises RuntimeError."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        import genlayer.gl.vm as gl_vm
-        from genlayer.py import calldata
+        import genlayer.vm as gl_vm
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         def bad_leader():
@@ -318,8 +318,8 @@ class TestNondetRestrictions:
         """Trace and other non-cross-contract ops work inside run_nondet."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        import genlayer.gl.vm as gl_vm
-        from genlayer.py import calldata
+        import genlayer.vm as gl_vm
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         def good_leader():
@@ -334,7 +334,7 @@ class TestNondetRestrictions:
         """Cross-contract calls outside run_nondet do not raise."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        from genlayer.py import calldata
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         request = {
@@ -351,8 +351,8 @@ class TestNondetRestrictions:
         """_in_nondet flag is cleared even when leader_fn raises."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        import genlayer.gl.vm as gl_vm
-        from genlayer.py import calldata
+        import genlayer.vm as gl_vm
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         vm = wasi_mock.get_vm()

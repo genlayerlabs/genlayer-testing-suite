@@ -362,9 +362,9 @@ print(f"Unique states: {analysis.unique_states}")
 ## Example Contract
 
 ```python
-from genlayer import *
+import genlayer as gl
 
-class Storage(gl.Contract):
+class Storage(gl.contract.Contract):
     storage: str
 
     def __init__(self, initial_storage: str):
@@ -395,7 +395,7 @@ For more examples, see the [contracts directory](tests/examples/contracts).
 
 ## Troubleshooting
 
-**Contract not found**: Ensure contracts are in `contracts/` or specify `--contracts-dir`. Contracts must inherit from `gl.Contract`.
+**Contract not found**: Ensure contracts are in `contracts/` or specify `--contracts-dir`. Contracts must inherit from `gl.contract.Contract`.
 
 **Transaction timeouts** (Studio mode): Increase `wait_interval` and `wait_retries` in `.transact()`.
 

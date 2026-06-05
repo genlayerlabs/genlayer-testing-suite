@@ -1,10 +1,10 @@
 # v0.1.0
-# { "Depends": "py-genlayer:test" }
+# { "Depends": "py-genlayer:latest" }
 
-from genlayer import *
+import genlayer as gl
 
 
-class MultiTentantStorage(gl.Contract):
+class MultiTentantStorage(gl.contract.Contract):
     """
     Same functionality as UserStorage, but implemented with multiple storage contracts.
     Each user is assigned to a storage contract, and all storage contracts are managed by this same contract.
@@ -12,16 +12,16 @@ class MultiTentantStorage(gl.Contract):
     This is done to test contract calls between different contracts.
     """
 
-    all_storage_contracts: DynArray[Address]
-    available_storage_contracts: DynArray[Address]
-    mappings: TreeMap[
-        Address, Address
+    all_storage_contracts: gl.DynArray[gl.Address]
+    available_storage_contracts: gl.DynArray[gl.Address]
+    mappings: gl.TreeMap[
+        gl.Address, gl.Address
     ]  # mapping of user address to storage contract address
 
     def __init__(self, storage_contracts: list[str]):
         for el in storage_contracts:
-            self.all_storage_contracts.append(Address(el))
-            self.available_storage_contracts.append(Address(el))
+            self.all_storage_contracts.append(gl.Address(el))
+            self.available_storage_contracts.append(gl.Address(el))
 
     @gl.public.view
     def get_available_contracts(self) -> list[str]:
@@ -30,7 +30,7 @@ class MultiTentantStorage(gl.Contract):
     @gl.public.view
     def get_all_storages(self) -> dict[str, str]:
         return {
-            storage_contract.as_hex: gl.get_contract_at(storage_contract)
+            storage_contract.as_hex: gl.contract.get_at(storage_contract)
             .view()
             .get_storage()
             for storage_contract in self.all_storage_contracts
@@ -46,6 +46,6 @@ class MultiTentantStorage(gl.Contract):
             self.available_storage_contracts.pop()
 
         contract_to_use = self.mappings[gl.message.sender_address]
-        gl.get_contract_at(contract_to_use).emit(on="accepted").update_storage(
+        gl.contract.get_at(contract_to_use).emit(on="accepted").update_storage(
             new_storage
         )

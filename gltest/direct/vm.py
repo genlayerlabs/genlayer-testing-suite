@@ -52,7 +52,7 @@ class Snapshot:
 
 class InmemManager:
     """
-    In-memory storage manager compatible with genlayer.py.storage.
+    In-memory storage manager compatible with genlayer.storage.
     """
 
     def __init__(self):
@@ -113,7 +113,7 @@ class InmemManager:
 
 
 class Slot:
-    """Storage slot compatible with genlayer.py.storage."""
+    """Storage slot compatible with genlayer.storage."""
 
     __slots__ = ('id', 'manager', '_indir_cache')
 
@@ -372,10 +372,10 @@ class VMContext:
 
         stored_result, leader_fn, validator_fn = self._captured_validators[index]
 
-        import genlayer.gl.vm as gl_vm
+        import genlayer.vm as gl_vm
 
         if leader_error is not None:
-            wrapped = gl_vm.UserError(message=str(leader_error))
+            wrapped = gl_vm.UserError(str(leader_error))
         elif leader_result is not _sentinel:
             wrapped = gl_vm.Return(calldata=leader_result)
         else:
@@ -584,20 +584,19 @@ class VMContext:
 
     def _refresh_gl_message(self) -> None:
         """
-        Refresh gl.message and gl.message_raw to reflect current sender.
+        Refresh genlayer.message to reflect current sender.
 
-        GenLayer SDK caches gl.message at import time. This method updates
-        the cached values so contracts see the current vm.sender.
+        The SDK reads genlayer.message from stdin at import time. This method
+        updates the loaded module so contracts see the current vm.sender.
 
-        Only updates if genlayer.gl is already imported - we must not trigger
-        a fresh import as that would read from stdin before message is injected.
+        Only updates if genlayer.message is already imported - we must not
+        trigger a fresh import as that would read from stdin before message is
+        injected.
         """
-        # Only proceed if genlayer.gl is already loaded
-        if 'genlayer.gl' not in sys.modules:
+        if 'genlayer.message' not in sys.modules:
             return
 
         try:
-            gl = sys.modules['genlayer.gl']
             Address, u256 = import_address_u256()
 
             # Convert sender to Address if needed
@@ -615,21 +614,12 @@ class VMContext:
                 elif hasattr(origin, 'as_bytes'):
                     origin = Address(origin.as_bytes)
 
-            # Update message_raw dict (mutable)
-            if hasattr(gl, 'message_raw') and gl.message_raw is not None:
-                gl.message_raw['sender_address'] = sender
-                gl.message_raw['origin_address'] = origin
-            sync_message_context(sender_address=sender, origin_address=origin)
-
-            # Replace gl.message with new NamedTuple (immutable, must recreate)
-            if hasattr(gl, 'message') and gl.message is not None:
-                gl.message = gl.MessageType(
-                    contract_address=gl.message.contract_address,
-                    sender_address=sender,
-                    origin_address=origin,
-                    value=u256(self._value),
-                    chain_id=u256(self._chain_id),
-                )
+            sync_message_context(
+                sender_address=sender,
+                origin_address=origin,
+                value=u256(self._value),
+                chain_id=u256(self._chain_id),
+            )
         except ImportError:
             # genlayer not loaded yet, nothing to update
             pass

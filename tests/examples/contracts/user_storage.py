@@ -1,11 +1,11 @@
 # v0.1.0
 # { "Depends": "py-genlayer:latest" }
 
-from genlayer import *
+import genlayer as gl
 
 
-class UserStorage(gl.Contract):
-    storage: TreeMap[Address, str]
+class UserStorage(gl.contract.Contract):
+    storage: gl.TreeMap[gl.Address, str]
 
     # constructor
     def __init__(self):
@@ -18,7 +18,7 @@ class UserStorage(gl.Contract):
 
     @gl.public.view
     def get_account_storage(self, account_address: str) -> str:
-        return self.storage[Address(account_address)]
+        return self.storage[gl.Address(account_address)]
 
     @gl.public.write
     def update_storage(self, new_storage: str) -> None:

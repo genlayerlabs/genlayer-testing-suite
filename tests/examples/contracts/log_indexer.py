@@ -1,28 +1,28 @@
 # v0.1.0
 # {
 #   "Seq": [
-#     { "Depends": "py-lib-genlayer-embeddings:09h0i209wrzh4xzq86f79c60x0ifs7xcjwl53ysrnw06i54ddxyi" },
+#     { "Depends": "py-lib-genlayer-embeddings:latest" },
 #     { "Depends": "py-genlayer:latest" }
 #   ]
 # }
 
 import numpy as np
-from genlayer import *
+import genlayer as gl
 import genlayer_embeddings as gle
 
 from dataclasses import dataclass
 import typing
 
 
-@allow_storage
+@gl.storage.allow
 @dataclass
 class StoreValue:
-    log_id: u256
+    log_id: gl.u256
     text: str
 
 
 # contract class
-class LogIndexer(gl.Contract):
+class LogIndexer(gl.contract.Contract):
     vector_store: gle.VecDB[np.float32, typing.Literal[384], StoreValue]
 
     def __init__(self):
@@ -53,14 +53,14 @@ class LogIndexer(gl.Contract):
     @gl.public.write
     def add_log(self, log: str, log_id: int) -> None:
         emb = self.get_embedding(log)
-        self.vector_store.insert(emb, StoreValue(text=log, log_id=u256(log_id)))
+        self.vector_store.insert(emb, StoreValue(text=log, log_id=gl.u256(log_id)))
 
     @gl.public.write
     def update_log(self, log_id: int, log: str) -> None:
         emb = self.get_embedding(log)
         for elem in self.vector_store.knn(emb, 2):
             if elem.value.text == log:
-                elem.value.log_id = u256(log_id)
+                elem.value.log_id = gl.u256(log_id)
 
     @gl.public.write
     def remove_log(self, id: int) -> None:

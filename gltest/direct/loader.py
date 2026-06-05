@@ -25,7 +25,6 @@ from .sdk_compat import (
     import_address,
     import_calldata,
     import_lazy,
-    install_star_import_compat,
 )
 
 
@@ -57,13 +56,10 @@ def load_contract_class(
     #    (genlayer reads message from fd 0 at import time)
     _inject_message_to_fd0(vm)
 
-    # 4. Keep older star-import contracts usable with current GenVM SDKs.
-    install_star_import_compat()
-
-    # 5. Patch get_type_hints for PEP 695 compat (Python 3.12.0-3.12.7)
+    # 4. Patch get_type_hints for PEP 695 compat (Python 3.12.0-3.12.7)
     _patch_get_type_hints_for_pep695()
 
-    # 6. Load the contract module
+    # 5. Load the contract module
     module = _load_module(contract_path)
 
     contract_cls = _find_contract_class(module)
@@ -134,7 +130,7 @@ def _patch_get_type_hints_for_pep695() -> None:
 
 
 def _patch_run_nondet_for_direct_mode() -> None:
-    """Replace gl.vm.run_nondet with a direct-mode version.
+    """Replace genlayer.vm.run_nondet with direct-mode versions.
 
     The SDK's run_nondet pickles leader_fn via cloudpickle to pass through
     the WASM boundary. In direct mode there's no WASM, and the closure
@@ -142,7 +138,7 @@ def _patch_run_nondet_for_direct_mode() -> None:
     We bypass pickling by calling leader_fn() directly.
     """
     try:
-        import genlayer.gl.vm as gl_vm
+        import genlayer.vm as gl_vm
     except ImportError:
         return
 
@@ -163,9 +159,12 @@ def _patch_run_nondet_for_direct_mode() -> None:
         vm._captured_validators.append((result, leader_fn, validator_fn))
         return result
 
-    def _direct_run_nondet_unsafe(leader_fn, validator_fn, /):
+    def _direct_run_nondet_default(leader_fn, validator_fn, /, **kwargs):
         from . import wasi_mock
         vm = wasi_mock.get_vm()
+        if vm._check_pickling:
+            _validate_pickling(leader_fn, "leader_fn")
+            _validate_pickling(validator_fn, "validator_fn")
         vm._in_nondet = True
         try:
             result = leader_fn()
@@ -174,7 +173,6 @@ def _patch_run_nondet_for_direct_mode() -> None:
         vm._captured_validators.append((result, leader_fn, validator_fn))
         return result
 
-    # lazy-api compat: eq_principle.strict_eq calls vm.run_nondet_unsafe.lazy()
     # The SDK uses @_lazy_api which attaches .lazy to the eager function.
     # .lazy must return a Lazy[T] wrapper instead of the raw value.
     Lazy = import_lazy()
@@ -182,16 +180,17 @@ def _patch_run_nondet_for_direct_mode() -> None:
     def _lazy_run_nondet(leader_fn, validator_fn, /, **kwargs):
         return Lazy(lambda: _direct_run_nondet(leader_fn, validator_fn, **kwargs))
 
-    def _lazy_run_nondet_unsafe(leader_fn, validator_fn, /):
-        return Lazy(lambda: _direct_run_nondet_unsafe(leader_fn, validator_fn))
+    def _lazy_run_nondet_default(leader_fn, validator_fn, /, **kwargs):
+        return Lazy(
+            lambda: _direct_run_nondet_default(leader_fn, validator_fn, **kwargs)
+        )
 
     _direct_run_nondet.lazy = _lazy_run_nondet
-    _direct_run_nondet_unsafe.lazy = _lazy_run_nondet_unsafe
+    _direct_run_nondet_default.lazy = _lazy_run_nondet_default
 
     gl_vm.run_nondet = _direct_run_nondet
-    gl_vm.run_nondet_unsafe = _direct_run_nondet_unsafe
+    gl_vm.run_nondet_default = _direct_run_nondet_default
     gl_vm._direct_mode_patched = True
-    gl_vm._direct_mode_unsafe_patched = True
 
     # Also mock embeddings (ONNX model not available in direct mode)
     _mock_embeddings_for_direct_mode()
@@ -352,7 +351,7 @@ def _find_contract_class(module: Any) -> Optional[Type[Any]]:
 
         # Second priority: inherits from Contract
         for base in obj.__mro__:
-            if base.__name__ in ('Contract', 'gl.Contract'):
+            if base.__name__ == 'Contract':
                 return obj
 
         # Third priority: has storage-like annotations
@@ -471,25 +470,14 @@ def _allocate_contract(
 ) -> Any:
     """Allocate and initialize a contract instance."""
     try:
-        try:
-            from genlayer.py.storage import Root, ROOT_SLOT_ID
-            from genlayer.py.storage._internal.generate import (
-                ORIGINAL_INIT_ATTR,
-                _storage_build,
-                Lit,
-            )
+        from genlayer.storage import ROOT_SLOT_ID
+        from genlayer.storage._internal.generate import (
+            ORIGINAL_INIT_ATTR,
+            _BuilderCtx,
+            _storage_build,
+        )
 
-            td = _storage_build(contract_cls, {})
-            assert not isinstance(td, Lit)
-        except ImportError:
-            from genlayer.storage import Root, ROOT_SLOT_ID
-            from genlayer.storage._internal.generate import (
-                ORIGINAL_INIT_ATTR,
-                _BuilderCtx,
-                _storage_build,
-            )
-
-            td = _storage_build(_BuilderCtx.empty(), contract_cls)
+        td = _storage_build(_BuilderCtx.empty(), contract_cls)
 
         # Use the VM's storage manager
         slot = vm._storage.get_store_slot(ROOT_SLOT_ID)
@@ -512,10 +500,7 @@ def _allocate_contract(
         pass
 
     try:
-        try:
-            from genlayer.py.storage import Root
-        except ImportError:
-            from genlayer.storage import Root
+        from genlayer.storage import Root
 
         Root.MANAGER = vm._storage
 

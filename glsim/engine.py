@@ -194,7 +194,7 @@ class SimEngine:
         self._storages[addr_key] = storage
         self.vm._storage = storage
 
-        # Set gl.message so __init__ can read contract_address if needed
+        # Set genlayer.message so __init__ can read contract_address if needed
         self._set_message_context(
             contract_address=addr_bytes,
             sender=self.vm.sender,
@@ -210,9 +210,9 @@ class SimEngine:
             instance = deploy_contract(path, self.vm, *args, sdk_version=None, **kwargs)
 
         # deploy_contract() may clobber vm._contract_address with sha256(path) —
-        # restore the real address and sync gl.message.
+        # restore the real address and sync genlayer.message.
         self.vm._contract_address = addr_bytes
-        self._sync_gl_message_contract_address(addr_bytes)
+        self._sync_message_contract_address(addr_bytes)
 
         self._instances[addr_key] = instance
 
@@ -270,12 +270,12 @@ class SimEngine:
         if storage is not None:
             self.vm._storage = storage
 
-        # Update gl.message so contract code can read contract_address/sender
+        # Update genlayer.message so contract code can read contract_address/sender
         self._set_message_context(
             contract_address=addr_bytes,
             sender=self.vm.sender,
         )
-        self._sync_gl_message_contract_address(addr_bytes)
+        self._sync_message_contract_address(addr_bytes)
 
         method = getattr(instance, method_name, None)
         if method is None:
@@ -593,16 +593,13 @@ class SimEngine:
     def _reset_contract_registry() -> None:
         """Reset the genlayer SDK's global contract class registry.
 
-        The SDK only allows one Contract subclass. Different SDK versions
-        use different variable names (``__known_contact__`` vs
-        ``__known_contract__``). We clear whichever exists.
+        The SDK only allows one Contract subclass per loaded module.
         """
-        mod = sys.modules.get("genlayer.gl.genvm_contracts")
+        mod = sys.modules.get("genlayer.contract")
         if mod is None:
             return
-        for attr in ("__known_contact__", "__known_contract__"):
-            if hasattr(mod, attr):
-                setattr(mod, attr, None)
+        if hasattr(mod, "__known_contract__"):
+            setattr(mod, "__known_contract__", None)
 
     def _install_live_handlers(self) -> None:
         """Install live web/LLM handlers on the VM context."""
@@ -627,13 +624,10 @@ class SimEngine:
         self.vm._gl_call_hook = hook
 
     def _handle_deploy_in_contract(self, vm: Any, data: Dict) -> bytes:
-        """Handle gl.deploy_contract() from within a running contract."""
+        """Handle gl.contract.deploy() from within a running contract."""
         calldata = import_calldata()
         Address = import_address()
-        try:
-            from genlayer.py._internal import create2_address
-        except ImportError:
-            from genlayer._internal import create2_address
+        from genlayer._internal import create2_address
         self._ensure_direct_mode_runtime_patches()
 
         code = data.get('code', b'')
@@ -676,14 +670,14 @@ class SimEngine:
         vm._storage = child_storage
         vm._contract_address = child_addr_bytes
 
-        # Swap gl.message to child context (like _handle_call_in_contract does)
+        # Swap genlayer.message to child context (like _handle_call_in_contract does)
         # so that child's __init__ sees the correct contract_address & sender.
         saved_message = self._swap_message_context(
             vm,
             sender=parent_contract_address,
             contract_address=child_addr_bytes,
         )
-        self._sync_gl_message_contract_address(child_addr_bytes)
+        self._sync_message_contract_address(child_addr_bytes)
 
         try:
             # Deploy child contract.
@@ -735,7 +729,7 @@ class SimEngine:
         return calldata.encode(Address(child_addr_bytes))
 
     def _handle_call_in_contract(self, vm: Any, data: Dict) -> bytes:
-        """Handle gl.contract_at().view().method() from within a running contract."""
+        """Handle gl.contract.get_at().view().method() from within a running contract."""
         calldata = import_calldata()
         Address = import_address()
         self._ensure_direct_mode_runtime_patches()
@@ -771,7 +765,7 @@ class SimEngine:
             vm._storage = target_storage
         vm._contract_address = bytes.fromhex(addr_key[2:])
 
-        # Swap gl.message context
+        # Swap genlayer.message context
         saved_message = self._swap_message_context(
             vm,
             sender=parent_contract_address,
@@ -794,7 +788,7 @@ class SimEngine:
             self._restore_message_context(saved_message)
 
     def _handle_post_in_contract(self, vm: Any, data: Dict) -> Dict:
-        """Handle gl.contract_at().emit().method() — enqueue for after current call."""
+        """Handle gl.contract.get_at().emit().method() — enqueue for after current call."""
         Address = import_address()
 
         address = data.get('address')
@@ -830,11 +824,11 @@ class SimEngine:
 
     @staticmethod
     def _swap_message_context(vm: Any, sender: Any, contract_address: Any) -> Optional[Dict]:
-        """Swap gl.message for cross-contract calls. Returns saved state."""
-        if 'genlayer.gl' not in sys.modules:
+        """Swap genlayer.message for cross-contract calls. Returns saved state."""
+        message = sys.modules.get('genlayer.message')
+        if message is None:
             return None
         try:
-            gl = sys.modules['genlayer.gl']
             Address = import_address()
 
             if isinstance(sender, bytes):
@@ -842,31 +836,32 @@ class SimEngine:
             if isinstance(contract_address, bytes):
                 contract_address = Address(contract_address)
 
-            saved = {}
-            if hasattr(gl, 'message') and gl.message is not None:
-                saved['message'] = gl.message
-                gl.message = gl.MessageType(
-                    contract_address=contract_address,
-                    sender_address=sender,
-                    origin_address=gl.message.origin_address,
-                    value=gl.message.value,
-                    chain_id=gl.message.chain_id,
-                )
-                sync_message_context(
-                    contract_address=contract_address,
-                    sender_address=sender,
-                )
+            fields = (
+                "contract_address",
+                "sender_address",
+                "origin_address",
+                "value",
+                "chain_id",
+            )
+            saved = {
+                field: getattr(message, field)
+                for field in fields
+                if hasattr(message, field)
+            }
+            sync_message_context(
+                contract_address=contract_address,
+                sender_address=sender,
+            )
             return saved
-        except (ImportError, AttributeError):
+        except ImportError:
             return None
 
     @staticmethod
     def _set_message_context(contract_address: Any, sender: Any) -> None:
-        """Set gl.message for top-level calls (call_method / deploy)."""
-        if 'genlayer.gl' not in sys.modules:
+        """Set genlayer.message for top-level calls (call_method / deploy)."""
+        if 'genlayer.message' not in sys.modules:
             return
         try:
-            gl = sys.modules['genlayer.gl']
             Address = import_address()
 
             if isinstance(contract_address, bytes):
@@ -874,38 +869,21 @@ class SimEngine:
             if isinstance(sender, bytes):
                 sender = Address(sender)
 
-            if hasattr(gl, 'message') and gl.message is not None:
-                gl.message = gl.MessageType(
-                    contract_address=contract_address,
-                    sender_address=sender,
-                    origin_address=gl.message.origin_address,
-                    value=gl.message.value,
-                    chain_id=gl.message.chain_id,
-                )
-                sync_message_context(
-                    contract_address=contract_address,
-                    sender_address=sender,
-                )
-        except (ImportError, AttributeError):
+            sync_message_context(
+                contract_address=contract_address,
+                sender_address=sender,
+            )
+        except ImportError:
             pass
 
     @staticmethod
     def _restore_message_context(saved: Optional[Dict]) -> None:
-        """Restore gl.message after cross-contract call."""
+        """Restore genlayer.message after cross-contract call."""
         if saved is None:
             return
-        gl = sys.modules.get('genlayer.gl')
-        if gl is None:
+        if sys.modules.get('genlayer.message') is None:
             return
-        if 'message' in saved:
-            gl.message = saved['message']
-            sync_message_context(
-                contract_address=gl.message.contract_address,
-                sender_address=gl.message.sender_address,
-                origin_address=gl.message.origin_address,
-                value=gl.message.value,
-                chain_id=gl.message.chain_id,
-            )
+        sync_message_context(**saved)
 
     @staticmethod
     def _install_cloudpickle_bypass() -> None:
@@ -939,26 +917,15 @@ class SimEngine:
         cloudpickle.dumps = _bypass_dumps
 
     @staticmethod
-    def _sync_gl_message_contract_address(addr_bytes: bytes) -> None:
-        """Update gl.message.contract_address to match vm._contract_address."""
-        if 'genlayer.gl' not in sys.modules:
+    def _sync_message_contract_address(addr_bytes: bytes) -> None:
+        """Update genlayer.message.contract_address to match vm._contract_address."""
+        if 'genlayer.message' not in sys.modules:
             return
         try:
-            gl = sys.modules['genlayer.gl']
             Address = import_address()
             new_addr = Address(addr_bytes)
-            if hasattr(gl, 'message') and gl.message is not None:
-                gl.message = gl.MessageType(
-                    contract_address=new_addr,
-                    sender_address=gl.message.sender_address,
-                    origin_address=gl.message.origin_address,
-                    value=gl.message.value,
-                    chain_id=gl.message.chain_id,
-                )
-            if hasattr(gl, 'message_raw') and gl.message_raw is not None:
-                gl.message_raw['contract_address'] = new_addr
             sync_message_context(contract_address=new_addr)
-        except (ImportError, AttributeError):
+        except ImportError:
             pass
 
     @staticmethod
