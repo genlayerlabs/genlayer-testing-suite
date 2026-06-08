@@ -101,7 +101,7 @@ def run_consensus(
 
 def _run_validators(vm, captured, num_validators):
     """Run captured validator_fns for each validator. Returns list of votes."""
-    import genlayer.gl.vm as gl_vm
+    import genlayer.vm as gl_vm
 
     votes = []
     for _ in range(num_validators):

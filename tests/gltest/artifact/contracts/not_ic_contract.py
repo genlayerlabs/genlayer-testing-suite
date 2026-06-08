@@ -1,6 +1,6 @@
-# { "Depends": "py-genlayer:test" }
+# { "Depends": "py-genlayer:latest" }
 
-from genlayer import *
+import genlayer as gl
 
 
 # contract class that is not an IC contract

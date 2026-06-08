@@ -972,16 +972,16 @@ gltest --contracts-dir /path/to/contracts
 
 ### Contract Structure Issues
 
-Contracts must inherit from `gl.Contract`:
+Contracts must inherit from `gl.contract.Contract`:
 
 ```python
 # Correct
-from genlayer import *
+import genlayer as gl
 
-class MyContract(gl.Contract):
+class MyContract(gl.contract.Contract):
     pass
 
-# Wrong — missing gl.Contract inheritance
+# Wrong — missing gl.contract.Contract inheritance
 class MyContract:
     pass
 ```

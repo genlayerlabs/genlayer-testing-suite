@@ -3,14 +3,14 @@
 
 import json
 
-from genlayer import *
+import genlayer as gl
 
 
-class LlmErc20(gl.Contract):
-    balances: TreeMap[Address, u256]
+class LlmErc20(gl.contract.Contract):
+    balances: gl.TreeMap[gl.Address, gl.u256]
 
     def __init__(self, total_supply: int) -> None:
-        self.balances[gl.message.sender_address] = u256(total_supply)
+        self.balances[gl.message.sender_address] = gl.u256(total_supply)
 
     @gl.public.write
     def transfer(self, amount: int, to_address: str) -> None:
@@ -20,7 +20,7 @@ The current balance for all users in JSON format is:
 {json.dumps(self.get_balances())}
 The transaction to compute is: {{
 sender: "{gl.message.sender_address.as_hex}",
-recipient: "{Address(to_address).as_hex}",
+recipient: "{gl.Address(to_address).as_hex}",
 amount: {amount},
 }}
 
@@ -59,7 +59,7 @@ The total sum of all balances should remain the same before and after the transa
         print("final_result: ", final_result)
         result_json = json.loads(final_result)
         for k, v in result_json["updated_balances"].items():
-            self.balances[Address(k)] = v
+            self.balances[gl.Address(k)] = v
 
     @gl.public.view
     def get_balances(self) -> dict[str, int]:
@@ -67,4 +67,4 @@ The total sum of all balances should remain the same before and after the transa
 
     @gl.public.view
     def get_balance_of(self, address: str) -> int:
-        return self.balances.get(Address(address), 0)
+        return self.balances.get(gl.Address(address), 0)

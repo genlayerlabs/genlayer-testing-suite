@@ -100,7 +100,7 @@ GenLayer contracts are Python classes:
 ```python
 import genlayer as gl
 
-class MyContract(gl.Contract):
+class MyContract(gl.contract.Contract):
     def __init__(self, initial_value: int):
         self.value = initial_value
     
