@@ -1,5 +1,6 @@
+import inspect
 from dataclasses import dataclass
-from typing import Type, Union, Optional, List, Any
+from typing import Type, Union, Optional, List, Any, Dict, Literal
 from pathlib import Path
 from eth_typing import (
     Address,
@@ -24,6 +25,26 @@ from gltest.exceptions import DeploymentError
 from gltest_cli.config.general import get_general_config
 from gltest.utils import extract_contract_address
 from gltest.types import TransactionContext
+
+
+def _fees_with_value(fees: Optional[Dict[str, Any]], fee_value: Optional[int]):
+    if fee_value is None:
+        return fees
+    return {**(fees or {}), "feeValue": fee_value}
+
+
+def _fee_kwargs(call, fees: Optional[Dict[str, Any]], fee_value: Optional[int]):
+    if "fee_value" in inspect.signature(call).parameters:
+        return {"fees": fees, "fee_value": fee_value}
+    return {"fees": _fees_with_value(fees, fee_value)}
+
+
+def _wait_until_from_status(
+    status: TransactionStatus,
+) -> Literal["decided", "finalized"]:
+    if status == TransactionStatus.FINALIZED:
+        return "finalized"
+    return "decided"
 
 
 @dataclass
@@ -110,6 +131,9 @@ class ContractFactory:
         args: Optional[List[CalldataEncodable]] = None,
         account: Optional[LocalAccount] = None,
         consensus_max_rotations: Optional[int] = None,
+        fees: Optional[Dict[str, Any]] = None,
+        fee_value: Optional[int] = None,
+        wait_until: Optional[Literal["decided", "finalized"]] = None,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
         wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
@@ -127,6 +151,9 @@ class ContractFactory:
             args=args,
             account=account,
             consensus_max_rotations=consensus_max_rotations,
+            fees=fees,
+            fee_value=fee_value,
+            wait_until=wait_until,
             wait_interval=wait_interval,
             wait_retries=wait_retries,
             wait_transaction_status=wait_transaction_status,
@@ -146,6 +173,9 @@ class ContractFactory:
         args: Optional[List[CalldataEncodable]] = None,
         account: Optional[LocalAccount] = None,
         consensus_max_rotations: Optional[int] = None,
+        fees: Optional[Dict[str, Any]] = None,
+        fee_value: Optional[int] = None,
+        wait_until: Optional[Literal["decided", "finalized"]] = None,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
         wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
@@ -189,11 +219,13 @@ class ContractFactory:
                 account=account,
                 consensus_max_rotations=consensus_max_rotations,
                 leader_only=leader_only,
+                **_fee_kwargs(client.deploy_contract, fees, fee_value),
                 sim_config=sim_config,
             )
             tx_receipt = client.wait_for_transaction_receipt(
                 transaction_hash=tx_hash,
-                status=wait_transaction_status,
+                wait_until=wait_until
+                or _wait_until_from_status(wait_transaction_status),
                 interval=actual_wait_interval,
                 retries=actual_wait_retries,
             )
@@ -202,7 +234,9 @@ class ContractFactory:
                 for triggered_transaction in triggered_transactions:
                     client.wait_for_transaction_receipt(
                         transaction_hash=triggered_transaction,
-                        status=wait_triggered_transactions_status,
+                        wait_until=_wait_until_from_status(
+                            wait_triggered_transactions_status
+                        ),
                         interval=actual_wait_interval,
                         retries=actual_wait_retries,
                     )

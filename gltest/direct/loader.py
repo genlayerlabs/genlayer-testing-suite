@@ -27,6 +27,19 @@ from .sdk_compat import (
     import_lazy,
 )
 
+_DIRECT_IGNORED_TX_KWARGS = {
+    "fees",
+    "fee_value",
+    "wait_until",
+    "wait_transaction_status",
+    "wait_interval",
+    "wait_retries",
+    "wait_triggered_transactions",
+    "wait_triggered_transactions_status",
+    "transaction_context",
+    "consensus_max_rotations",
+}
+
 
 def load_contract_class(
     contract_path: Path,
@@ -79,6 +92,7 @@ def deploy_contract(
 ) -> Any:
     """Deploy a contract and return an instance."""
     contract_path = Path(contract_path).resolve()
+    kwargs = _drop_direct_transaction_kwargs(kwargs)
 
     addr_hash = hashlib.sha256(str(contract_path).encode()).digest()[:20]
     vm._contract_address = addr_hash
@@ -98,6 +112,14 @@ def deploy_contract(
     instance = _allocate_contract(contract_cls, vm, *args, **kwargs)
 
     return _make_contract_proxy(instance)
+
+
+def _drop_direct_transaction_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in kwargs.items()
+        if key not in _DIRECT_IGNORED_TX_KWARGS
+    }
 
 
 def _patch_get_type_hints_for_pep695() -> None:
@@ -437,6 +459,7 @@ def _make_contract_proxy(instance: Any) -> Any:
             if not name.startswith('_') and callable(attr):
                 @functools.wraps(attr)
                 def _wrapped(*args: Any, **kwargs: Any) -> Any:
+                    kwargs = _drop_direct_transaction_kwargs(kwargs)
                     args, kwargs = _calldata_roundtrip_args(args, kwargs)
                     return attr(*args, **kwargs)
                 return _wrapped

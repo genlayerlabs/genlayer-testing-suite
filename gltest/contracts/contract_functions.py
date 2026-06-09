@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Optional, Dict, Any
+from typing import Callable, Optional, Dict, Any, Literal
 from gltest.types import TransactionStatus, TransactionHashVariant, TransactionContext
 
 
@@ -28,6 +28,9 @@ class ContractFunction:
         self,
         value: int = 0,
         consensus_max_rotations: Optional[int] = None,
+        fees: Optional[Dict[str, Any]] = None,
+        fee_value: Optional[int] = None,
+        wait_until: Optional[Literal["decided", "finalized"]] = None,
         wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
@@ -41,6 +44,9 @@ class ContractFunction:
         return self.transact_method(
             value=value,
             consensus_max_rotations=consensus_max_rotations,
+            fees=fees,
+            fee_value=fee_value,
+            wait_until=wait_until,
             wait_transaction_status=wait_transaction_status,
             wait_interval=wait_interval,
             wait_retries=wait_retries,

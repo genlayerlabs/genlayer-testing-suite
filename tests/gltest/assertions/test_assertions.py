@@ -1,16 +1,22 @@
 from gltest.assertions import tx_execution_succeeded, tx_execution_failed
 
 GENLAYER_SUCCESS_TRANSACTION = {
-    "consensus_data": {"leader_receipt": [{"execution_result": "SUCCESS"}]}
+    "status": "ACCEPTED",
+    "consensus_data": {"leader_receipt": [{"execution_result": "SUCCESS"}]},
 }
 
 GENLAYER_FAILED_TRANSACTION = {
-    "consensus_data": {"leader_receipt": [{"execution_result": "ERROR"}]}
+    "status": "ACCEPTED",
+    "consensus_data": {"leader_receipt": [{"execution_result": "ERROR"}]},
 }
 
-GENLAYER_EMPTY_LEADER_RECEIPT = {"consensus_data": {"leader_receipt": []}}
+GENLAYER_EMPTY_LEADER_RECEIPT = {
+    "status": "ACCEPTED",
+    "consensus_data": {"leader_receipt": []},
+}
 
 GENLAYER_GENVM_TRANSACTION = {
+    "status": "ACCEPTED",
     "consensus_data": {
         "leader_receipt": [
             {
@@ -25,6 +31,7 @@ GENLAYER_GENVM_TRANSACTION = {
 }
 
 GENLAYER_GENVM_EMPTY_STDERR = {
+    "status": "ACCEPTED",
     "consensus_data": {
         "leader_receipt": [
             {
@@ -39,6 +46,7 @@ GENLAYER_GENVM_EMPTY_STDERR = {
 }
 
 GENLAYER_GENVM_NO_STDOUT = {
+    "status": "ACCEPTED",
     "consensus_data": {
         "leader_receipt": [
             {
@@ -50,6 +58,7 @@ GENLAYER_GENVM_NO_STDOUT = {
 }
 
 GENLAYER_GENVM_FAILED = {
+    "status": "ACCEPTED",
     "consensus_data": {
         "leader_receipt": [
             {
@@ -73,6 +82,48 @@ def test_with_successful_transaction():
     """
     assert tx_execution_succeeded(GENLAYER_SUCCESS_TRANSACTION) is True
     assert tx_execution_failed(GENLAYER_SUCCESS_TRANSACTION) is False
+
+
+def test_with_successful_testnet_transaction():
+    transaction = {
+        "status": "ACCEPTED",
+        "tx_execution_result_name": "FINISHED_WITH_RETURN",
+    }
+
+    assert tx_execution_succeeded(transaction) is True
+    assert tx_execution_failed(transaction) is False
+
+
+def test_with_successful_numeric_testnet_transaction():
+    transaction = {
+        "status": 5,
+        "tx_execution_result": 1,
+    }
+
+    assert tx_execution_succeeded(transaction) is True
+    assert tx_execution_failed(transaction) is False
+
+
+def test_undetermined_transaction_is_not_successful():
+    transaction = {
+        "status": "UNDETERMINED",
+        "tx_execution_result_name": "FINISHED_WITH_RETURN",
+        "consensus_data": {"leader_receipt": [{"execution_result": "SUCCESS"}]},
+    }
+
+    assert tx_execution_succeeded(transaction) is False
+    assert tx_execution_failed(transaction) is True
+
+
+def test_error_transaction_is_not_successful():
+    transaction = {
+        "status": "ACCEPTED",
+        "tx_execution_result_name": "FINISHED_WITH_ERROR",
+        "consensus_data": {"leader_receipt": [{"execution_result": "ERROR"}]},
+    }
+
+    assert tx_execution_succeeded(transaction) is False
+    assert tx_execution_failed(transaction) is True
 
 
 def test_with_failed_transaction():
