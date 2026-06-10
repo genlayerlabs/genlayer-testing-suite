@@ -1,6 +1,9 @@
 name: Tests
 
 on:
+  push:
+    branches:
+      - 'v*-dev'
   workflow_call:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
@@ -31,6 +34,8 @@ jobs:
 
       - name: Action | Run gltest tests
         run: uv run gltest tests/gltest/
+      - name: Run glsim tests
+        run: uv run gltest tests/glsim/
 
       # Unit tests only — integration tests here download the GenVM SDK.
       - name: Action | Run direct runner unit tests
