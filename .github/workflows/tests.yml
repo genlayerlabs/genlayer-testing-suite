@@ -27,7 +27,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Setup | Install dependencies
-        run: uv sync --python ${{ matrix.python-version }}
+        run: uv sync --extra sim --python ${{ matrix.python-version }}
 
       - name: Action | Run gltest cli tests
         run: uv run gltest tests/gltest_cli/
