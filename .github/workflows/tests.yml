@@ -1,6 +1,9 @@
 name: Tests
 
 on:
+  push:
+    branches:
+      - 'v*-dev'
   workflow_call:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
@@ -24,13 +27,15 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Setup | Install dependencies
-        run: uv sync --python ${{ matrix.python-version }}
+        run: uv sync --extra sim --python ${{ matrix.python-version }}
 
       - name: Action | Run gltest cli tests
         run: uv run gltest tests/gltest_cli/
 
       - name: Action | Run gltest tests
         run: uv run gltest tests/gltest/
+      - name: Run glsim tests
+        run: uv run gltest tests/glsim/
 
       # Unit tests only — integration tests here download the GenVM SDK.
       - name: Action | Run direct runner unit tests
