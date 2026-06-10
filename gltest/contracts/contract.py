@@ -13,6 +13,7 @@ from gltest.types import (
 from genlayer_py.types import SimConfig
 from typing import List, Any, Optional, Dict, Callable, Literal
 from gltest_cli.config.general import get_general_config
+from gltest.fees import maybe_record_fee_observation
 from .contract_functions import ContractFunction
 from .stats_collector import StatsCollector, SimulationConfig
 
@@ -145,6 +146,9 @@ def write_contract_wrapper(
             wait_until=wait_until or _wait_until_from_status(wait_transaction_status),
             interval=actual_wait_interval,
             retries=actual_wait_retries,
+        )
+        maybe_record_fee_observation(
+            kind="method", method_name=method_name, receipt=receipt
         )
         if wait_triggered_transactions:
             triggered_transactions = receipt.get("triggered_transactions", [])

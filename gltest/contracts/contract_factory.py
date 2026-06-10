@@ -23,6 +23,7 @@ from gltest.types import TransactionStatus, GenLayerTransaction, CalldataEncodab
 from gltest.assertions import tx_execution_failed
 from gltest.exceptions import DeploymentError
 from gltest_cli.config.general import get_general_config
+from gltest.fees import maybe_record_fee_observation
 from gltest.utils import extract_contract_address
 from gltest.types import TransactionContext
 
@@ -229,6 +230,7 @@ class ContractFactory:
                 interval=actual_wait_interval,
                 retries=actual_wait_retries,
             )
+            maybe_record_fee_observation(kind="deploy", receipt=tx_receipt)
             if wait_triggered_transactions:
                 triggered_transactions = tx_receipt.get("triggered_transactions", [])
                 for triggered_transaction in triggered_transactions:

@@ -218,6 +218,47 @@ tx_receipt = contract.update_storage(args=["new_value"]).transact(
 assert tx_execution_succeeded(tx_receipt)
 ```
 
+### Fee Profiling
+
+Generate a frontend-ready fee profile from the deploys and write transactions
+executed during a gltest session:
+
+```bash
+gltest --fee-profile artifacts/fee-profile.json
+gltest --fee-profile artifacts/fee-profile.json --fee-profile-headroom 1.5
+```
+
+`--fee-profile` writes JSON that can be passed verbatim as `suggestions` to
+`createTransactionKit` from `@genlayer/transaction-kit`. The optional
+`--fee-profile-headroom` multiplier defaults to `1.25`. Each value is the
+maximum observed consumed fee across the session multiplied by headroom, rounded
+up, and emitted as a decimal string.
+
+```json
+{
+  "version": 1,
+  "network": "localnet",
+  "measuredAt": "2026-06-10T12:00:00Z",
+  "deploy": {
+    "executionBudgetPerRound": "625000",
+    "totalMessageFees": "0"
+  },
+  "methods": {
+    "create_bet": {
+      "executionBudgetPerRound": "312500",
+      "totalMessageFees": "12500"
+    }
+  }
+}
+```
+
+Fee profiling is currently measurable on Studio-based networks whose receipts
+include consumed fee data. Testnet receipts do not expose consumed fees yet, and
+direct/sim mode does not go through these receipt paths. Time-unit allocations
+are not measurable from backend receipts, so `leaderTimeunitsAllocation` and
+`validatorTimeunitsAllocation` are intentionally omitted; downstream presets or
+network defaults should supply them.
+
 ### Assertions
 
 ```python

@@ -8,6 +8,7 @@ from gltest_cli.config.constants import (
     DEFAULT_WAIT_INTERVAL,
     DEFAULT_WAIT_RETRIES,
     DEFAULT_LEADER_ONLY,
+    DEFAULT_FEE_PROFILE_HEADROOM,
     CHAINS,
 )
 
@@ -22,6 +23,8 @@ class PluginConfig:
     network_name: Optional[str] = None
     leader_only: bool = False
     chain_type: Optional[str] = None
+    fee_profile_path: Optional[Path] = None
+    fee_profile_headroom: Optional[float] = None
 
 
 @dataclass
@@ -227,6 +230,14 @@ class GeneralConfig:
             network_config = self.user_config.networks[network_name]
             return network_config.leader_only
         return DEFAULT_LEADER_ONLY
+
+    def get_fee_profile_path(self) -> Optional[Path]:
+        return self.plugin_config.fee_profile_path
+
+    def get_fee_profile_headroom(self) -> float:
+        if self.plugin_config.fee_profile_headroom is not None:
+            return self.plugin_config.fee_profile_headroom
+        return DEFAULT_FEE_PROFILE_HEADROOM
 
     def check_local_rpc(self) -> bool:
         return self.get_chain_type() == "localnet"
