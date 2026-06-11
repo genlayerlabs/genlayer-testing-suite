@@ -16,6 +16,7 @@ from gltest_cli.config.constants import (
     DEFAULT_LEADER_ONLY,
     CHAINS,
 )
+from gltest.fees import get_fee_profile_collector, reset_fee_profile_collector
 
 
 def pytest_addoption(parser):
@@ -75,6 +76,18 @@ def pytest_addoption(parser):
         default=None,
         help=f"Chain type (possible values: {', '.join(CHAINS)})",
     )
+    group.addoption(
+        "--fee-profile",
+        action="store",
+        default=None,
+        help="Path to write a JSON fee profile for observed deploys and writes",
+    )
+    group.addoption(
+        "--fee-profile-headroom",
+        action="store",
+        default=None,
+        help="Multiplier applied to observed fee maxima in --fee-profile output",
+    )
 
 
 def pytest_configure(config):
@@ -112,6 +125,8 @@ def pytest_configure(config):
         network = config.getoption("--network")
         leader_only = config.getoption("--leader-only")
         chain_type = config.getoption("--chain-type")
+        fee_profile = config.getoption("--fee-profile")
+        fee_profile_headroom = config.getoption("--fee-profile-headroom")
 
         plugin_config = PluginConfig()
         plugin_config.contracts_dir = (
@@ -130,6 +145,14 @@ def pytest_configure(config):
         plugin_config.network_name = network
         plugin_config.leader_only = leader_only
         plugin_config.chain_type = chain_type
+        plugin_config.fee_profile_path = (
+            Path(fee_profile) if fee_profile is not None else None
+        )
+        if fee_profile_headroom is not None:
+            parsed_headroom = float(fee_profile_headroom)
+            if parsed_headroom <= 0:
+                raise ValueError("--fee-profile-headroom must be greater than 0")
+            plugin_config.fee_profile_headroom = parsed_headroom
 
         general_config.plugin_config = plugin_config
     except Exception as e:
@@ -139,6 +162,7 @@ def pytest_configure(config):
 
 def pytest_sessionstart(session):
     try:
+        reset_fee_profile_collector()
         general_config = get_general_config()
         artifacts_dir = general_config.get_artifacts_dir()
         if artifacts_dir and artifacts_dir.exists():
@@ -167,6 +191,10 @@ def pytest_sessionstart(session):
         logger.info(
             f"  Default wait retries: {general_config.get_default_wait_retries()}"
         )
+        if general_config.get_fee_profile_path() is not None:
+            logger.info(
+                f"  Fee profile output: {general_config.get_fee_profile_path()}"
+            )
 
         if (
             general_config.get_leader_only()
@@ -180,6 +208,30 @@ def pytest_sessionstart(session):
     except Exception as e:
         logger.error(f"Gltest session start error: {e}")
         pytest.exit("gltest session start error")
+
+
+def pytest_sessionfinish(session, exitstatus):
+    try:
+        general_config = get_general_config()
+        fee_profile_path = general_config.get_fee_profile_path()
+        if fee_profile_path is None:
+            return
+
+        collector = get_fee_profile_collector()
+        profile = collector.write(
+            path=fee_profile_path,
+            network=general_config.get_network_name(),
+            headroom=general_config.get_fee_profile_headroom(),
+        )
+        logger.info(f"Wrote fee profile to {fee_profile_path}")
+        if not collector.has_observations():
+            logger.warning(
+                "Fee profile is empty; this backend may not expose consumed fee data on receipts yet"
+            )
+        elif "deploy" not in profile and not profile["methods"]:
+            logger.warning("Fee profile contains no deploy or method observations")
+    except Exception as e:
+        logger.error(f"Failed to write fee profile: {e}")
 
 
 def pytest_runtest_setup(item):
