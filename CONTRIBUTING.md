@@ -29,19 +29,11 @@ Have ideas for new features or use cases? We're eager to hear them! But first:
 
 ## Branch model
 
-This repo uses a branch-per-major release model. There is no `main`.
-
-- **`v0.29`** — current stable major (semver-zero, so 0.29 IS the major; 0.30 would be a major bump that gets its own branch).
-- **`v<next>-dev`** — when next-major work is in progress.
-- Default branch on github.com is the current stable.
-
-If you have a `main` branch from a previous checkout:
-
-```sh
-git checkout v0.29
-git branch -D main
-git remote prune origin
-```
+See [docs/BRANCHING.md](docs/BRANCHING.md) for the current release-train model.
+In short: independently releasable work may target the stable branch directly;
+multi-feature or cross-repo train work uses the active `*-dev` integration
+branch and is promoted to the matching stable branch when ready. `main` is only
+the default/static GitHub branch.
 
 ## Releases
 
@@ -161,7 +153,7 @@ The project uses automated semantic versioning based on commit messages:
 | `feat!:`, `fix!:`, or `BREAKING CHANGE:` | **Major** version bump | 1.0.0 → 2.0.0 |
 | `docs:`, `style:`, `refactor:`, `test:`, `chore:`, `build:`, `ci:` | **No** version bump | Version stays the same |
 
-**Important**: Never manually edit version numbers in `pyproject.toml` or other files. The release automation will handle all version updates automatically when PRs are merged to the main branch.
+**Important**: Never manually edit version numbers in `pyproject.toml` or other files. Releases are cut from the stable branch using the release automation described above.
 
 ### Improving Documentation
 
