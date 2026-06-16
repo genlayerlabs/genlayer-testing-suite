@@ -228,11 +228,14 @@ gltest --fee-profile artifacts/fee-profile.json
 gltest --fee-profile artifacts/fee-profile.json --fee-profile-headroom 1.5
 ```
 
-`--fee-profile` writes JSON that can be passed verbatim as `suggestions` to
-`createTransactionKit` from `@genlayer/transaction-kit`. The optional
-`--fee-profile-headroom` multiplier defaults to `1.25`. Each value is the
-maximum observed consumed fee across the session multiplied by headroom, rounded
-up, and emitted as a decimal string.
+`--fee-profile` writes JSON that can be used as developer fee suggestions by
+transaction-kit, genlayer-js, genlayer-py, or CLI-based submission flows. The optional
+`--fee-profile-headroom` multiplier defaults to `1.25`. Fee and time-unit
+values are multiplied by headroom, rounded up, and emitted as decimal strings.
+When the same method is observed in multiple tests, the profile records the
+maximum observed value for each field across all of those branches.
+`rotationsPerRound` is recorded exactly because it is a posture choice rather
+than a consumed fee amount.
 
 ```json
 {
@@ -240,13 +243,19 @@ up, and emitted as a decimal string.
   "network": "localnet",
   "measuredAt": "2026-06-10T12:00:00Z",
   "deploy": {
+    "leaderTimeunitsAllocation": "125",
+    "validatorTimeunitsAllocation": "250",
     "executionBudgetPerRound": "625000",
-    "totalMessageFees": "0"
+    "totalMessageFees": "0",
+    "rotationsPerRound": "0"
   },
   "methods": {
     "create_bet": {
+      "leaderTimeunitsAllocation": "125",
+      "validatorTimeunitsAllocation": "250",
       "executionBudgetPerRound": "312500",
-      "totalMessageFees": "12500"
+      "totalMessageFees": "12500",
+      "rotationsPerRound": "0"
     }
   }
 }
@@ -255,9 +264,9 @@ up, and emitted as a decimal string.
 Fee profiling is currently measurable on Studio-based networks whose receipts
 include consumed fee data. Testnet receipts do not expose consumed fees yet, and
 direct/sim mode does not go through these receipt paths. Time-unit allocations
-are not measurable from backend receipts, so `leaderTimeunitsAllocation` and
-`validatorTimeunitsAllocation` are intentionally omitted; downstream presets or
-network defaults should supply them.
+are recorded from the submitted fee distribution when the backend receipt
+includes it. Live price caps and `feeValue` are intentionally omitted so the SDK
+can quote them from the current network policy at transaction time.
 
 ### Assertions
 

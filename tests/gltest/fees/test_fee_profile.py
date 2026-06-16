@@ -30,6 +30,38 @@ def fee_receipt(execution_consumed, message_fees_consumed):
     }
 
 
+def studio_fee_accounting_receipt(
+    *,
+    execution_consumed=100,
+    execution_report_total=200,
+    message_consumed=10,
+    genvm_message_consumed=7,
+    leader_timeunits=100,
+    validator_timeunits=200,
+    rotations=None,
+):
+    if rotations is None:
+        rotations = [0]
+    return {
+        "status": "ACCEPTED",
+        "data": {
+            "fee_accounting": {
+                "fees_distribution": {
+                    "leaderTimeunitsAllocation": str(leader_timeunits),
+                    "validatorTimeunitsAllocation": str(validator_timeunits),
+                    "rotations": [str(rotation) for rotation in rotations],
+                },
+                "execution_fee_consumed": str(execution_consumed),
+                "message_fee_consumed": str(message_consumed),
+                "genvm_message_fee_consumed": str(genvm_message_consumed),
+                "execution_fee_report": {
+                    "totalEstimatedFee": str(execution_report_total),
+                },
+            },
+        },
+    }
+
+
 class FakeGeneralConfig:
     def __init__(self, fee_profile_path=None):
         self.fee_profile_path = fee_profile_path
@@ -89,10 +121,14 @@ def test_collector_records_max_and_applies_headroom_with_big_int():
     assert profile["version"] == 1
     assert profile["network"] == "localnet"
     assert profile["deploy"] == {
+        "leaderTimeunitsAllocation": "125",
+        "validatorTimeunitsAllocation": "250",
         "executionBudgetPerRound": "127",
         "totalMessageFees": "13",
     }
     assert profile["methods"]["create_bet"] == {
+        "leaderTimeunitsAllocation": "125",
+        "validatorTimeunitsAllocation": "250",
         "executionBudgetPerRound": "125000000000000000000",
         "totalMessageFees": "0",
     }
@@ -118,7 +154,88 @@ def test_message_fee_zero_is_recorded():
     assert profile["methods"]["create_bet"]["totalMessageFees"] == "0"
 
 
-def test_profile_shape_omits_deploy_when_unobserved_and_time_unit_keys():
+def test_current_studio_fee_accounting_shape_is_recorded():
+    collector = FeeProfileCollector()
+    collector.record_method("resolve_bet", studio_fee_accounting_receipt())
+
+    profile = collector.build_profile(network="localnet", headroom=1.25)
+
+    assert profile["methods"]["resolve_bet"] == {
+        "leaderTimeunitsAllocation": "125",
+        "validatorTimeunitsAllocation": "250",
+        "executionBudgetPerRound": "375",
+        "totalMessageFees": "13",
+        "rotationsPerRound": "0",
+    }
+
+
+def test_method_profile_uses_per_field_maxima_across_branches():
+    collector = FeeProfileCollector()
+    collector.record_method(
+        "complex_action",
+        studio_fee_accounting_receipt(
+            execution_consumed=500,
+            execution_report_total=100,
+            message_consumed=0,
+            genvm_message_consumed=0,
+            leader_timeunits=100,
+            validator_timeunits=200,
+            rotations=[0],
+        ),
+    )
+    collector.record_method(
+        "complex_action",
+        studio_fee_accounting_receipt(
+            execution_consumed=100,
+            execution_report_total=100,
+            message_consumed=800,
+            genvm_message_consumed=750,
+            leader_timeunits=80,
+            validator_timeunits=150,
+            rotations=[1],
+        ),
+    )
+
+    profile = collector.build_profile(network="localnet", headroom=1.0)
+
+    assert profile["methods"]["complex_action"] == {
+        "leaderTimeunitsAllocation": "100",
+        "validatorTimeunitsAllocation": "200",
+        "executionBudgetPerRound": "600",
+        "totalMessageFees": "800",
+        "rotationsPerRound": "1",
+    }
+
+
+def test_nested_leader_fee_accounting_shape_is_recorded():
+    collector = FeeProfileCollector()
+    collector.record_method(
+        "resolve_bet",
+        {
+            "consensus_data": {
+                "leader_receipt": [
+                    {
+                        "genvm_result": {
+                            "fee_accounting": {
+                                "execution_fee_consumed": "50",
+                                "genvm_message_fee_consumed": "9",
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+    )
+
+    profile = collector.build_profile(network="localnet", headroom=1.0)
+
+    assert profile["methods"]["resolve_bet"] == {
+        "executionBudgetPerRound": "50",
+        "totalMessageFees": "9",
+    }
+
+
+def test_profile_shape_includes_time_unit_keys_when_available():
     collector = FeeProfileCollector()
     collector.record_method("create_bet", fee_receipt(10, 5))
 
@@ -127,12 +244,12 @@ def test_profile_shape_omits_deploy_when_unobserved_and_time_unit_keys():
     assert set(profile) == {"version", "network", "measuredAt", "methods"}
     assert profile["methods"] == {
         "create_bet": {
+            "leaderTimeunitsAllocation": "100",
+            "validatorTimeunitsAllocation": "200",
             "executionBudgetPerRound": "10",
             "totalMessageFees": "5",
         }
     }
-    assert "leaderTimeunitsAllocation" not in profile["methods"]["create_bet"]
-    assert "validatorTimeunitsAllocation" not in profile["methods"]["create_bet"]
 
 
 def test_write_creates_parent_dirs_and_round_trips_json(tmp_path):
@@ -168,6 +285,8 @@ def test_transact_records_fee_profile_observation(monkeypatch, tmp_path):
         network="localnet", headroom=1.0
     )
     assert profile["methods"]["create_bet"] == {
+        "leaderTimeunitsAllocation": "100",
+        "validatorTimeunitsAllocation": "200",
         "executionBudgetPerRound": "312500",
         "totalMessageFees": "12500",
     }
@@ -196,6 +315,8 @@ def test_deploy_records_fee_profile_observation(monkeypatch, tmp_path):
         network="localnet", headroom=1.0
     )
     assert profile["deploy"] == {
+        "leaderTimeunitsAllocation": "100",
+        "validatorTimeunitsAllocation": "200",
         "executionBudgetPerRound": "625000",
         "totalMessageFees": "0",
     }

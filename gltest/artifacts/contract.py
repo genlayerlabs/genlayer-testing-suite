@@ -104,16 +104,18 @@ def _extract_contract_name_from_file(file_path: Path) -> str:
     raise ValueError(f"No valid contract class found in {file_path}")
 
 
+def _attribute_path(node: ast.expr) -> list[str]:
+    if isinstance(node, ast.Name):
+        return [node.id]
+    if isinstance(node, ast.Attribute):
+        return [*_attribute_path(node.value), node.attr]
+    return []
+
+
 def _is_genlayer_contract_base(base: ast.expr) -> bool:
-    """Return True for ``gl.contract.Contract`` inheritance."""
-    return (
-        isinstance(base, ast.Attribute)
-        and base.attr == "Contract"
-        and isinstance(base.value, ast.Attribute)
-        and base.value.attr == "contract"
-        and isinstance(base.value.value, ast.Name)
-        and base.value.value.id == "gl"
-    )
+    """Return True for supported GenLayer contract base classes."""
+    path = _attribute_path(base)
+    return path in (["gl", "contract", "Contract"], ["gl", "Contract"])
 
 
 def _create_contract_definition(
