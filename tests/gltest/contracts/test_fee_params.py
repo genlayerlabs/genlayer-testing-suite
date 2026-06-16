@@ -1,5 +1,7 @@
 from gltest.contracts.contract import Contract
 from gltest.contracts.contract_factory import ContractFactory
+from gltest.contracts.wait import wait_for_transaction_receipt
+from gltest.types import TransactionStatus
 
 
 class FakeGeneralConfig:
@@ -36,6 +38,51 @@ class FakeClient:
             "status": "ACCEPTED",
             "consensus_data": {"leader_receipt": [{"execution_result": "SUCCESS"}]},
         }
+
+
+class OldWaitClient:
+    def __init__(self):
+        self.wait_for_transaction_receipt_calls = []
+
+    def wait_for_transaction_receipt(
+        self,
+        transaction_hash,
+        status=TransactionStatus.ACCEPTED,
+        interval=3000,
+        retries=50,
+        full_transaction=False,
+    ):
+        self.wait_for_transaction_receipt_calls.append(
+            {
+                "transaction_hash": transaction_hash,
+                "status": status,
+                "interval": interval,
+                "retries": retries,
+                "full_transaction": full_transaction,
+            }
+        )
+        return {"status": "ACCEPTED"}
+
+
+def test_wait_helper_supports_old_sdk_status_signature():
+    client = OldWaitClient()
+
+    receipt = wait_for_transaction_receipt(
+        client,
+        transaction_hash="0xwrite",
+        wait_until="decided",
+        interval=1,
+        retries=2,
+    )
+
+    assert receipt["status"] == "ACCEPTED"
+    assert client.wait_for_transaction_receipt_calls[0] == {
+        "transaction_hash": "0xwrite",
+        "status": TransactionStatus.ACCEPTED,
+        "interval": 1,
+        "retries": 2,
+        "full_transaction": True,
+    }
 
 
 def test_transact_threads_fee_params_to_sdk(monkeypatch):

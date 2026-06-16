@@ -26,6 +26,7 @@ from gltest_cli.config.general import get_general_config
 from gltest.fees import maybe_record_fee_observation
 from gltest.utils import extract_contract_address
 from gltest.types import TransactionContext
+from .wait import wait_for_transaction_receipt, wait_until_from_status
 
 
 def _fees_with_value(fees: Optional[Dict[str, Any]], fee_value: Optional[int]):
@@ -38,14 +39,6 @@ def _fee_kwargs(call, fees: Optional[Dict[str, Any]], fee_value: Optional[int]):
     if "fee_value" in inspect.signature(call).parameters:
         return {"fees": fees, "fee_value": fee_value}
     return {"fees": _fees_with_value(fees, fee_value)}
-
-
-def _wait_until_from_status(
-    status: TransactionStatus,
-) -> Literal["decided", "finalized"]:
-    if status == TransactionStatus.FINALIZED:
-        return "finalized"
-    return "decided"
 
 
 @dataclass
@@ -223,10 +216,11 @@ class ContractFactory:
                 **_fee_kwargs(client.deploy_contract, fees, fee_value),
                 sim_config=sim_config,
             )
-            tx_receipt = client.wait_for_transaction_receipt(
+            tx_receipt = wait_for_transaction_receipt(
+                client,
                 transaction_hash=tx_hash,
                 wait_until=wait_until
-                or _wait_until_from_status(wait_transaction_status),
+                or wait_until_from_status(wait_transaction_status),
                 interval=actual_wait_interval,
                 retries=actual_wait_retries,
             )
@@ -234,9 +228,10 @@ class ContractFactory:
             if wait_triggered_transactions:
                 triggered_transactions = tx_receipt.get("triggered_transactions", [])
                 for triggered_transaction in triggered_transactions:
-                    client.wait_for_transaction_receipt(
+                    wait_for_transaction_receipt(
+                        client,
                         transaction_hash=triggered_transaction,
-                        wait_until=_wait_until_from_status(
+                        wait_until=wait_until_from_status(
                             wait_triggered_transactions_status
                         ),
                         interval=actual_wait_interval,

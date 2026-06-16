@@ -16,6 +16,7 @@ from gltest_cli.config.general import get_general_config
 from gltest.fees import maybe_record_fee_observation
 from .contract_functions import ContractFunction
 from .stats_collector import StatsCollector, SimulationConfig
+from .wait import wait_for_transaction_receipt, wait_until_from_status
 
 
 def _fees_with_value(fees: Optional[Dict[str, Any]], fee_value: Optional[int]):
@@ -32,14 +33,6 @@ def _fee_kwargs(
     if "fee_value" in inspect.signature(call).parameters:
         return {"fees": fees, "fee_value": fee_value}
     return {"fees": _fees_with_value(fees, fee_value)}
-
-
-def _wait_until_from_status(
-    status: TransactionStatus,
-) -> Literal["decided", "finalized"]:
-    if status == TransactionStatus.FINALIZED:
-        return "finalized"
-    return "decided"
 
 
 def read_contract_wrapper(
@@ -141,9 +134,10 @@ def write_contract_wrapper(
             **_fee_kwargs(client.write_contract, fees, fee_value),
             sim_config=sim_config,
         )
-        receipt = client.wait_for_transaction_receipt(
+        receipt = wait_for_transaction_receipt(
+            client,
             transaction_hash=tx_hash,
-            wait_until=wait_until or _wait_until_from_status(wait_transaction_status),
+            wait_until=wait_until or wait_until_from_status(wait_transaction_status),
             interval=actual_wait_interval,
             retries=actual_wait_retries,
         )
@@ -153,9 +147,10 @@ def write_contract_wrapper(
         if wait_triggered_transactions:
             triggered_transactions = receipt.get("triggered_transactions", [])
             for triggered_transaction in triggered_transactions:
-                client.wait_for_transaction_receipt(
+                wait_for_transaction_receipt(
+                    client,
                     transaction_hash=triggered_transaction,
-                    wait_until=_wait_until_from_status(
+                    wait_until=wait_until_from_status(
                         wait_triggered_transactions_status
                     ),
                     interval=actual_wait_interval,
@@ -292,9 +287,10 @@ class Contract:
             account=self.account,
             value=value,
         )
-        return client.wait_for_transaction_receipt(
+        return wait_for_transaction_receipt(
+            client,
             transaction_hash=tx_hash,
-            wait_until=wait_until or _wait_until_from_status(wait_transaction_status),
+            wait_until=wait_until or wait_until_from_status(wait_transaction_status),
             interval=actual_wait_interval,
             retries=actual_wait_retries,
         )
