@@ -158,6 +158,28 @@ def download_artifacts(version: str) -> Path:
     ) from last_error
 
 
+def _extract_local_runner(
+    root: Path, runner_type: str, runner_hash: Optional[str]
+) -> Path:
+    """Extract a runner from a local prebuilt GenVM tree (GENVM_PREBUILT_DIR); globs
+    any *runners* dir so runners/ and executor/<ver>/legacy-runners/ both match."""
+    sub = (
+        f"{runner_hash[:2]}/{runner_hash[2:]}.tar"
+        if runner_hash and runner_hash.lower() != "latest"
+        else "*/*.tar"
+    )
+    hits = sorted(root.glob(f"**/*runners*/{runner_type}/{sub}"))
+    if not hits:
+        raise FileNotFoundError(f"runner {runner_type}:{runner_hash} not under {root}")
+    tar = hits[-1]
+    dest = CACHE_DIR / "extracted" / "local" / runner_type / (tar.parent.name + tar.stem)
+    if not dest.exists():
+        dest.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(tar, "r:") as inner:
+            inner.extractall(dest, filter="data")
+    return dest
+
+
 def extract_runner(
     tarball_path: Path,
     runner_type: str,
@@ -165,6 +187,9 @@ def extract_runner(
     version: Optional[str] = None,
 ) -> Path:
     """Extract a runner from the tarball."""
+    prebuilt = os.environ.get("GENVM_PREBUILT_DIR")
+    if prebuilt:
+        return _extract_local_runner(Path(prebuilt), runner_type, runner_hash)
     if version is None:
         match = re.search(r"genvm-universal-(.+)\.tar\.xz", tarball_path.name)
         version = match.group(1) if match else "unknown"
@@ -256,10 +281,11 @@ def setup_sdk_paths(
     if contract_path and contract_path.exists():
         contract_deps = parse_contract_header(contract_path)
 
-    if version is None:
+    prebuilt = os.environ.get("GENVM_PREBUILT_DIR")
+    if version is None and not prebuilt:
         version = resolve_version()
 
-    tarball = download_artifacts(version)
+    tarball = None if prebuilt else download_artifacts(version)
 
     runner_hash = contract_deps.get(RUNNER_TYPE)
     runner_dir = extract_runner(tarball, RUNNER_TYPE, runner_hash, version)
