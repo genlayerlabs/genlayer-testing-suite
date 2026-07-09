@@ -6,7 +6,7 @@ import genlayer as gl
 
 class Registry(gl.contract.Contract):
     # Declare persistent storage fields
-    contract_addresses: gl.DynArray[str]
+    contract_addresses: gl.storage.DynArray[str]
     intelligent_oracle_code: str
 
     def __init__(self, intelligent_oracle_code: str):

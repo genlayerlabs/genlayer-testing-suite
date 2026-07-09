@@ -5,7 +5,7 @@ import genlayer as gl
 
 
 class UserStorage(gl.contract.Contract):
-    storage: gl.TreeMap[gl.Address, str]
+    storage: gl.storage.TreeMap[gl.Address, str]
 
     # constructor
     def __init__(self):

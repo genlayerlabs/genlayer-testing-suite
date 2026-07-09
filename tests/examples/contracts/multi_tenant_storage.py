@@ -12,9 +12,9 @@ class MultiTentantStorage(gl.contract.Contract):
     This is done to test contract calls between different contracts.
     """
 
-    all_storage_contracts: gl.DynArray[gl.Address]
-    available_storage_contracts: gl.DynArray[gl.Address]
-    mappings: gl.TreeMap[
+    all_storage_contracts: gl.storage.DynArray[gl.Address]
+    available_storage_contracts: gl.storage.DynArray[gl.Address]
+    mappings: gl.storage.TreeMap[
         gl.Address, gl.Address
     ]  # mapping of user address to storage contract address
 

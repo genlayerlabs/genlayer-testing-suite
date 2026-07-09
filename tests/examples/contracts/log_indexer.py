@@ -53,14 +53,14 @@ class LogIndexer(gl.contract.Contract):
     @gl.public.write
     def add_log(self, log: str, log_id: int) -> None:
         emb = self.get_embedding(log)
-        self.vector_store.insert(emb, StoreValue(text=log, log_id=gl.u256(log_id)))
+        self.vector_store.insert(emb, StoreValue(text=log, log_id=log_id))
 
     @gl.public.write
     def update_log(self, log_id: int, log: str) -> None:
         emb = self.get_embedding(log)
         for elem in self.vector_store.knn(emb, 2):
             if elem.value.text == log:
-                elem.value.log_id = gl.u256(log_id)
+                elem.value.log_id = log_id
 
     @gl.public.write
     def remove_log(self, id: int) -> None:

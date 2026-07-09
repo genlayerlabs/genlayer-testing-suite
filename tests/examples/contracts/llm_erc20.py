@@ -7,10 +7,10 @@ import genlayer as gl
 
 
 class LlmErc20(gl.contract.Contract):
-    balances: gl.TreeMap[gl.Address, gl.u256]
+    balances: gl.storage.TreeMap[gl.Address, gl.u256]
 
     def __init__(self, total_supply: int) -> None:
-        self.balances[gl.message.sender_address] = gl.u256(total_supply)
+        self.balances[gl.message.sender_address] = total_supply
 
     @gl.public.write
     def transfer(self, amount: int, to_address: str) -> None:

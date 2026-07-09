@@ -3,7 +3,7 @@
 import genlayer as gl
 
 
-class CurrentStyleContract(gl.Contract):
+class CurrentStyleContract(gl.contract.Contract):
     storage: str
 
     def __init__(self, initial_storage: str):
