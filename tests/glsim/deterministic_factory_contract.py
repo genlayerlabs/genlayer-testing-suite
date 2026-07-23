@@ -24,7 +24,7 @@ class DeterministicFactory(gl.contract.Contract):
             code=CHILD_CODE.encode("utf-8"),
             args=[],
             kwargs={},
-            salt_nonce=gl.u256(salt),
+            salt_nonce=salt,
             on="accepted",
         )
         self.child_address = child_address.as_hex

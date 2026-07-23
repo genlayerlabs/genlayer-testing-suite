@@ -9,7 +9,9 @@ import os
 import re
 import sys
 import json
+import shutil
 import tarfile
+import platform
 import tempfile
 import urllib.error
 import urllib.request
@@ -17,13 +19,28 @@ from pathlib import Path
 from typing import Optional, Dict, List
 
 CACHE_DIR = Path.home() / ".cache" / "gltest-direct"
-GITHUB_RELEASES_URL = "https://github.com/genlayerlabs/genvm/releases"
-GITHUB_API_RELEASES = "https://api.github.com/repos/genlayerlabs/genvm/releases"
+GITHUB_RELEASES_URL = "https://github.com/genlayerlabs/genvm-manager/releases"
+GITHUB_API_RELEASES = "https://api.github.com/repos/genlayerlabs/genvm-manager/releases"
 
-# GenVM 0.3.0 renamed this bundle from genvm-universal.tar.xz; newest name first.
-RUNNER_BUNDLE_ASSETS = ("genvm-runners-all.tar.xz", "genvm-universal.tar.xz")
+
+def _host_release_asset() -> str:
+    """genvm-manager (v0.6+) ships a whole-tree tarball per platform, named
+    genvm-<arch>-<os>.tar.xz — pick the one matching this host."""
+    machine = platform.machine().lower()
+    arch = "arm64" if machine in ("aarch64", "arm64") else "amd64"
+    os_name = "macos" if platform.system().lower() == "darwin" else "linux"
+    return f"genvm-{arch}-{os_name}.tar.xz"
+
+
+# Download candidates, newest-scheme first: the genvm-manager per-platform whole
+# tree, then the pre-v0.6 runner-only bundles (genvm-runners-all → genvm-universal).
+RUNNER_BUNDLE_ASSETS = (
+    _host_release_asset(),
+    "genvm-runners-all.tar.xz",
+    "genvm-universal.tar.xz",
+)
 GENVM_VERSION_ENV = "GENVM_VERSION"
-FALLBACK_VERSION = "v0.2.16"
+FALLBACK_VERSION = "v0.6.0-rc0"
 
 RUNNER_TYPE = "py-genlayer"
 STD_LIB_TYPE = "py-lib-genlayer-std"
@@ -158,68 +175,72 @@ def download_artifacts(version: str) -> Path:
     ) from last_error
 
 
+def _extract_local_runner(
+    root: Path, runner_type: str, runner_hash: Optional[str]
+) -> Path:
+    """Extract a runner from a local prebuilt GenVM tree (GENVM_PREBUILT_DIR); globs
+    any *runners* dir so runners/ and executor/<ver>/legacy-runners/ both match."""
+    sub = (
+        f"{runner_hash[:2]}/{runner_hash[2:]}.tar"
+        if runner_hash and runner_hash.lower() != "latest"
+        else "*/*.tar"
+    )
+    hits = sorted(root.glob(f"**/*runners*/{runner_type}/{sub}"))
+    if not hits:
+        raise FileNotFoundError(f"runner {runner_type}:{runner_hash} not under {root}")
+    tar = hits[-1]
+    dest = CACHE_DIR / "extracted" / "local" / runner_type / (tar.parent.name + tar.stem)
+    if not dest.exists():
+        dest.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(tar, "r:") as inner:
+            inner.extractall(dest, filter="data")
+    return dest
+
+
+def _extract_release_tree(tarball_path: Path, version: str) -> Path:
+    """Unpack a downloaded GenVM release tarball once (cached) into a local tree.
+
+    genvm-manager ships the whole tree (bin/ lib/ runners/ executor/…), not a
+    runner-only bundle, so we unpack it to a directory that looks exactly like a
+    GENVM_PREBUILT_DIR and then resolve runners through the same globbing path.
+    """
+    tree = CACHE_DIR / "trees" / version
+    if (tree / ".extracted").exists():
+        return tree
+    trees = CACHE_DIR / "trees"
+    trees.mkdir(parents=True, exist_ok=True)
+    # Extract into a process-unique dir, mark it complete, then publish with an
+    # atomic rename. Concurrent cold-cache extractions each use their own tmp and
+    # race only on the final rename; the loser sees the winner's finished tree.
+    tmp = Path(tempfile.mkdtemp(dir=trees, prefix=f".{version}."))
+    try:
+        with tarfile.open(tarball_path, "r:xz") as outer:
+            outer.extractall(tmp, filter="data")
+        (tmp / ".extracted").touch()
+        os.replace(tmp, tree)
+    except OSError:
+        shutil.rmtree(tmp, ignore_errors=True)
+        if (tree / ".extracted").exists():
+            return tree  # another extraction published first
+        raise
+    return tree
+
+
 def extract_runner(
     tarball_path: Path,
     runner_type: str,
     runner_hash: Optional[str] = None,
     version: Optional[str] = None,
 ) -> Path:
-    """Extract a runner from the tarball."""
+    """Resolve a runner dir from a local prebuilt tree or a downloaded release."""
+    prebuilt = os.environ.get("GENVM_PREBUILT_DIR")
+    if prebuilt:
+        return _extract_local_runner(Path(prebuilt), runner_type, runner_hash)
     if version is None:
         match = re.search(r"genvm-universal-(.+)\.tar\.xz", tarball_path.name)
         version = match.group(1) if match else "unknown"
-
-    extract_base = CACHE_DIR / "extracted" / version / runner_type
-
-    # Fast path: if hash specified and already extracted, skip tarball entirely
-    if runner_hash and runner_hash.lower() != "latest":
-        extract_dir = extract_base / runner_hash
-        if extract_dir.exists():
-            return extract_dir
-
-    # Check if any version already extracted (for "latest" case)
-    if extract_base.exists():
-        existing = sorted(extract_base.iterdir(), reverse=True)
-        if existing and (not runner_hash or runner_hash.lower() == "latest"):
-            return existing[0]
-
-    # Need to open tarball - this is slow (~13s for xz)
-    with tarfile.open(tarball_path, "r:xz") as outer_tar:
-        prefix = f"runners/{runner_type}/"
-        runner_tars = [
-            m.name for m in outer_tar.getmembers()
-            if m.name.startswith(prefix) and m.name.endswith(".tar")
-        ]
-
-        if not runner_tars:
-            raise ValueError(f"No {runner_type} runners found in tarball")
-
-        # Treat "latest" as no specific hash
-        if runner_hash and runner_hash.lower() != "latest":
-            target = f"runners/{runner_type}/{runner_hash[:2]}/{runner_hash[2:]}.tar"
-            if target not in runner_tars:
-                raise ValueError(f"Runner hash {runner_hash} not found")
-            runner_tar_name = target
-            extract_dir = extract_base / runner_hash
-        else:
-            runner_tar_name = sorted(runner_tars)[-1]
-            parts = runner_tar_name.split("/")
-            runner_hash = parts[-2] + parts[-1].replace(".tar", "")
-            extract_dir = extract_base / runner_hash
-
-        if extract_dir.exists():
-            return extract_dir
-
-        inner_tar_file = outer_tar.extractfile(runner_tar_name)
-        if inner_tar_file is None:
-            raise ValueError(f"Failed to read {runner_tar_name}")
-
-        extract_dir.mkdir(parents=True, exist_ok=True)
-
-        with tarfile.open(fileobj=inner_tar_file, mode="r:") as inner_tar:
-            inner_tar.extractall(extract_dir, filter='data')
-
-        return extract_dir
+    tree = _extract_release_tree(tarball_path, version)
+    return _extract_local_runner(tree, runner_type, runner_hash)
 
 
 def parse_runner_manifest(runner_dir: Path) -> Dict[str, str]:
@@ -256,10 +277,11 @@ def setup_sdk_paths(
     if contract_path and contract_path.exists():
         contract_deps = parse_contract_header(contract_path)
 
-    if version is None:
+    prebuilt = os.environ.get("GENVM_PREBUILT_DIR")
+    if version is None and not prebuilt:
         version = resolve_version()
 
-    tarball = download_artifacts(version)
+    tarball = None if prebuilt else download_artifacts(version)
 
     runner_hash = contract_deps.get(RUNNER_TYPE)
     runner_dir = extract_runner(tarball, RUNNER_TYPE, runner_hash, version)

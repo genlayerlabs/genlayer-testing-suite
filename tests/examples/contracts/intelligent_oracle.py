@@ -19,10 +19,10 @@ class IntelligentOracle(gl.contract.Contract):
     prediction_market_id: str
     title: str
     description: str
-    potential_outcomes: gl.DynArray[str]
-    rules: gl.DynArray[str]
-    data_source_domains: gl.DynArray[str]
-    resolution_urls: gl.DynArray[str]
+    potential_outcomes: gl.storage.DynArray[str]
+    rules: gl.storage.DynArray[str]
+    data_source_domains: gl.storage.DynArray[str]
+    resolution_urls: gl.storage.DynArray[str]
     earliest_resolution_date: str  # Store as ISO format string
     status: str  # Store as string since Enum isn't supported
     analysis: str  # Store analysis results

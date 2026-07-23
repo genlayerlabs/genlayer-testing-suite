@@ -37,7 +37,7 @@ class PredictionMarket(gl.contract.Contract):
         )
         self.team1 = team1
         self.team2 = team2
-        self.winner = gl.u256(0)
+        self.winner = 0
         self.score = ""
 
     @gl.public.write

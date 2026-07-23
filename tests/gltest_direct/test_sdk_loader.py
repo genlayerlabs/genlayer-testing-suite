@@ -162,7 +162,7 @@ class TestDownloadArtifacts:
         assert result == tmp_path / "genvm-universal-v0.3.0.tar.xz"
         assert result.read_bytes() == b"bundle"
         assert tried == [
-            f"{sdk_loader.GITHUB_RELEASES_URL}/download/v0.3.0/genvm-runners-all.tar.xz"
+            f"{sdk_loader.GITHUB_RELEASES_URL}/download/v0.3.0/{sdk_loader.RUNNER_BUNDLE_ASSETS[0]}"
         ]
 
     def test_falls_back_to_old_asset_on_404(self, monkeypatch, tmp_path):
@@ -171,7 +171,8 @@ class TestDownloadArtifacts:
 
         def _download(url, dest):
             tried.append(url)
-            if url.endswith("genvm-runners-all.tar.xz"):
+            # 404 every asset except the last so the loop walks the full list.
+            if not url.endswith(sdk_loader.RUNNER_BUNDLE_ASSETS[-1]):
                 raise self._http_404(url)
             dest.write_bytes(b"bundle")
 

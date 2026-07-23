@@ -10,8 +10,8 @@ class MultiFileContract(gl.contract.Contract):
         self.other_addr = gl.contract.deploy(
             code=text.encode("utf-8"),
             args=["123"],
-            salt_nonce=gl.u256(1),
-            value=gl.u256(0),
+            salt_nonce=1,
+            value=0,
             on="accepted",
         )
 
