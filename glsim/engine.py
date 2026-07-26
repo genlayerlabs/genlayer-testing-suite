@@ -291,31 +291,32 @@ class SimEngine:
         finally:
             self._call_depth -= 1
 
-        # Drain exactly one queued PostMessage at the top level only.
-        # The _draining flag prevents the drained call from draining further,
-        # matching real GenLayer where PostMessage is async (next block).
+        # Once the parent call completes, execute every message it emitted.
+        # Messages emitted by a drained child are appended and handled by the
+        # same loop, while _draining prevents recursive drain loops.
         if self._call_depth == 0 and not self._draining and self._post_queue:
-            msg = self._post_queue.pop(0)
-            self._post_queue.clear()
-            self._draining = True
-            print(f"[PostMessage DRAIN] executing {msg['method']} on {msg['address']} (sender={msg.get('sender')})")
-            try:
-                self.call_method(
-                    msg['address'], msg['method'],
-                    msg.get('args', []), msg.get('kwargs', {}),
-                    sender=msg.get('sender'),
-                )
-                print(f"[PostMessage DRAIN] {msg['method']} completed OK")
-            except Exception as e:
-                print(f"[PostMessage DRAIN] {msg['method']} ERROR: {e}")
-                self.vm._trace(f"PostMessage error: {e}")
-            finally:
-                self._draining = False
-        elif self._call_depth == 0 and not self._draining:
-            if not self._post_queue:
-                pass  # No PostMessages queued (normal for reads)
+            self._drain_post_queue()
 
         return result
+
+    def _drain_post_queue(self) -> None:
+        self._draining = True
+        try:
+            while self._post_queue:
+                msg = self._post_queue.pop(0)
+                print(f"[PostMessage DRAIN] executing {msg['method']} on {msg['address']} (sender={msg.get('sender')})")
+                try:
+                    self.call_method(
+                        msg['address'], msg['method'],
+                        msg.get('args', []), msg.get('kwargs', {}),
+                        sender=msg.get('sender'),
+                    )
+                    print(f"[PostMessage DRAIN] {msg['method']} completed OK")
+                except Exception as e:
+                    print(f"[PostMessage DRAIN] {msg['method']} ERROR: {e}")
+                    self.vm._trace(f"PostMessage error: {e}")
+        finally:
+            self._draining = False
 
     def get_schema(self, contract_address: str) -> Optional[Dict]:
         """Get the ABI/schema for a deployed contract."""
