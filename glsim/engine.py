@@ -115,7 +115,7 @@ class SimEngine:
             "state_gl_to_hash": dict(self.state._gl_to_hash),
             "state_eth_hash_to_hash": dict(self.state._eth_hash_to_hash),
             "instances_keys": set(self._instances.keys()),
-            "storages_keys": set(self._storages.keys()),
+            "storages": {key: manager.snapshot() for key, manager in self._storages.items()},
             "classes_keys": set(self._classes.keys()),
             "state_time_offset": self.state._time_offset_seconds,
         }
@@ -140,8 +140,12 @@ class SimEngine:
             if key not in snap["instances_keys"]:
                 del self._instances[key]
         for key in list(self._storages.keys()):
-            if key not in snap["storages_keys"]:
+            if key not in snap["storages"]:
                 del self._storages[key]
+        for key, storage_data in snap["storages"].items():
+            manager = self._storages.get(key)
+            if manager is not None:
+                manager.restore(storage_data)
         for key in list(self._classes.keys()):
             if key not in snap["classes_keys"]:
                 del self._classes[key]
