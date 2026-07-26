@@ -207,6 +207,8 @@ def _extract_release_tree(tarball_path: Path, version: str) -> Path:
     tree = CACHE_DIR / "trees" / version
     if (tree / ".extracted").exists():
         return tree
+    if tree.exists():
+        shutil.rmtree(tree)
     trees = CACHE_DIR / "trees"
     trees.mkdir(parents=True, exist_ok=True)
     # Extract into a process-unique dir, mark it complete, then publish with an
@@ -297,8 +299,13 @@ def setup_sdk_paths(
     embeddings_dir: Optional[Path] = None
     proto_dir: Optional[Path] = None
     if embeddings_hash:
-        embeddings_dir = extract_runner(tarball, EMBEDDINGS_TYPE, embeddings_hash, version)
-        proto_hash = runner_deps.get(PROTOBUF_TYPE)
+        embeddings_dir = extract_runner(
+            tarball, EMBEDDINGS_TYPE, embeddings_hash, version
+        )
+        embeddings_deps = parse_runner_manifest(embeddings_dir)
+        proto_hash = embeddings_deps.get(PROTOBUF_TYPE) or runner_deps.get(
+            PROTOBUF_TYPE
+        )
         if proto_hash:
             proto_dir = extract_runner(tarball, PROTOBUF_TYPE, proto_hash, version)
 
