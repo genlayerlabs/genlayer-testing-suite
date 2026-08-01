@@ -321,7 +321,13 @@ def _inject_message_to_fd0(vm: "VMContext") -> None:
         os.dup2(fd, 0)
     finally:
         os.close(fd)
-        os.unlink(path)
+
+    # Defer unlinking until fd 0's duplicate of this file is closed (in
+    # _cleanup_after_deactivate, after stdin is restored). Unlinking here
+    # while fd 0 still references the file works on POSIX (the directory
+    # entry is removed but the data stays available via the open fd) but
+    # raises PermissionError on Windows, which locks files with open handles.
+    vm._stdin_temp_path = path
 
 
 def _load_module(contract_path: Path) -> Any:

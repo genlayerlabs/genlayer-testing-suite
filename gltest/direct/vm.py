@@ -507,6 +507,16 @@ class VMContext:
                 pass
             self._original_stdin_fd = None
 
+        # Clean up the temp file used to inject stdin, now that fd 0's
+        # duplicate of it has been closed above (see _inject_message_to_fd0).
+        stdin_temp_path = getattr(self, '_stdin_temp_path', None)
+        if stdin_temp_path is not None:
+            try:
+                _os.unlink(stdin_temp_path)
+            except OSError:
+                pass
+            self._stdin_temp_path = None
+
         # Collect SDK root paths before removing them from sys.path
         sdk_roots = [p for p in sys.path if 'gltest-direct' in p]
 
