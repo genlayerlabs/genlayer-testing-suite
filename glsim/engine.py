@@ -614,7 +614,7 @@ class SimEngine:
             self.vm._live_llm_handler = self._llm_handler
 
     def install_cross_contract_hook(self) -> None:
-        """Install gl_call hook for cross-contract calls (EmitInternalDeployMessage, CallContract, EmitInternalMessage)."""
+        """Install gl_call hooks for current and rc7 cross-contract calls."""
         engine = self
 
         def hook(vm, request):
@@ -622,12 +622,16 @@ class SimEngine:
                 return engine._handle_deploy_in_contract(
                     vm, request["EmitInternalDeployMessage"]
                 )
+            if "DeployContract" in request:
+                return engine._handle_deploy_in_contract(vm, request["DeployContract"])
             if "CallContract" in request:
                 return engine._handle_call_in_contract(vm, request["CallContract"])
             if "EmitInternalMessage" in request:
                 return engine._handle_post_in_contract(
                     vm, request["EmitInternalMessage"]
                 )
+            if "PostMessage" in request:
+                return engine._handle_post_in_contract(vm, request["PostMessage"])
             return None
 
         self.vm._gl_call_hook = hook

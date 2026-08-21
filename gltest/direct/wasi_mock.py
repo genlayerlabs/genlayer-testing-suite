@@ -85,7 +85,13 @@ def get_self_balance() -> int:
 
 
 _CROSS_CONTRACT_OPS = frozenset(
-    {"EmitInternalDeployMessage", "CallContract", "EmitInternalMessage"}
+    {
+        "DeployContract",
+        "EmitInternalDeployMessage",
+        "CallContract",
+        "PostMessage",
+        "EmitInternalMessage",
+    }
 )
 
 
