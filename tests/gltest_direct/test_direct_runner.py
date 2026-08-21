@@ -250,7 +250,8 @@ class TestNondetRestrictions:
     """Tests that cross-contract calls are forbidden inside nondet context.
 
     GenVM raises SystemError: 6 (forbidden) when contract code attempts
-    cross-contract calls (DeployContract, CallContract, PostMessage) inside
+    cross-contract calls (EmitInternalDeployMessage, CallContract,
+    EmitInternalMessage) inside
     eq_principle/run_nondet. These tests verify gltest enforces the same
     restriction in direct mode.
     """
@@ -278,7 +279,7 @@ class TestNondetRestrictions:
             gl_vm.run_nondet(bad_leader, lambda r: True)
 
     def test_deploy_contract_forbidden_in_nondet(self, direct_vm, direct_deploy):
-        """DeployContract inside run_nondet raises RuntimeError."""
+        """EmitInternalDeployMessage inside run_nondet raises RuntimeError."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
         import genlayer.vm as gl_vm
@@ -286,7 +287,7 @@ class TestNondetRestrictions:
         from gltest.direct import wasi_mock
 
         def bad_leader():
-            request = {"DeployContract": {"code": b"pass", "calldata": {}}}
+            request = {"EmitInternalDeployMessage": {"code": b"pass", "calldata": {}}}
             wasi_mock.gl_call(calldata.encode(request))
             return "should not reach"
 
@@ -294,7 +295,7 @@ class TestNondetRestrictions:
             gl_vm.run_nondet(bad_leader, lambda r: True)
 
     def test_post_message_forbidden_in_nondet(self, direct_vm, direct_deploy):
-        """PostMessage inside run_nondet raises RuntimeError."""
+        """EmitInternalMessage inside run_nondet raises RuntimeError."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
         import genlayer.vm as gl_vm
@@ -303,7 +304,7 @@ class TestNondetRestrictions:
 
         def bad_leader():
             request = {
-                "PostMessage": {
+                "EmitInternalMessage": {
                     "address": b"\x00" * 20,
                     "calldata": {"method": "bar", "args": []},
                 }

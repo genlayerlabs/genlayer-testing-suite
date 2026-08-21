@@ -202,7 +202,7 @@ class VMContext:
     _live_web_handler: Optional[Any] = None
     _live_llm_handler: Optional[Any] = None
 
-    # Cross-contract call hook (for glsim — handles DeployContract/CallContract/PostMessage)
+    # Cross-contract call hook (for glsim — handles EmitInternalDeployMessage/CallContract/EmitInternalMessage)
     _gl_call_hook: Optional[Any] = None
 
     # Debug tracing
