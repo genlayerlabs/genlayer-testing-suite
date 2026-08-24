@@ -25,7 +25,7 @@ class DeterministicFactory(gl.contract.Contract):
             args=[],
             kwargs={},
             salt_nonce=salt,
-            on="accepted",
+            on="decided",
         )
         self.child_address = child_address.as_hex
         return self.child_address

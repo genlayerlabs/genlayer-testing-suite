@@ -84,7 +84,15 @@ def get_self_balance() -> int:
     return vm._balances.get(addr_bytes, 0)
 
 
-_CROSS_CONTRACT_OPS = frozenset({"DeployContract", "CallContract", "PostMessage"})
+_CROSS_CONTRACT_OPS = frozenset(
+    {
+        "DeployContract",
+        "EmitInternalDeployMessage",
+        "CallContract",
+        "PostMessage",
+        "EmitInternalMessage",
+    }
+)
 
 
 def gl_call(data: bytes, /) -> int:

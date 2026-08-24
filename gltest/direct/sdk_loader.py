@@ -11,6 +11,7 @@ import sys
 import json
 import shutil
 import tarfile
+import zipfile
 import platform
 import tempfile
 import urllib.error
@@ -41,6 +42,9 @@ RUNNER_BUNDLE_ASSETS = (
 )
 GENVM_VERSION_ENV = "GENVM_VERSION"
 FALLBACK_VERSION = "v0.6.0-rc0"
+
+# v0.3 runner trees use .zip; the v0.2 legacy-runners tree uses .tar.
+RUNNER_ARCHIVE_EXTS = (".tar", ".zip")
 
 RUNNER_TYPE = "py-genlayer"
 STD_LIB_TYPE = "py-lib-genlayer-std"
@@ -179,21 +183,33 @@ def _extract_local_runner(
     root: Path, runner_type: str, runner_hash: Optional[str]
 ) -> Path:
     """Extract a runner from a local prebuilt GenVM tree (GENVM_PREBUILT_DIR); globs
-    any *runners* dir so runners/ and executor/<ver>/legacy-runners/ both match."""
+    any *runners* dir so runners/ and executor/<ver>/legacy-runners/ both match.
+    v0.3 runners ship as .zip, the v0.2 legacy tree still ships .tar."""
     sub = (
-        f"{runner_hash[:2]}/{runner_hash[2:]}.tar"
+        f"{runner_hash[:2]}/{runner_hash[2:]}"
         if runner_hash and runner_hash.lower() != "latest"
-        else "*/*.tar"
+        else "*/*"
     )
-    hits = sorted(root.glob(f"**/*runners*/{runner_type}/{sub}"))
+    hits = sorted(
+        hit
+        for ext in RUNNER_ARCHIVE_EXTS
+        for hit in root.glob(f"**/*runners*/{runner_type}/{sub}{ext}")
+    )
     if not hits:
         raise FileNotFoundError(f"runner {runner_type}:{runner_hash} not under {root}")
-    tar = hits[-1]
-    dest = CACHE_DIR / "extracted" / "local" / runner_type / (tar.parent.name + tar.stem)
+    archive = hits[-1]
+    dest = (
+        CACHE_DIR / "extracted" / "local" / runner_type
+        / (archive.parent.name + archive.stem)
+    )
     if not dest.exists():
         dest.mkdir(parents=True, exist_ok=True)
-        with tarfile.open(tar, "r:") as inner:
-            inner.extractall(dest, filter="data")
+        if archive.suffix == ".zip":
+            with zipfile.ZipFile(archive) as inner:
+                inner.extractall(dest)
+        else:
+            with tarfile.open(archive, "r:") as inner:
+                inner.extractall(dest, filter="data")
     return dest
 
 

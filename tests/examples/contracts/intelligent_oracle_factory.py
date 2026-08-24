@@ -38,7 +38,7 @@ class Registry(gl.contract.Contract):
                 earliest_resolution_date,
             ],
             salt_nonce=registered_contracts + 1,
-            on="accepted",
+            on="decided",
         )
         print("contract_address", contract_address)
         print("contract_address type", type(contract_address))
