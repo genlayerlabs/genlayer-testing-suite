@@ -19,7 +19,11 @@ from gltest.clients import (
 from genlayer_py.types import SimConfig
 from .contract import Contract
 from gltest.logging import logger
-from gltest.types import TransactionStatus, GenLayerTransaction, CalldataEncodable
+from gltest.types import (
+    ProtocolTransactionStatus,
+    GenLayerTransaction,
+    CalldataEncodable,
+)
 from gltest.assertions import tx_execution_failed
 from gltest.exceptions import DeploymentError
 from gltest_cli.config.general import get_general_config
@@ -130,9 +134,9 @@ class ContractFactory:
         wait_until: Optional[Literal["decided", "finalized"]] = None,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
-        wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_transaction_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
-        wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         transaction_context: Optional[TransactionContext] = None,
     ) -> Contract:
         """
@@ -172,9 +176,9 @@ class ContractFactory:
         wait_until: Optional[Literal["decided", "finalized"]] = None,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
-        wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_transaction_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
-        wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         transaction_context: Optional[TransactionContext] = None,
     ) -> GenLayerTransaction:
         """

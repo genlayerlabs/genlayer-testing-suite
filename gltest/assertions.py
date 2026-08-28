@@ -9,6 +9,7 @@ except ImportError:
 
 
 ACCEPTED_STATUSES = {"ACCEPTED", "FINALIZED", "5", "7"}
+ACCEPTED_LIFECYCLE_OUTCOMES = {None, "accepted"}
 SUCCESS_RESULTS = {"FINISHED_WITH_RETURN", "1"}
 
 
@@ -19,9 +20,26 @@ def _string_value(value: Any) -> Optional[str]:
     return str(enum_value)
 
 
+def _accepted_lifecycle(result: GenLayerTransaction) -> Optional[bool]:
+    """Read the layered lifecycle, or None when the receipt has none."""
+    lifecycle = result.get("lifecycle")
+    if not isinstance(lifecycle, dict):
+        return None
+    state = lifecycle.get("state")
+    if state == "decided":
+        return lifecycle.get("outcome") == "accepted"
+    if state == "finalized":
+        return lifecycle.get("outcome") in ACCEPTED_LIFECYCLE_OUTCOMES
+    return False
+
+
 def _has_accepted_status(result: GenLayerTransaction) -> bool:
+    accepted_lifecycle = _accepted_lifecycle(result)
+    if accepted_lifecycle is not None:
+        return accepted_lifecycle
+    # Receipts from a pre-lifecycle SDK still carry a flat status.
     status = _string_value(result.get("status_name", result.get("status")))
-    return status in ACCEPTED_STATUSES
+    return status is not None and status.upper() in ACCEPTED_STATUSES
 
 
 def _leader_receipt(result: GenLayerTransaction) -> Optional[dict]:

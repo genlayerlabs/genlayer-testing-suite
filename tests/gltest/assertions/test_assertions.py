@@ -115,6 +115,47 @@ def test_undetermined_transaction_is_not_successful():
     assert tx_execution_failed(transaction) is True
 
 
+def test_decided_lifecycle_transaction_is_successful():
+    transaction = {
+        "lifecycle": {"state": "decided", "outcome": "accepted"},
+        "tx_execution_result_name": "FINISHED_WITH_RETURN",
+    }
+
+    assert tx_execution_succeeded(transaction) is True
+    assert tx_execution_failed(transaction) is False
+
+
+def test_finalized_lifecycle_transaction_is_successful():
+    transaction = {
+        "lifecycle": {"state": "finalized", "outcome": "accepted"},
+        "consensus_data": {"leader_receipt": [{"execution_result": "SUCCESS"}]},
+    }
+
+    assert tx_execution_succeeded(transaction) is True
+    assert tx_execution_failed(transaction) is False
+
+
+def test_undetermined_lifecycle_transaction_is_not_successful():
+    transaction = {
+        "lifecycle": {"state": "decided", "outcome": "undetermined"},
+        "tx_execution_result_name": "FINISHED_WITH_RETURN",
+        "consensus_data": {"leader_receipt": [{"execution_result": "SUCCESS"}]},
+    }
+
+    assert tx_execution_succeeded(transaction) is False
+    assert tx_execution_failed(transaction) is True
+
+
+def test_processing_lifecycle_transaction_is_not_successful():
+    transaction = {
+        "lifecycle": {"state": "processing", "phase": "revealing"},
+        "tx_execution_result_name": "FINISHED_WITH_RETURN",
+    }
+
+    assert tx_execution_succeeded(transaction) is False
+    assert tx_execution_failed(transaction) is True
+
+
 def test_error_transaction_is_not_successful():
     transaction = {
         "status": "ACCEPTED",
