@@ -1,21 +1,26 @@
 import inspect
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
 
-from gltest.types import TransactionStatus
+from gltest.types import ProtocolTransactionStatus
+
+
+def _status_text(status: Any) -> str:
+    """Normalize an enum member, its value, or a bare string to one form."""
+    return str(getattr(status, "value", status)).upper()
 
 
 def wait_until_from_status(
-    status: TransactionStatus,
+    status: ProtocolTransactionStatus,
 ) -> Literal["decided", "finalized"]:
-    if status == TransactionStatus.FINALIZED:
+    if _status_text(status) == _status_text(ProtocolTransactionStatus.FINALIZED):
         return "finalized"
     return "decided"
 
 
 def _status_from_wait_until(wait_until: Literal["decided", "finalized"]):
     if wait_until == "finalized":
-        return TransactionStatus.FINALIZED
-    return TransactionStatus.ACCEPTED
+        return ProtocolTransactionStatus.FINALIZED
+    return ProtocolTransactionStatus.ACCEPTED
 
 
 def _accepts_var_kwargs(call: Callable) -> bool:

@@ -6,7 +6,7 @@ from gltest.clients import get_gl_client
 from gltest.types import (
     CalldataEncodable,
     GenLayerTransaction,
-    TransactionStatus,
+    ProtocolTransactionStatus,
     TransactionHashVariant,
     TransactionContext,
 )
@@ -88,11 +88,11 @@ def write_contract_wrapper(
         fees: Optional[Dict[str, Any]] = None,
         fee_value: Optional[int] = None,
         wait_until: Optional[Literal["decided", "finalized"]] = None,
-        wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_transaction_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
         wait_triggered_transactions: bool = False,
-        wait_triggered_transactions_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         transaction_context: Optional[TransactionContext] = None,
     ):
         """
@@ -252,7 +252,7 @@ class Contract:
         self,
         tx_hash: str,
         value: int = 0,
-        wait_transaction_status: TransactionStatus = TransactionStatus.ACCEPTED,
+        wait_transaction_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         wait_until: Optional[Literal["decided", "finalized"]] = None,
         wait_interval: Optional[int] = None,
         wait_retries: Optional[int] = None,
