@@ -100,7 +100,7 @@ direct_vm.strict_mocks = True
 direct_vm.check_pickling = True
 ```
 
-**[Full Direct Mode Documentation](docs/direct-runner.md)** — fixtures, cheatcodes, validator testing, limitations, and complete examples.
+**[Full Direct Mode Documentation](https://github.com/genlayerlabs/genlayer-testing-suite/blob/main/docs/direct-runner.md)** — fixtures, cheatcodes, validator testing, limitations, and complete examples.
 
 ---
 
@@ -360,7 +360,7 @@ print(f"Reliability: {analysis.reliability_score:.2f}%")
 print(f"Unique states: {analysis.unique_states}")
 ```
 
-**[Full Studio Mode Documentation](docs/studio-runner.md)** — configuration reference, all CLI flags, mock LLM/web details, custom validators, statistical analysis, and complete examples.
+**[Full Studio Mode Documentation](https://github.com/genlayerlabs/genlayer-testing-suite/blob/main/docs/studio-runner.md)** — configuration reference, all CLI flags, mock LLM/web details, custom validators, statistical analysis, and complete examples.
 
 ---
 
@@ -396,7 +396,7 @@ my-project/
 └── gltest.config.yaml       # Studio mode config
 ```
 
-For more examples, see the [contracts directory](tests/examples/contracts).
+For more examples, see the [contracts directory](https://github.com/genlayerlabs/genlayer-testing-suite/tree/main/tests/examples/contracts).
 
 ## Troubleshooting
 
@@ -410,11 +410,11 @@ For more examples, see the [contracts directory](tests/examples/contracts).
 
 ## Contributing
 
-See our [Contributing Guide](CONTRIBUTING.md).
+See our [Contributing Guide](https://github.com/genlayerlabs/genlayer-testing-suite/blob/main/CONTRIBUTING.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/genlayerlabs/genlayer-testing-suite/blob/main/LICENSE).
 
 ## Support
 
