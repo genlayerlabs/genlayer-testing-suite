@@ -168,4 +168,4 @@ Multi-file contracts use a `runner.json` manifest:
 2. Contracts are discovered automatically from the contracts directory
 3. Transaction receipts include consensus information and triggered transactions
 4. LLM-based contract methods use `gl.eq_principle_prompt_non_comparative()`
-5. Version is managed automatically via semantic release (no manual updates)
+5. Versions are updated only by `scripts/release.sh` via semantic release; do not edit them manually
