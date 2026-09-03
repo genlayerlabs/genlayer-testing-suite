@@ -1,7 +1,14 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
-from genlayer_py.chains import localnet, studionet, testnet_asimov, testnet_bradbury
+from genlayer_py.chains import (
+    localnet,
+    studio_devnet,
+    studionet,
+    testnet_asimov,
+    testnet_bradbury,
+)
 from genlayer_py.types import GenLayerChain
 from gltest_cli.config.constants import PRECONFIGURED_NETWORKS
 from gltest_cli.config.constants import (
@@ -190,12 +197,39 @@ class GeneralConfig:
     def get_chain(self) -> GenLayerChain:
         chain_map = {
             "localnet": localnet,
+            "studio_devnet": studio_devnet,
             "studionet": studionet,
             "testnet_asimov": testnet_asimov,
             "testnet_bradbury": testnet_bradbury,
         }
         chain_type = self.get_chain_type()
-        return chain_map[chain_type]
+        chain = deepcopy(chain_map[chain_type])
+
+        # The selected network is the runtime authority. This is especially
+        # important for custom Studio deployments: the endpoint and chain ID
+        # must travel together or signed transactions use the preset's ID.
+        network_config = self.user_config.networks.get(self.get_network_name())
+        uses_network_chain_type = (
+            self.plugin_config.chain_type is None
+            or (
+                network_config is not None
+                and self.plugin_config.chain_type == network_config.chain_type
+            )
+        )
+        if (
+            uses_network_chain_type
+            and network_config is not None
+            and network_config.id is not None
+        ):
+            chain.id = network_config.id
+        rpc_url = (
+            self.get_rpc_url()
+            if uses_network_chain_type or self.plugin_config.rpc_url is not None
+            else None
+        )
+        if rpc_url:
+            chain.rpc_urls["default"]["http"] = [rpc_url]
+        return chain
 
     def get_default_wait_interval(self) -> int:
         if self.plugin_config.default_wait_interval is not None:
@@ -243,4 +277,4 @@ class GeneralConfig:
         return self.get_chain_type() == "localnet"
 
     def check_studio_based_rpc(self) -> bool:
-        return self.get_chain_type() in ("studionet", "localnet")
+        return self.get_chain_type() in ("studio_devnet", "studionet", "localnet")

@@ -7,7 +7,7 @@ Deploy and test intelligent contracts against a running GenLayer Studio instance
 Studio mode deploys contracts to GenLayer Studio (or a remote network) and interacts through JSON-RPC. Every write operation goes through the full consensus pipeline.
 
 - **Fidelity**: Real consensus, real validators, real transaction lifecycle
-- **Networks**: localnet (Docker), studionet, testnet_asimov, or custom
+- **Networks**: localnet (Docker), Studio Devnet, studionet, public testnets, or custom
 - **Mocking**: Mock validators with predefined LLM/web responses for deterministic tests
 
 ### When to Use Studio Mode
@@ -74,6 +74,9 @@ networks:
     url: "http://127.0.0.1:4000/api"
     leader_only: false
 
+  studio_devnet:
+    # Pre-configured release preview — accounts auto-generated
+
   studionet:
     # Pre-configured — accounts auto-generated
     # Override any settings if needed
@@ -107,8 +110,9 @@ environment: .env  # File containing private keys and secrets
 
 | Network | Accounts | Notes |
 |---------|----------|-------|
-| `localnet` | Auto-generated | Local Docker deployment |
-| `studionet` | Auto-generated | GenLayer Studio cloud |
+| `localnet` | Auto-generated | Local Docker deployment (chain 61127) |
+| `studio_devnet` | Auto-generated | Hosted release preview (chain 61997) |
+| `studionet` | Auto-generated | Stable GenLayer Studio cloud (chain 61999) |
 | `testnet_asimov` | Must be configured | Public testnet |
 
 **Network configuration fields:**
@@ -117,7 +121,7 @@ environment: .env  # File containing private keys and secrets
 |-------|----------|-------------|
 | `url` | For custom networks | RPC endpoint |
 | `id` | For custom networks | Chain ID |
-| `chain_type` | For custom networks | One of: `localnet`, `studionet`, `testnet_asimov` |
+| `chain_type` | For custom networks | One of the pre-configured network types above |
 | `accounts` | For testnet/custom | List of private keys (use env vars) |
 | `from` | No | Which account to use as default (defaults to first) |
 | `leader_only` | No | Skip consensus for all operations |
@@ -163,6 +167,7 @@ gltest -v                               # Verbose output
 
 ```bash
 gltest --network localnet               # Specific network (from config)
+gltest --network studio_devnet
 gltest --network studionet
 gltest --network testnet_asimov
 gltest --rpc-url http://custom:4000/api # Custom RPC URL

@@ -116,10 +116,13 @@ def test_collector_records_max_and_applies_headroom_with_big_int():
     collector.record_deploy(fee_receipt(101, 10))
     collector.record_method("create_bet", fee_receipt(big_value, 0))
 
-    profile = collector.build_profile(network="localnet", headroom=1.25)
+    profile = collector.build_profile(
+        network="localnet", headroom=1.25, chain_id=61127
+    )
 
     assert profile["version"] == 1
     assert profile["network"] == "localnet"
+    assert profile["chainId"] == 61127
     assert profile["deploy"] == {
         "leaderTimeunitsAllocation": "125",
         "validatorTimeunitsAllocation": "250",
@@ -257,10 +260,13 @@ def test_write_creates_parent_dirs_and_round_trips_json(tmp_path):
     collector.record_deploy(fee_receipt(10, 0))
     output_path = tmp_path / "profiles" / "fees.json"
 
-    profile = collector.write(output_path, network="localnet", headroom=1.25)
+    profile = collector.write(
+        output_path, network="localnet", headroom=1.25, chain_id=61127
+    )
 
     assert output_path.exists()
     assert json.loads(output_path.read_text(encoding="utf-8")) == profile
+    assert profile["chainId"] == 61127
 
 
 def test_transact_records_fee_profile_observation(monkeypatch, tmp_path):

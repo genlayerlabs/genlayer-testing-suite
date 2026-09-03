@@ -42,12 +42,16 @@ class FeeProfileCollector:
             method_values = self._methods.setdefault(method_name, {})
             self._record_max(method_values, observation)
 
-    def build_profile(self, network: str, headroom: float) -> Dict[str, Any]:
+    def build_profile(
+        self, network: str, headroom: float, chain_id: Optional[int] = None
+    ) -> Dict[str, Any]:
         profile: Dict[str, Any] = {
             "version": 1,
             "network": network,
             "measuredAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
+        if chain_id is not None:
+            profile["chainId"] = chain_id
         if self._deploy:
             profile["deploy"] = self._apply_headroom(self._deploy, headroom)
         profile["methods"] = {
@@ -56,8 +60,16 @@ class FeeProfileCollector:
         }
         return profile
 
-    def write(self, path: Path, network: str, headroom: float) -> Dict[str, Any]:
-        profile = self.build_profile(network=network, headroom=headroom)
+    def write(
+        self,
+        path: Path,
+        network: str,
+        headroom: float,
+        chain_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        profile = self.build_profile(
+            network=network, headroom=headroom, chain_id=chain_id
+        )
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(profile, indent=2) + "\n", encoding="utf-8")

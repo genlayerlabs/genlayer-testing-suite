@@ -145,7 +145,8 @@ print(stats)  # Shows success rate, reliability score, execution time, etc.
 ### Network Configuration
 
 Networks are configured in `gltest.config.yaml`:
-- `localnet`: Local development (chain ID 61999)
+- `localnet`: Local development (chain ID 61127)
+- `studio_devnet`: Hosted Studio preview (chain ID 61997)
 - `testnet_asimov`: Public testnet (chain ID 4221)
 
 Paths can be configured in `gltest.config.yaml`:
