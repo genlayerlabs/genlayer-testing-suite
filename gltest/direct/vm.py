@@ -513,9 +513,18 @@ class VMContext:
         if stdin_temp_path is not None:
             try:
                 _os.unlink(stdin_temp_path)
+            except FileNotFoundError:
+                # already gone (e.g. removed by something else) — fine to
+                # forget it.
+                self._stdin_temp_path = None
             except OSError:
+                # e.g. PermissionError on Windows if the fd 0 restore above
+                # itself failed and the file is still locked. Leave the
+                # path recorded so a later cleanup call can retry, instead
+                # of silently losing track of a file we can never clean up.
                 pass
-            self._stdin_temp_path = None
+            else:
+                self._stdin_temp_path = None
 
         # Collect SDK root paths before removing them from sys.path
         sdk_roots = [p for p in sys.path if 'gltest-direct' in p]

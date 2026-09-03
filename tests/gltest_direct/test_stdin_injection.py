@@ -95,6 +95,14 @@ class TestInjectMessageToFd0:
         original_stdin = os.dup(0)
         try:
             loader._inject_message_to_fd0(vm)
+            # Restore fd 0 before manually unlinking below — otherwise this
+            # unlink is exactly the "unlink while fd 0 still references the
+            # file" case this whole fix exists to avoid, and would itself
+            # raise PermissionError on Windows. vm._original_stdin_fd is
+            # left as-is so _cleanup_after_deactivate's own restore path is
+            # still exercised below (redundant dup2 onto the same target,
+            # then close — harmless).
+            os.dup2(original_stdin, 0)
             os.unlink(vm._stdin_temp_path)  # simulate external removal
 
             vm._cleanup_after_deactivate()  # should not raise despite missing file
