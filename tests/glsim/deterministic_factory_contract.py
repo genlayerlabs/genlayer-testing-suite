@@ -1,19 +1,18 @@
-import genlayer.gl as gl
-from genlayer.py.types import u256
+import genlayer as gl
 
 
 CHILD_CODE = """
-import genlayer.gl as gl
+import genlayer as gl
 
 
-class Child(gl.Contract):
+class Child(gl.contract.Contract):
     @gl.public.view
     def ping(self) -> str:
         return "pong"
 """
 
 
-class DeterministicFactory(gl.Contract):
+class DeterministicFactory(gl.contract.Contract):
     child_address: str
 
     def __init__(self):
@@ -21,12 +20,12 @@ class DeterministicFactory(gl.Contract):
 
     @gl.public.write
     def deploy_child(self, salt: int) -> str:
-        child_address = gl.deploy_contract(
+        child_address = gl.contract.deploy(
             code=CHILD_CODE.encode("utf-8"),
             args=[],
             kwargs={},
-            salt_nonce=u256(salt),
-            on="accepted",
+            salt_nonce=salt,
+            on="decided",
         )
         self.child_address = child_address.as_hex
         return self.child_address

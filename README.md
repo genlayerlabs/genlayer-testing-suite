@@ -135,6 +135,7 @@ Run with the `gltest` CLI:
 ```bash
 gltest                              # Run all tests
 gltest tests/test_mycontract.py     # Specific file
+gltest --network studio_devnet      # Hosted release preview
 gltest --network studionet          # Specific network
 gltest --leader-only                # Skip consensus (faster)
 gltest -v                           # Verbose output
@@ -151,6 +152,9 @@ networks:
   localnet:
     url: "http://127.0.0.1:4000/api"
     leader_only: false
+
+  studio_devnet:
+    # Pre-configured release preview — accounts auto-generated
 
   studionet:
     # Pre-configured — accounts auto-generated
@@ -169,7 +173,7 @@ environment: .env
 ```
 
 Key options:
-- **Networks**: `localnet` and `studionet` work out of the box. `testnet_asimov` requires account keys.
+- **Networks**: `localnet`, `studio_devnet`, and `studionet` work out of the box. `testnet_asimov` requires account keys.
 - **Paths**: Where your contracts and artifacts live.
 - **Environment**: `.env` file for private keys.
 
@@ -217,6 +221,59 @@ tx_receipt = contract.update_storage(args=["new_value"]).transact(
 )
 assert tx_execution_succeeded(tx_receipt)
 ```
+
+### Fee Profiling
+
+Generate a frontend-ready fee profile from the deploys and write transactions
+executed during a gltest session:
+
+```bash
+gltest --fee-profile artifacts/fee-profile.json
+gltest --fee-profile artifacts/fee-profile.json --fee-profile-headroom 1.5
+```
+
+`--fee-profile` writes JSON that can be used as developer fee suggestions by
+transaction-kit, genlayer-js, genlayer-py, or CLI-based submission flows. The optional
+`--fee-profile-headroom` multiplier defaults to `1.25`. Fee and time-unit
+values are multiplied by headroom, rounded up, and emitted as decimal strings.
+When the same method is observed in multiple tests, the profile records the
+maximum observed value for each field across all of those branches.
+`rotationsPerRound` is recorded exactly because it is a posture choice rather
+than a consumed fee amount.
+
+```json
+{
+  "version": 1,
+  "network": "localnet",
+  "chainId": 61127,
+  "measuredAt": "2026-06-10T12:00:00Z",
+  "deploy": {
+    "leaderTimeunitsAllocation": "125",
+    "validatorTimeunitsAllocation": "250",
+    "executionBudgetPerRound": "625000",
+    "totalMessageFees": "0",
+    "rotationsPerRound": "0"
+  },
+  "methods": {
+    "create_bet": {
+      "leaderTimeunitsAllocation": "125",
+      "validatorTimeunitsAllocation": "250",
+      "executionBudgetPerRound": "312500",
+      "totalMessageFees": "12500",
+      "rotationsPerRound": "0"
+    }
+  }
+}
+```
+
+Fee profiling is currently measurable on Studio-based networks whose receipts
+include consumed fee data. Testnet receipts do not expose consumed fees yet, and
+direct/sim mode does not go through these receipt paths. Time-unit allocations
+are recorded from the submitted fee distribution when the backend receipt
+includes it. Live price caps and `feeValue` are intentionally omitted so the SDK
+can quote them from the current network policy at transaction time. The numeric
+`chainId` scopes the measurements to the exact selected runtime chain; consumers
+must fall back to network defaults when it is absent or does not match.
 
 ### Assertions
 
@@ -367,9 +424,9 @@ print(f"Unique states: {analysis.unique_states}")
 ## Example Contract
 
 ```python
-from genlayer import *
+import genlayer as gl
 
-class Storage(gl.Contract):
+class Storage(gl.contract.Contract):
     storage: str
 
     def __init__(self, initial_storage: str):
@@ -400,7 +457,7 @@ For more examples, see the [contracts directory](tests/examples/contracts).
 
 ## Troubleshooting
 
-**Contract not found**: Ensure contracts are in `contracts/` or specify `--contracts-dir`. Contracts must inherit from `gl.Contract`.
+**Contract not found**: Ensure contracts are in `contracts/` or specify `--contracts-dir`. Contracts must inherit from `gl.contract.Contract`.
 
 **Transaction timeouts** (Studio mode): Increase `wait_interval` and `wait_retries` in `.transact()`.
 

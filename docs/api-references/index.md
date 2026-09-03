@@ -130,6 +130,7 @@ Run with the `gltest` CLI:
 ```bash
 gltest                              # Run all tests
 gltest tests/test_mycontract.py     # Specific file
+gltest --network studio_devnet      # Hosted release preview
 gltest --network studionet          # Specific network
 gltest --leader-only                # Skip consensus (faster)
 gltest -v                           # Verbose output
@@ -146,6 +147,9 @@ networks:
   localnet:
     url: "http://127.0.0.1:4000/api"
     leader_only: false
+
+  studio_devnet:
+    # Pre-configured release preview — accounts auto-generated
 
   studionet:
     # Pre-configured — accounts auto-generated
@@ -164,7 +168,7 @@ environment: .env
 ```
 
 Key options:
-- **Networks**: `localnet` and `studionet` work out of the box. `testnet_asimov` requires account keys.
+- **Networks**: `localnet`, `studio_devnet`, and `studionet` work out of the box. `testnet_asimov` requires account keys.
 - **Paths**: Where your contracts and artifacts live.
 - **Environment**: `.env` file for private keys.
 
@@ -362,9 +366,9 @@ print(f"Unique states: {analysis.unique_states}")
 ## Example Contract
 
 ```python
-from genlayer import *
+import genlayer as gl
 
-class Storage(gl.Contract):
+class Storage(gl.contract.Contract):
     storage: str
 
     def __init__(self, initial_storage: str):
@@ -395,7 +399,7 @@ For more examples, see the [contracts directory](tests/examples/contracts).
 
 ## Troubleshooting
 
-**Contract not found**: Ensure contracts are in `contracts/` or specify `--contracts-dir`. Contracts must inherit from `gl.Contract`.
+**Contract not found**: Ensure contracts are in `contracts/` or specify `--contracts-dir`. Contracts must inherit from `gl.contract.Contract`.
 
 **Transaction timeouts** (Studio mode): Increase `wait_interval` and `wait_retries` in `.transact()`.
 

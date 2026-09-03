@@ -863,10 +863,13 @@ def _rpc_sim_call_sdk(state: StateStore, engine: SimEngine, params: dict) -> Any
 
         _install_sim_config_mocks(engine, sim_config)
         _apply_time_context(engine, state, sim_config)
+        snapshot_id = engine.create_snapshot()
         try:
             result = engine.call_method(to, method, args, kwargs, sender)
         finally:
             _clear_sim_config_mocks(engine)
+            engine.restore_snapshot(snapshot_id)
+            engine._snapshots.pop(snapshot_id, None)
         result_bytes = encode_calldata_result(result)
 
         # Return a simplified transaction receipt

@@ -1,11 +1,11 @@
 # v0.1.0
-# { "Depends": "py-genlayer:test" }
+# { "Depends": "py-genlayer:latest" }
 
 import json
 from enum import Enum
 from datetime import datetime, timezone
 from urllib.parse import urlparse
-from genlayer import *
+import genlayer as gl
 
 
 class Status(Enum):
@@ -14,15 +14,15 @@ class Status(Enum):
     ERROR = "Error"
 
 
-class IntelligentOracle(gl.Contract):
+class IntelligentOracle(gl.contract.Contract):
     # Declare persistent storage fields
     prediction_market_id: str
     title: str
     description: str
-    potential_outcomes: DynArray[str]
-    rules: DynArray[str]
-    data_source_domains: DynArray[str]
-    resolution_urls: DynArray[str]
+    potential_outcomes: gl.storage.DynArray[str]
+    rules: gl.storage.DynArray[str]
+    data_source_domains: gl.storage.DynArray[str]
+    resolution_urls: gl.storage.DynArray[str]
     earliest_resolution_date: str  # Store as ISO format string
     status: str  # Store as string since Enum isn't supported
     analysis: str  # Store analysis results

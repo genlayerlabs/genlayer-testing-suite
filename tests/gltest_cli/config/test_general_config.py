@@ -8,6 +8,7 @@ from gltest_cli.config.types import (
     NetworkConfigData,
 )
 from gltest_cli.config.constants import DEFAULT_ARTIFACTS_DIR, DEFAULT_CONTRACTS_DIR
+from genlayer_py.chains import studio_devnet, studionet
 
 
 def test_general_config_artifacts_methods():
@@ -29,6 +30,48 @@ def test_general_config_artifacts_methods():
 
     # Plugin config should take precedence
     assert general_config.plugin_config.artifacts_dir == Path("plugin_artifacts")
+
+
+def test_studio_devnet_is_available_as_a_preconfigured_chain():
+    config = GeneralConfig(
+        user_config=UserConfig(
+            networks={
+                "studio_devnet": NetworkConfigData(
+                    id=studio_devnet.id,
+                    url=studio_devnet.rpc_urls["default"]["http"][0],
+                    chain_type="studio_devnet",
+                )
+            },
+            default_network="studio_devnet",
+        )
+    )
+
+    chain = config.get_chain()
+    assert chain.id == 61997
+    assert chain.rpc_urls["default"]["http"] == [
+        "https://studio-dev.genlayer.com/api"
+    ]
+    assert config.check_studio_based_rpc()
+
+
+def test_custom_studio_network_applies_its_id_and_url_to_the_chain():
+    config = GeneralConfig(
+        user_config=UserConfig(
+            networks={
+                "preview": NetworkConfigData(
+                    id=62001,
+                    url="https://preview.example/api",
+                    chain_type="studionet",
+                )
+            },
+            default_network="preview",
+        )
+    )
+
+    chain = config.get_chain()
+    assert chain.id == 62001
+    assert chain.rpc_urls["default"]["http"] == ["https://preview.example/api"]
+    assert studionet.id == 61999
 
 
 def test_general_config_artifacts_default():

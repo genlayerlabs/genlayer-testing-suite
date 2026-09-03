@@ -1,11 +1,11 @@
 # v0.1.0
 # { "Depends": "py-genlayer:latest" }
 
-from genlayer import *
+import genlayer as gl
 
 
 # contract class
-class Storage(gl.Contract):
+class Storage(gl.contract.Contract):
     storage: str
 
     # constructor

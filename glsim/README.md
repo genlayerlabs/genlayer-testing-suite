@@ -144,10 +144,10 @@ Contracts that read sibling files via `open("/contract/OtherModule.py")` work �
 
 ### Cross-Contract Calls
 
-Contracts using `gl.deploy_contract()`, `gl.contract_at().view()`, and `gl.contract_at().emit()` work. glsim handles:
-- **DeployContract** — deploys child contract with isolated storage
+Contracts using `gl.contract.deploy()`, `gl.contract.get_at().view()`, and `gl.contract.get_at().emit()` work. glsim handles:
+- **EmitInternalDeployMessage** — deploys child contract with isolated storage
 - **CallContract** — calls method on deployed contract, returns result
-- **PostMessage** — fire-and-forget call (no return value)
+- **EmitInternalMessage** — fire-and-forget call (no return value)
 
 ### GenVM Library Stubs
 

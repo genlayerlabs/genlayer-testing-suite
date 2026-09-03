@@ -2,11 +2,26 @@
 from genlayer_py.types import (
     CalldataAddress,
     GenLayerTransaction,
-    TransactionStatus,
     CalldataEncodable,
     TransactionHashVariant,
 )
 from typing import List, TypedDict, Dict, Any
+
+try:
+    # genlayer-py layers the consumer lifecycle over the raw protocol status.
+    from genlayer_py.types.transactions import ProtocolTransactionStatus
+except ImportError:  # genlayer-py before the lifecycle layering
+    from genlayer_py.types import TransactionStatus as ProtocolTransactionStatus
+
+try:
+    from genlayer_py.types import TransactionLifecycle
+except ImportError:  # genlayer-py before the lifecycle layering
+    TransactionLifecycle = Dict[str, Any]
+
+# gltest keeps `TransactionStatus` as part of its own public API for the test
+# suites that already pass it to `wait_transaction_status`. Internal code uses
+# the protocol name; new code should express waits with `wait_until` instead.
+TransactionStatus = ProtocolTransactionStatus
 
 
 class MockedLLMResponse(TypedDict):

@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .vm import VMContext
 
+from .sdk_compat import import_calldata
+
 # Thread-local VM context for parallel test safety
 _local = threading.local()
 
@@ -82,7 +84,15 @@ def get_self_balance() -> int:
     return vm._balances.get(addr_bytes, 0)
 
 
-_CROSS_CONTRACT_OPS = frozenset({"DeployContract", "CallContract", "PostMessage"})
+_CROSS_CONTRACT_OPS = frozenset(
+    {
+        "DeployContract",
+        "EmitInternalDeployMessage",
+        "CallContract",
+        "PostMessage",
+        "EmitInternalMessage",
+    }
+)
 
 
 def gl_call(data: bytes, /) -> int:
@@ -95,7 +105,7 @@ def gl_call(data: bytes, /) -> int:
     fd_buffers = getattr(_local, 'fd_buffers', {})
 
     try:
-        from genlayer.py import calldata
+        calldata = import_calldata()
         request = calldata.decode(data)
     except Exception as e:
         vm._trace(f"gl_call decode error: {e}")
@@ -126,7 +136,7 @@ def gl_call(data: bytes, /) -> int:
         # Regular responses (web, llm, etc) are just calldata-encoded
         # The SDK's _decode_nondet expects plain {"ok": ...} format
         try:
-            from genlayer.py import calldata
+            calldata = import_calldata()
             encoded = calldata.encode(response)
         except Exception as e:
             vm._trace(f"gl_call encode error: {e}")
@@ -340,7 +350,7 @@ def _handle_run_nondet(vm: "VMContext", data: Any) -> Any:
     the leader function, returning its result.
     """
     import cloudpickle
-    from genlayer.py import calldata
+    calldata = import_calldata()
 
     data_leader = data.get("data_leader")
     if not data_leader:

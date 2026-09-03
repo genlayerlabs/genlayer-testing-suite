@@ -250,7 +250,8 @@ class TestNondetRestrictions:
     """Tests that cross-contract calls are forbidden inside nondet context.
 
     GenVM raises SystemError: 6 (forbidden) when contract code attempts
-    cross-contract calls (DeployContract, CallContract, PostMessage) inside
+    cross-contract calls (EmitInternalDeployMessage, CallContract,
+    EmitInternalMessage) inside
     eq_principle/run_nondet. These tests verify gltest enforces the same
     restriction in direct mode.
     """
@@ -260,8 +261,8 @@ class TestNondetRestrictions:
         # Deploy contract to get SDK loaded and run_nondet patched
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        import genlayer.gl.vm as gl_vm
-        from genlayer.py import calldata
+        import genlayer.vm as gl_vm
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         def bad_leader():
@@ -278,15 +279,15 @@ class TestNondetRestrictions:
             gl_vm.run_nondet(bad_leader, lambda r: True)
 
     def test_deploy_contract_forbidden_in_nondet(self, direct_vm, direct_deploy):
-        """DeployContract inside run_nondet raises RuntimeError."""
+        """EmitInternalDeployMessage inside run_nondet raises RuntimeError."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        import genlayer.gl.vm as gl_vm
-        from genlayer.py import calldata
+        import genlayer.vm as gl_vm
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         def bad_leader():
-            request = {"DeployContract": {"code": b"pass", "calldata": {}}}
+            request = {"EmitInternalDeployMessage": {"code": b"pass", "calldata": {}}}
             wasi_mock.gl_call(calldata.encode(request))
             return "should not reach"
 
@@ -294,16 +295,16 @@ class TestNondetRestrictions:
             gl_vm.run_nondet(bad_leader, lambda r: True)
 
     def test_post_message_forbidden_in_nondet(self, direct_vm, direct_deploy):
-        """PostMessage inside run_nondet raises RuntimeError."""
+        """EmitInternalMessage inside run_nondet raises RuntimeError."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        import genlayer.gl.vm as gl_vm
-        from genlayer.py import calldata
+        import genlayer.vm as gl_vm
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         def bad_leader():
             request = {
-                "PostMessage": {
+                "EmitInternalMessage": {
                     "address": b"\x00" * 20,
                     "calldata": {"method": "bar", "args": []},
                 }
@@ -318,8 +319,8 @@ class TestNondetRestrictions:
         """Trace and other non-cross-contract ops work inside run_nondet."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        import genlayer.gl.vm as gl_vm
-        from genlayer.py import calldata
+        import genlayer.vm as gl_vm
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         def good_leader():
@@ -334,7 +335,7 @@ class TestNondetRestrictions:
         """Cross-contract calls outside run_nondet do not raise."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        from genlayer.py import calldata
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         request = {
@@ -351,8 +352,8 @@ class TestNondetRestrictions:
         """_in_nondet flag is cleared even when leader_fn raises."""
         direct_deploy(str(CONTRACTS_DIR / "storage.py"), "v")
 
-        import genlayer.gl.vm as gl_vm
-        from genlayer.py import calldata
+        import genlayer.vm as gl_vm
+        from genlayer import calldata
         from gltest.direct import wasi_mock
 
         vm = wasi_mock.get_vm()

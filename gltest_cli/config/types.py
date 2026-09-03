@@ -1,13 +1,21 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
-from genlayer_py.chains import localnet, studionet, testnet_asimov, testnet_bradbury
+from genlayer_py.chains import (
+    localnet,
+    studio_devnet,
+    studionet,
+    testnet_asimov,
+    testnet_bradbury,
+)
 from genlayer_py.types import GenLayerChain
 from gltest_cli.config.constants import PRECONFIGURED_NETWORKS
 from gltest_cli.config.constants import (
     DEFAULT_WAIT_INTERVAL,
     DEFAULT_WAIT_RETRIES,
     DEFAULT_LEADER_ONLY,
+    DEFAULT_FEE_PROFILE_HEADROOM,
     CHAINS,
 )
 
@@ -22,6 +30,8 @@ class PluginConfig:
     network_name: Optional[str] = None
     leader_only: bool = False
     chain_type: Optional[str] = None
+    fee_profile_path: Optional[Path] = None
+    fee_profile_headroom: Optional[float] = None
 
 
 @dataclass
@@ -187,12 +197,39 @@ class GeneralConfig:
     def get_chain(self) -> GenLayerChain:
         chain_map = {
             "localnet": localnet,
+            "studio_devnet": studio_devnet,
             "studionet": studionet,
             "testnet_asimov": testnet_asimov,
             "testnet_bradbury": testnet_bradbury,
         }
         chain_type = self.get_chain_type()
-        return chain_map[chain_type]
+        chain = deepcopy(chain_map[chain_type])
+
+        # The selected network is the runtime authority. This is especially
+        # important for custom Studio deployments: the endpoint and chain ID
+        # must travel together or signed transactions use the preset's ID.
+        network_config = self.user_config.networks.get(self.get_network_name())
+        uses_network_chain_type = (
+            self.plugin_config.chain_type is None
+            or (
+                network_config is not None
+                and self.plugin_config.chain_type == network_config.chain_type
+            )
+        )
+        if (
+            uses_network_chain_type
+            and network_config is not None
+            and network_config.id is not None
+        ):
+            chain.id = network_config.id
+        rpc_url = (
+            self.get_rpc_url()
+            if uses_network_chain_type or self.plugin_config.rpc_url is not None
+            else None
+        )
+        if rpc_url:
+            chain.rpc_urls["default"]["http"] = [rpc_url]
+        return chain
 
     def get_default_wait_interval(self) -> int:
         if self.plugin_config.default_wait_interval is not None:
@@ -228,8 +265,16 @@ class GeneralConfig:
             return network_config.leader_only
         return DEFAULT_LEADER_ONLY
 
+    def get_fee_profile_path(self) -> Optional[Path]:
+        return self.plugin_config.fee_profile_path
+
+    def get_fee_profile_headroom(self) -> float:
+        if self.plugin_config.fee_profile_headroom is not None:
+            return self.plugin_config.fee_profile_headroom
+        return DEFAULT_FEE_PROFILE_HEADROOM
+
     def check_local_rpc(self) -> bool:
         return self.get_chain_type() == "localnet"
 
     def check_studio_based_rpc(self) -> bool:
-        return self.get_chain_type() in ("studionet", "localnet")
+        return self.get_chain_type() in ("studio_devnet", "studionet", "localnet")
