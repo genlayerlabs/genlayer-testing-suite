@@ -135,6 +135,7 @@ Run with the `gltest` CLI:
 ```bash
 gltest                              # Run all tests
 gltest tests/test_mycontract.py     # Specific file
+gltest --network studio_devnet      # Hosted release preview
 gltest --network studionet          # Specific network
 gltest --leader-only                # Skip consensus (faster)
 gltest -v                           # Verbose output
@@ -151,6 +152,9 @@ networks:
   localnet:
     url: "http://127.0.0.1:4000/api"
     leader_only: false
+
+  studio_devnet:
+    # Pre-configured release preview — accounts auto-generated
 
   studionet:
     # Pre-configured — accounts auto-generated
@@ -169,7 +173,7 @@ environment: .env
 ```
 
 Key options:
-- **Networks**: `localnet` and `studionet` work out of the box. `testnet_asimov` requires account keys.
+- **Networks**: `localnet`, `studio_devnet`, and `studionet` work out of the box. `testnet_asimov` requires account keys.
 - **Paths**: Where your contracts and artifacts live.
 - **Environment**: `.env` file for private keys.
 
@@ -241,6 +245,7 @@ than a consumed fee amount.
 {
   "version": 1,
   "network": "localnet",
+  "chainId": 61127,
   "measuredAt": "2026-06-10T12:00:00Z",
   "deploy": {
     "leaderTimeunitsAllocation": "125",
@@ -266,7 +271,9 @@ include consumed fee data. Testnet receipts do not expose consumed fees yet, and
 direct/sim mode does not go through these receipt paths. Time-unit allocations
 are recorded from the submitted fee distribution when the backend receipt
 includes it. Live price caps and `feeValue` are intentionally omitted so the SDK
-can quote them from the current network policy at transaction time.
+can quote them from the current network policy at transaction time. The numeric
+`chainId` scopes the measurements to the exact selected runtime chain; consumers
+must fall back to network defaults when it is absent or does not match.
 
 ### Assertions
 

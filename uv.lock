@@ -688,14 +688,14 @@ wheels = [
 
 [[package]]
 name = "genlayer-py"
-version = "0.19.0rc1"
+version = "0.19.0rc2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "web3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/63/9c/5b5938ac9065e881be2746a6dc1aefb6a858c4109397ab08de33ddb4d050/genlayer_py-0.19.0rc1.tar.gz", hash = "sha256:7c295bbccf48afc14c84e25f874b94b7c2d1ea9df438f2efa16d1a49dd99f952", size = 90613, upload-time = "2026-09-03T00:05:08.023Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/af/17/1a82ff1db9d6b33ca8a73c8edb9c1786860462ee1fa16eb5261e50b1b7ac/genlayer_py-0.19.0rc2.tar.gz", hash = "sha256:92056aa1b9eb336550a86c7cc3dbd9c7b10afd18d9d846d094e4bc7dd8d7224a", size = 90588, upload-time = "2026-09-03T14:22:46.187Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/f3/67eecbb71cf373f7128e822ece2d0de3ea4c976d31533163f18ab139dc34/genlayer_py-0.19.0rc1-py3-none-any.whl", hash = "sha256:3707c6741c98b71b7cec48f6133fa7264e373ea9a584bc2d69ad63a11f026efc", size = 106598, upload-time = "2026-09-03T00:05:06.849Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/cb/b9df445c0aa09d0307561579b306e5a1133e736f1619b8bb1687ed8e8f50/genlayer_py-0.19.0rc2-py3-none-any.whl", hash = "sha256:40f96bb2b0ded2174a98533d199cbdfc57235255a5b8ed84a0b9464851cb708c", size = 106602, upload-time = "2026-09-03T14:22:45.109Z" },
 ]
 
 [[package]]
@@ -724,7 +724,7 @@ requires-dist = [
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "eth-account", marker = "extra == 'sim'", specifier = ">=0.10" },
     { name = "fastapi", marker = "extra == 'sim'", specifier = ">=0.100" },
-    { name = "genlayer-py", specifier = ">=0.19.0rc1,<0.20.0" },
+    { name = "genlayer-py", specifier = ">=0.19.0rc2,<0.20.0" },
     { name = "httpx", marker = "extra == 'sim'", specifier = ">=0.24" },
     { name = "numpy", marker = "extra == 'sim'", specifier = ">=1.26" },
     { name = "pytest" },

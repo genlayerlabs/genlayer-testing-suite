@@ -222,6 +222,7 @@ def pytest_sessionfinish(session, exitstatus):
             path=fee_profile_path,
             network=general_config.get_network_name(),
             headroom=general_config.get_fee_profile_headroom(),
+            chain_id=general_config.get_chain().id,
         )
         logger.info(f"Wrote fee profile to {fee_profile_path}")
         if not collector.has_observations():

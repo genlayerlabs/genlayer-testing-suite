@@ -3,8 +3,14 @@ from pathlib import Path
 
 GLTEST_CONFIG_FILE = "gltest.config.yaml"
 DEFAULT_NETWORK = "localnet"
-PRECONFIGURED_NETWORKS = ["localnet", "studionet", "testnet_asimov", "testnet_bradbury"]
-CHAINS = ["localnet", "studionet", "testnet_asimov", "testnet_bradbury"]
+PRECONFIGURED_NETWORKS = [
+    "localnet",
+    "studio_devnet",
+    "studionet",
+    "testnet_asimov",
+    "testnet_bradbury",
+]
+CHAINS = PRECONFIGURED_NETWORKS.copy()
 DEFAULT_RPC_URL = SIMULATOR_JSON_RPC_URL
 DEFAULT_ENVIRONMENT = ".env"
 DEFAULT_CONTRACTS_DIR = Path("contracts")

@@ -239,6 +239,11 @@ def test_multiple_networks_config(pytester):
             assert general_config.get_network_name() == "testnet_asimov_custom"
             rpc_url = general_config.get_rpc_url()
             assert rpc_url == "https://testnet.example.com"
+            chain = general_config.get_chain()
+            assert chain.id == 55554
+            assert chain.rpc_urls["default"]["http"] == [
+                "https://testnet.example.com"
+            ]
     """
     )
 
