@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.30.0-rc.2 (2026-09-03)
+
+### Bug Fixes
+
+- **direct**: Load current GenVM runner bundles
+  ([#112](https://github.com/genlayerlabs/genlayer-testing-suite/pull/112),
+  [`36b799e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/36b799e1da3eb3e440cfacb30efd9ee43c1c95d4))
+
+
 ## v0.30.0-rc.1 (2026-09-03)
 
 ### Bug Fixes
