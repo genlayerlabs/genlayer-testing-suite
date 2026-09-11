@@ -507,6 +507,25 @@ class VMContext:
                 pass
             self._original_stdin_fd = None
 
+        # Clean up the temp file used to inject stdin, now that fd 0's
+        # duplicate of it has been closed above (see _inject_message_to_fd0).
+        stdin_temp_path = getattr(self, '_stdin_temp_path', None)
+        if stdin_temp_path is not None:
+            try:
+                _os.unlink(stdin_temp_path)
+            except FileNotFoundError:
+                # already gone (e.g. removed by something else) — fine to
+                # forget it.
+                self._stdin_temp_path = None
+            except OSError:
+                # e.g. PermissionError on Windows if the fd 0 restore above
+                # itself failed and the file is still locked. Leave the
+                # path recorded so a later cleanup call can retry, instead
+                # of silently losing track of a file we can never clean up.
+                pass
+            else:
+                self._stdin_temp_path = None
+
         # Collect SDK root paths before removing them from sys.path
         sdk_roots = [p for p in sys.path if 'gltest-direct' in p]
 
