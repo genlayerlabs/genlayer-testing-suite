@@ -17,7 +17,8 @@ dependencies = [
     "genlayer-py>=0.19.0rc2,<0.20.0",
     "colorama>=0.4.6",
     "pyyaml",
-    "python-dotenv"
+    "python-dotenv",
+    "psutil>=5.9",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
