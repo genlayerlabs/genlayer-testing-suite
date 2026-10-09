@@ -106,3 +106,26 @@ class TestAddressFixtures:
         from gltest.direct.loader import create_address
         default = create_address("default_sender")
         assert direct_owner == default
+
+
+class TestWarp:
+    """vm.warp() is visible through the message context after deploy."""
+
+    def test_warp_updates_message_datetime(self, direct_vm, direct_deploy):
+        """warp() after SDK import updates gl.message_raw datetime."""
+        contract = direct_deploy(str(CONTRACTS_DIR / "message_time.py"))
+
+        direct_vm.warp("2030-01-02T03:04:05Z")
+
+        assert contract.get_raw_datetime() == "2030-01-02T03:04:05Z"
+
+    def test_revert_restores_message_datetime(self, direct_vm, direct_deploy):
+        """revert() restores the snapshot's message datetime."""
+        contract = direct_deploy(str(CONTRACTS_DIR / "message_time.py"))
+        direct_vm.warp("2030-01-01T00:00:00Z")
+        snap_id = direct_vm.snapshot()
+
+        direct_vm.warp("2031-01-01T00:00:00Z")
+        direct_vm.revert(snap_id)
+
+        assert contract.get_raw_datetime() == "2030-01-01T00:00:00Z"
