@@ -55,6 +55,7 @@ def sync_message_context(
     origin_address: Any = _UNSET,
     value: Any = _UNSET,
     chain_id: Any = _UNSET,
+    datetime: Any = _UNSET,
 ) -> None:
     """Synchronize the v0.3 message module without triggering a fresh import."""
     contract_address = _coerce_address(contract_address)
@@ -70,6 +71,7 @@ def sync_message_context(
         "origin_address": origin_address,
         "value": value,
         "chain_id": chain_id,
+        "datetime": datetime,
     }
     for name, next_value in updates.items():
         if next_value is _UNSET:
