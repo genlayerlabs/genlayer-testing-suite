@@ -583,10 +583,11 @@ class VMContext:
 
     def _refresh_gl_message(self) -> None:
         """
-        Refresh gl.message and gl.message_raw to reflect current sender.
+        Refresh gl.message and gl.message_raw to reflect current VM state.
 
         GenLayer SDK caches gl.message at import time. This method updates
-        the cached values so contracts see the current vm.sender.
+        the cached values so contracts see the current sender, origin, value,
+        chain id and warped datetime.
 
         Only updates if genlayer.gl is already imported - we must not trigger
         a fresh import as that would read from stdin before message is injected.
@@ -618,6 +619,7 @@ class VMContext:
             if hasattr(gl, 'message_raw') and gl.message_raw is not None:
                 gl.message_raw['sender_address'] = sender
                 gl.message_raw['origin_address'] = origin
+                gl.message_raw['datetime'] = self._datetime
 
             # Replace gl.message with new NamedTuple (immutable, must recreate)
             if hasattr(gl, 'message') and gl.message is not None:
