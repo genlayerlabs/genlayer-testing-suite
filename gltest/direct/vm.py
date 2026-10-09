@@ -584,10 +584,11 @@ class VMContext:
 
     def _refresh_gl_message(self) -> None:
         """
-        Refresh genlayer.message to reflect current sender.
+        Refresh genlayer.message to reflect current VM state.
 
         The SDK reads genlayer.message from stdin at import time. This method
-        updates the loaded module so contracts see the current vm.sender.
+        updates the loaded module so contracts see the current sender, origin,
+        value, chain id and warped datetime.
 
         Only updates if genlayer.message is already imported - we must not
         trigger a fresh import as that would read from stdin before message is
@@ -619,6 +620,7 @@ class VMContext:
                 origin_address=origin,
                 value=u256(self._value),
                 chain_id=u256(self._chain_id),
+                datetime=self._datetime,
             )
         except ImportError:
             # genlayer not loaded yet, nothing to update
