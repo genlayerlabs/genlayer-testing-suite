@@ -14,6 +14,7 @@ from genlayer_py.types import SimConfig
 from typing import List, Any, Optional, Dict, Callable, Literal
 from gltest_cli.config.general import get_general_config
 from gltest.fees import maybe_record_fee_observation
+from gltest.fees.defaults import default_write_fees, fees_are_unspecified
 from .contract_functions import ContractFunction
 from .stats_collector import StatsCollector, SimulationConfig
 from .wait import wait_for_transaction_receipt, wait_until_from_status
@@ -123,6 +124,20 @@ def write_contract_wrapper(
                 raise ValueError(
                     f"Invalid transaction_context keys: {sorted(transaction_context.keys())}"
                 ) from e
+        if (
+            fees_are_unspecified(fees, fee_value)
+            and general_config.check_studio_based_rpc()
+        ):
+            fees = default_write_fees(
+                client,
+                address=self.address,
+                function_name=method_name,
+                account=self.account,
+                args=args,
+                value=value,
+                leader_only=leader_only,
+                sim_config=sim_config,
+            )
         tx_hash = client.write_contract(
             address=self.address,
             function_name=method_name,

@@ -28,6 +28,7 @@ from gltest.assertions import tx_execution_failed
 from gltest.exceptions import DeploymentError
 from gltest_cli.config.general import get_general_config
 from gltest.fees import maybe_record_fee_observation
+from gltest.fees.defaults import default_deploy_fees, fees_are_unspecified
 from gltest.utils import extract_contract_address
 from gltest.types import TransactionContext
 from .wait import wait_for_transaction_receipt, wait_until_from_status
@@ -211,6 +212,18 @@ class ContractFactory:
                     raise ValueError(
                         f"Invalid transaction_context keys: {sorted(transaction_context.keys())}"
                     ) from e
+            if (
+                fees_are_unspecified(fees, fee_value)
+                and general_config.check_studio_based_rpc()
+            ):
+                fees = default_deploy_fees(
+                    client,
+                    code=self.contract_code,
+                    account=account,
+                    args=args,
+                    leader_only=leader_only,
+                    sim_config=sim_config,
+                )
             tx_hash = client.deploy_contract(
                 code=self.contract_code,
                 args=args,
