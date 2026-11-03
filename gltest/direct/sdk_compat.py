@@ -1,25 +1,42 @@
-"""Helpers for the GenVM v0.3 SDK layout."""
+"""Helpers for the GenVM SDK layouts.
+
+The v0.3 SDK exposes its modules at the package root (``genlayer.calldata``,
+``genlayer.vm``). The v0.2 SDK, still pinned by legacy contracts, keeps them
+under ``genlayer.py`` and ``genlayer.gl``.
+"""
 
 from __future__ import annotations
 
+import importlib
 import sys
 from typing import Any
 
 _UNSET = object()
 
 
-def import_calldata() -> Any:
-    """Return the v0.3 calldata module from the active SDK path."""
-    from genlayer import calldata
+def _import_first(*names: str) -> Any:
+    for name in names[:-1]:
+        try:
+            return importlib.import_module(name)
+        except ModuleNotFoundError as exc:
+            if exc.name is None or not name.startswith(exc.name):
+                raise
+    return importlib.import_module(names[-1])
 
-    return calldata
+
+def import_calldata() -> Any:
+    """Return the calldata module from the active SDK path."""
+    return _import_first("genlayer.calldata", "genlayer.py.calldata")
 
 
 def import_types() -> Any:
-    """Return the v0.3 types module from the active SDK path."""
-    from genlayer import types as sdk_types
+    """Return the types module from the active SDK path."""
+    return _import_first("genlayer.types", "genlayer.py.types")
 
-    return sdk_types
+
+def import_vm() -> Any:
+    """Return the vm module from the active SDK path."""
+    return _import_first("genlayer.vm", "genlayer.gl.vm")
 
 
 def import_address() -> type:
@@ -56,7 +73,7 @@ def sync_message_context(
     value: Any = _UNSET,
     chain_id: Any = _UNSET,
 ) -> None:
-    """Synchronize the v0.3 message module without triggering a fresh import."""
+    """Synchronize the loaded message context without triggering a fresh import."""
     contract_address = _coerce_address(contract_address)
     sender_address = _coerce_address(sender_address)
     origin_address = _coerce_address(origin_address)
@@ -78,3 +95,26 @@ def sync_message_context(
             setattr(message_mod, name, next_value)
         if isinstance(raw, dict):
             raw[name] = next_value
+
+    _sync_legacy_message(updates)
+
+
+def message_context_loaded() -> bool:
+    return "genlayer.message" in sys.modules or "genlayer.gl" in sys.modules
+
+
+def _sync_legacy_message(updates: dict[str, Any]) -> None:
+    # v0.2 keeps gl.message_raw (dict) and gl.message (NamedTuple) on genlayer.gl.
+    gl_mod = sys.modules.get("genlayer.gl")
+    if gl_mod is None:
+        return
+    changed = {k: v for k, v in updates.items() if v is not _UNSET}
+    raw = getattr(gl_mod, "message_raw", None)
+    if isinstance(raw, dict):
+        raw.update(changed)
+    message = getattr(gl_mod, "message", None)
+    if message is not None and hasattr(message, "_replace"):
+        fields = getattr(message, "_fields", ())
+        gl_mod.message = message._replace(
+            **{k: v for k, v in changed.items() if k in fields}
+        )

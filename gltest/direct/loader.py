@@ -25,6 +25,7 @@ from .sdk_compat import (
     import_address,
     import_calldata,
     import_lazy,
+    import_vm,
 )
 
 _DIRECT_IGNORED_TX_KWARGS = {
@@ -152,7 +153,7 @@ def _patch_get_type_hints_for_pep695() -> None:
 
 
 def _patch_run_nondet_for_direct_mode() -> None:
-    """Replace genlayer.vm.run_nondet with direct-mode versions.
+    """Replace the SDK vm's run_nondet functions with direct-mode versions.
 
     The SDK's run_nondet pickles leader_fn via cloudpickle to pass through
     the WASM boundary. In direct mode there's no WASM, and the closure
@@ -160,7 +161,7 @@ def _patch_run_nondet_for_direct_mode() -> None:
     We bypass pickling by calling leader_fn() directly.
     """
     try:
-        import genlayer.vm as gl_vm
+        gl_vm = import_vm()
     except ImportError:
         return
 
@@ -211,7 +212,10 @@ def _patch_run_nondet_for_direct_mode() -> None:
     _direct_run_nondet_default.lazy = _lazy_run_nondet_default
 
     gl_vm.run_nondet = _direct_run_nondet
-    gl_vm.run_nondet_default = _direct_run_nondet_default
+    # v0.2 names the default-validator variant run_nondet_unsafe.
+    for name in ('run_nondet_default', 'run_nondet_unsafe'):
+        if hasattr(gl_vm, name):
+            setattr(gl_vm, name, _direct_run_nondet_default)
     gl_vm._direct_mode_patched = True
 
     # Also mock embeddings (ONNX model not available in direct mode)
@@ -523,7 +527,35 @@ def _allocate_contract(
         pass
 
     try:
-        from genlayer.storage import Root
+        from genlayer.py.storage import ROOT_SLOT_ID
+        from genlayer.py.storage._internal.generate import (
+            ORIGINAL_INIT_ATTR,
+            Lit,
+            _storage_build,
+        )
+
+        td = _storage_build(contract_cls, {})
+        assert not isinstance(td, Lit)
+
+        slot = vm._storage.get_store_slot(ROOT_SLOT_ID)
+        instance = td.get(slot, 0)
+
+        init = getattr(contract_cls, '__init__', None)
+        if init is not None:
+            if hasattr(init, ORIGINAL_INIT_ATTR):
+                init = getattr(init, ORIGINAL_INIT_ATTR)
+            init(instance, *args, **kwargs)
+
+        return instance
+
+    except ImportError:
+        pass
+
+    try:
+        try:
+            from genlayer.storage import Root
+        except ImportError:
+            from genlayer.py.storage import Root
 
         Root.MANAGER = vm._storage
 
