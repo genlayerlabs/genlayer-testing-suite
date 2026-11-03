@@ -222,6 +222,40 @@ tx_receipt = contract.update_storage(args=["new_value"]).transact(
 assert tx_execution_succeeded(tx_receipt)
 ```
 
+### Transaction Fees
+
+`deploy()`, `deploy_contract_tx()`, and `transact()` accept `fees` (a fee
+distribution, optionally with `messageAllocations` and `feeValue`) and
+`fee_value` (the deposit). When both are omitted on a Studio-based network
+(`localnet`, `studio_devnet`, `studionet`) whose fee policy is enabled, gltest
+submits Studio's quote for that exact transaction:
+
+- deploys use the `recommendedPreset` from `sim_estimateTransactionFees`, including
+  its `messageAllocations`;
+- writes use the SDK's write-specific estimate
+  (`estimate_transaction_fees_for_write`);
+- if the simulation itself fails (so a test can still assert the failed receipt),
+  or a custom Studio network's chain ID is unknown to the SDK's write estimator,
+  gltest falls back to the SDK's generic `estimate_transaction_fees()`.
+
+The fee policy is looked up once per client. Backends whose policy is disabled
+or that do not expose `sim_getFeeConfig` (for example GLSim, which is gasless)
+keep receiving the legacy fee-less transaction, and testnets are left to the
+SDK. Passing `fees` or `fee_value` explicitly always submits exactly what you
+passed:
+
+```python
+# Omitted: gltest quotes the transaction when the network charges fees
+contract = factory.deploy(args=["initial_value"])
+
+# Explicit: submitted as given
+estimate = gl_client.estimate_transaction_fees()
+tx_receipt = contract.update_storage(args=["new_value"]).transact(
+    fees={"distribution": estimate["distribution"]},
+    fee_value=estimate["feeValue"],
+)
+```
+
 ### Fee Profiling
 
 Generate a frontend-ready fee profile from the deploys and write transactions

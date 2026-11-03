@@ -64,3 +64,4 @@ class TransactionContext(TypedDict, total=False):
 
     validators: List[ValidatorConfig]  # List to create virtual validators
     genvm_datetime: str  # ISO format datetime string
+    genvm_executor_selector: str  # Studio GenVM executor pin, e.g. "re:^v0\.2\."
