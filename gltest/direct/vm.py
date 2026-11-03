@@ -21,7 +21,12 @@ from typing import Any, Optional, Pattern, List, Tuple, Dict
 from unittest.mock import patch
 
 from ..types import MockedWebResponseData
-from .sdk_compat import import_address_u256, sync_message_context
+from .sdk_compat import (
+    import_address_u256,
+    import_vm,
+    message_context_loaded,
+    sync_message_context,
+)
 
 _sentinel = object()
 
@@ -372,7 +377,7 @@ class VMContext:
 
         stored_result, leader_fn, validator_fn = self._captured_validators[index]
 
-        import genlayer.vm as gl_vm
+        gl_vm = import_vm()
 
         if leader_error is not None:
             wrapped = gl_vm.UserError(str(leader_error))
@@ -589,11 +594,11 @@ class VMContext:
         The SDK reads genlayer.message from stdin at import time. This method
         updates the loaded module so contracts see the current vm.sender.
 
-        Only updates if genlayer.message is already imported - we must not
-        trigger a fresh import as that would read from stdin before message is
-        injected.
+        Only updates if the SDK message module is already imported - we must
+        not trigger a fresh import as that would read from stdin before message
+        is injected.
         """
-        if 'genlayer.message' not in sys.modules:
+        if not message_context_loaded():
             return
 
         try:
