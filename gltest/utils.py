@@ -33,7 +33,7 @@ def wait_for_transaction(
     Returns a ``TransactionTree``: ``.receipt`` is the transaction's receipt and
     ``.children`` hold the triggered transactions' receipts (empty unless
     ``wait_triggered_transactions`` is set). ``wait_triggered_transactions_depth``
-    defaults to 3 levels.
+    defaults to 1 (direct children only).
     """
     # Imported lazily: gltest.contracts imports this module.
     from gltest.clients import get_gl_client

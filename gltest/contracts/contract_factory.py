@@ -32,6 +32,7 @@ from gltest.utils import extract_contract_address
 from gltest.types import TransactionContext
 from .wait import (
     DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
+    validate_triggered_transactions_depth,
     wait_for_transaction_receipt,
     wait_for_triggered_transactions,
     wait_until_from_status,
@@ -142,8 +143,8 @@ class ContractFactory:
         wait_transaction_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
-        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
         transaction_context: Optional[TransactionContext] = None,
+        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
     ) -> Contract:
         """
         Deploy the contract and return a Contract instance (convenience method).
@@ -186,12 +187,13 @@ class ContractFactory:
         wait_transaction_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
-        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
         transaction_context: Optional[TransactionContext] = None,
+        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
     ) -> GenLayerTransaction:
         """
         Deploy the contract and return the transaction receipt.
         """
+        validate_triggered_transactions_depth(wait_triggered_transactions_depth)
         general_config = get_general_config()
         actual_wait_interval = (
             wait_interval

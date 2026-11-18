@@ -18,6 +18,7 @@ from .contract_functions import ContractFunction
 from .stats_collector import StatsCollector, SimulationConfig
 from .wait import (
     DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
+    validate_triggered_transactions_depth,
     wait_for_transaction_receipt,
     wait_for_triggered_transactions,
     wait_until_from_status,
@@ -132,12 +133,13 @@ def write_contract_wrapper(
         wait_retries: Optional[int] = None,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
-        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
         transaction_context: Optional[TransactionContext] = None,
+        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
     ):
         """
         Transact the contract method.
         """
+        validate_triggered_transactions_depth(wait_triggered_transactions_depth)
         general_config = get_general_config()
         actual_wait_interval = (
             wait_interval

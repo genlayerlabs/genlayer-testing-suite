@@ -81,7 +81,7 @@ This is a convenience method that handles receipt validation
 and contract instantiation automatically.
 
 ```python
-factory.deploy(args: Optional = None, account: Optional = None, consensus_max_rotations: Optional = None, fees: Optional = None, fee_value: Optional = None, wait_until: Optional = None, wait_interval: Optional = None, wait_retries: Optional = None, wait_transaction_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions_depth: int = 3, transaction_context: Optional = None)
+factory.deploy(args: Optional = None, account: Optional = None, consensus_max_rotations: Optional = None, fees: Optional = None, fee_value: Optional = None, wait_until: Optional = None, wait_interval: Optional = None, wait_retries: Optional = None, wait_transaction_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, transaction_context: Optional = None, wait_triggered_transactions_depth: int = 1)
 ```
 
 **Parameters:**
@@ -99,8 +99,8 @@ factory.deploy(args: Optional = None, account: Optional = None, consensus_max_ro
 | `wait_transaction_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
 | `wait_triggered_transactions` | `bool` | No | `False` |
 | `wait_triggered_transactions_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
-| `wait_triggered_transactions_depth` | `int` | No | `3` |
 | `transaction_context` | `Optional` | No | `None` |
+| `wait_triggered_transactions_depth` | `int` | No | `1` |
 
 **Returns:** `Contract`
 
@@ -111,7 +111,7 @@ factory.deploy(args: Optional = None, account: Optional = None, consensus_max_ro
 Deploy the contract and return the transaction receipt.
 
 ```python
-factory.deploy_contract_tx(args: Optional = None, account: Optional = None, consensus_max_rotations: Optional = None, fees: Optional = None, fee_value: Optional = None, wait_until: Optional = None, wait_interval: Optional = None, wait_retries: Optional = None, wait_transaction_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions_depth: int = 3, transaction_context: Optional = None)
+factory.deploy_contract_tx(args: Optional = None, account: Optional = None, consensus_max_rotations: Optional = None, fees: Optional = None, fee_value: Optional = None, wait_until: Optional = None, wait_interval: Optional = None, wait_retries: Optional = None, wait_transaction_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, transaction_context: Optional = None, wait_triggered_transactions_depth: int = 1)
 ```
 
 **Parameters:**
@@ -129,8 +129,8 @@ factory.deploy_contract_tx(args: Optional = None, account: Optional = None, cons
 | `wait_transaction_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
 | `wait_triggered_transactions` | `bool` | No | `False` |
 | `wait_triggered_transactions_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
-| `wait_triggered_transactions_depth` | `int` | No | `3` |
 | `transaction_context` | `Optional` | No | `None` |
+| `wait_triggered_transactions_depth` | `int` | No | `1` |
 
 **Returns:** `GenLayerTransaction`
 
@@ -180,7 +180,7 @@ contract.method_name.call(transaction_hash_variant: TransactionHashVariant = <Tr
 Executes a state-changing contract method through consensus. Returns the transaction receipt.
 
 ```python
-contract.method_name.transact(value: int = 0, consensus_max_rotations: Optional = None, fees: Optional = None, fee_value: Optional = None, wait_until: Optional = None, wait_transaction_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_interval: Optional = None, wait_retries: Optional = None, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions_depth: int = 3, transaction_context: Optional = None)
+contract.method_name.transact(value: int = 0, consensus_max_rotations: Optional = None, fees: Optional = None, fee_value: Optional = None, wait_until: Optional = None, wait_transaction_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_interval: Optional = None, wait_retries: Optional = None, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, transaction_context: Optional = None, wait_triggered_transactions_depth: int = 1)
 ```
 
 **Parameters:**
@@ -197,8 +197,8 @@ contract.method_name.transact(value: int = 0, consensus_max_rotations: Optional 
 | `wait_retries` | `Optional` | No | `None` |
 | `wait_triggered_transactions` | `bool` | No | `False` |
 | `wait_triggered_transactions_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
-| `wait_triggered_transactions_depth` | `int` | No | `3` |
 | `transaction_context` | `Optional` | No | `None` |
+| `wait_triggered_transactions_depth` | `int` | No | `1` |
 
 ---
 

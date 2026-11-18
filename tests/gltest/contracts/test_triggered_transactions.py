@@ -1,7 +1,11 @@
+import inspect
+
 import pytest
 
 from gltest.contracts.contract import Contract
 from gltest.contracts.contract_factory import ContractFactory
+from gltest.contracts.contract_functions import ContractFunction
+from gltest.exceptions import DeploymentError
 from gltest.types import TransactionStatus, TransactionTree
 from gltest.contracts.wait import wait_for_triggered_transactions as _wait_triggered
 from gltest.utils import wait_for_transaction
@@ -44,6 +48,7 @@ class FakeClient:
     def __init__(self, root="0xroot"):
         self.root = root
         self.write_contract_calls = []
+        self.deploy_contract_calls = []
         self.waited = []
         self.wait_calls = []
 
@@ -52,6 +57,7 @@ class FakeClient:
         return self.root
 
     def deploy_contract(self, **kwargs):
+        self.deploy_contract_calls.append(kwargs)
         return self.root
 
     # Same signature as genlayer-py 0.19 GenLayerClient.wait_for_transaction_receipt
@@ -161,6 +167,57 @@ def test_transact_waits_for_nested_triggered_transactions(client):
 def test_transact_does_not_wait_for_triggered_by_default(client):
     _contract().set_value([1]).transact()
     assert client.waited == ["0xroot"]
+
+
+def test_transact_waits_only_for_direct_children_by_default(client):
+    _contract().set_value([1]).transact(wait_triggered_transactions=True)
+    assert client.waited == ["0xroot", "0xa", "0xb"]
+
+
+def test_deploy_waits_only_for_direct_children_by_default(client, monkeypatch):
+    factory = ContractFactory(contract_name="C", contract_code="code")
+    monkeypatch.setattr(factory, "build_contract", lambda **kwargs: None)
+    factory.deploy(wait_triggered_transactions=True)
+    assert client.waited == ["0xroot", "0xa", "0xb"]
+
+
+def test_transact_rejects_negative_depth_before_sending(client):
+    with pytest.raises(ValueError):
+        _contract().set_value([1]).transact(
+            wait_triggered_transactions=True,
+            wait_triggered_transactions_depth=-1,
+        )
+    assert client.write_contract_calls == []
+    assert client.waited == []
+
+
+@pytest.mark.parametrize("method", ["deploy", "deploy_contract_tx"])
+def test_deploy_rejects_negative_depth_before_sending(client, method):
+    factory = ContractFactory(contract_name="C", contract_code="code")
+    with pytest.raises(ValueError) as exc_info:
+        getattr(factory, method)(
+            wait_triggered_transactions=True,
+            wait_triggered_transactions_depth=-1,
+        )
+    assert not isinstance(exc_info.value, DeploymentError)
+    assert client.deploy_contract_calls == []
+    assert client.waited == []
+
+
+@pytest.mark.parametrize(
+    "func",
+    [
+        ContractFunction.transact,
+        ContractFactory.deploy,
+        ContractFactory.deploy_contract_tx,
+    ],
+)
+def test_depth_param_is_last_to_keep_positional_order(func):
+    params = list(inspect.signature(func).parameters)
+    assert params[-2:] == [
+        "transaction_context",
+        "wait_triggered_transactions_depth",
+    ]
 
 
 def test_deploy_waits_for_nested_triggered_transactions(client):
@@ -303,6 +360,7 @@ def test_helpers_work_with_real_genlayer_py_client(monkeypatch):
         wait_until="finalized",
         wait_triggered_transactions=True,
         wait_triggered_transactions_status=TransactionStatus.FINALIZED,
+        wait_triggered_transactions_depth=2,
     )
 
     assert [r["hash"] for r in tree.flatten()] == ["0xroot", "0xa", "0xb"]

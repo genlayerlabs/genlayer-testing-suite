@@ -7,7 +7,7 @@ from gltest.types import (
     TransactionTree,
 )
 
-DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH = 3
+DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH = 1
 
 
 def _status_text(status: Any) -> str:
@@ -65,6 +65,11 @@ def wait_for_transaction_receipt(
     return call(**kwargs)
 
 
+def validate_triggered_transactions_depth(depth: int) -> None:
+    if depth < 0:
+        raise ValueError("wait_triggered_transactions_depth must be >= 0")
+
+
 def wait_for_triggered_transactions(
     client,
     receipt: GenLayerTransaction,
@@ -81,8 +86,7 @@ def wait_for_triggered_transactions(
     the full depth; each hash is still waited for at most once (receipts are
     cached). Returns one ``TransactionTree`` per direct child.
     """
-    if depth < 0:
-        raise ValueError("wait_triggered_transactions_depth must be >= 0")
+    validate_triggered_transactions_depth(depth)
     receipts: Dict[str, GenLayerTransaction] = {}
 
     def _receipt(tx_hash: str) -> GenLayerTransaction:

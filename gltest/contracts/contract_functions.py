@@ -42,8 +42,8 @@ class ContractFunction:
         wait_retries: Optional[int] = None,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
-        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
         transaction_context: Optional[TransactionContext] = None,
+        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
     ):
         """Executes a state-changing contract method through consensus. Returns the transaction receipt."""
         if self.read_only:
