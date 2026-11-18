@@ -2,6 +2,156 @@
 
 <!-- version list -->
 
+## v0.30.0-rc.2 (2026-09-03)
+
+### Bug Fixes
+
+- **direct**: Load current GenVM runner bundles
+  ([#112](https://github.com/genlayerlabs/genlayer-testing-suite/pull/112),
+  [`36b799e`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/36b799e1da3eb3e440cfacb30efd9ee43c1c95d4))
+
+
+## v0.30.0-rc.1 (2026-09-03)
+
+### Bug Fixes
+
+- Drain every queued glsim PostMessage
+  ([#103](https://github.com/genlayerlabs/genlayer-testing-suite/pull/103),
+  [`179b0b9`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/179b0b94a979648aa6c27063d9755d3264f9a87a))
+
+- Migrate fixtures to genvm v0.3 sdk
+  ([#90](https://github.com/genlayerlabs/genlayer-testing-suite/pull/90),
+  [`f48c4d7`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/f48c4d7121d9109c5709a065ef15a91e1fe379b6))
+
+- Preserve runtime network identity
+  ([#111](https://github.com/genlayerlabs/genlayer-testing-suite/pull/111),
+  [`ca579bd`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/ca579bd82717bfdfb7f9292b38d00515ce79bc11))
+
+- Resolve v0.30 bug hunt regressions
+  ([#102](https://github.com/genlayerlabs/genlayer-testing-suite/pull/102),
+  [`447d658`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/447d658435c89433b1105f2fcce041db5e41bf68))
+
+- Resolve v0.30-dev bug-hunt findings
+  ([#102](https://github.com/genlayerlabs/genlayer-testing-suite/pull/102),
+  [`447d658`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/447d658435c89433b1105f2fcce041db5e41bf68))
+
+- Support current GenVM bundle artifacts
+  ([`74b72f0`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/74b72f0d65d13bd150bfcfbfb29c772c3321a22b))
+
+- Support current GenVM bundle artifacts
+  ([#81](https://github.com/genlayerlabs/genlayer-testing-suite/pull/81),
+  [`8f8e802`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/8f8e802350140239be2b37590ed7a68253634ec5))
+
+- Support fee profile policy fields
+  ([#96](https://github.com/genlayerlabs/genlayer-testing-suite/pull/96),
+  [`d04c5b5`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/d04c5b581e649ebeb34b53cf2fe890b3a33df98b))
+
+- Support GenVM v0.3 direct SDK layout
+  ([#90](https://github.com/genlayerlabs/genlayer-testing-suite/pull/90),
+  [`f48c4d7`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/f48c4d7121d9109c5709a065ef15a91e1fe379b6))
+
+- **genvm**: Give VecDB its explicit distance metric 🐛
+  ([#106](https://github.com/genlayerlabs/genlayer-testing-suite/pull/106),
+  [`ac525f5`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/ac525f553c8f1d5c372481780eaff5fb1f7d01a6))
+
+- **glsim**: Accept both cross-call ABIs
+  ([#106](https://github.com/genlayerlabs/genlayer-testing-suite/pull/106),
+  [`ac525f5`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/ac525f553c8f1d5c372481780eaff5fb1f7d01a6))
+
+- **gltest**: Align with layered genlayer-py lifecycle types
+  ([#108](https://github.com/genlayerlabs/genlayer-testing-suite/pull/108),
+  [`7d6de26`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/7d6de26cf0218d599545afb3b01f0c88ee4cafe3))
+
+- **gltest**: Migrate to genvm manager repo
+  ([#98](https://github.com/genlayerlabs/genlayer-testing-suite/pull/98),
+  [`12a7576`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/12a7576d3fa75cc4b3b52e026748a9705f7bdafe))
+
+- **gltest**: Resolve runners from local tree when GENVM_PREBUILT_DIR set
+  ([#98](https://github.com/genlayerlabs/genlayer-testing-suite/pull/98),
+  [`12a7576`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/12a7576d3fa75cc4b3b52e026748a9705f7bdafe))
+
+### Build System
+
+- Prepare v0.30 release candidates
+  ([#110](https://github.com/genlayerlabs/genlayer-testing-suite/pull/110),
+  [`742c357`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/742c357e239c09db02aec9e27de965c5241513dc))
+
+### Chores
+
+- **genvm**: Migrate to GenVM v0.3.0-rc7 SDK APIs ⬆️
+  ([#106](https://github.com/genlayerlabs/genlayer-testing-suite/pull/106),
+  [`ac525f5`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/ac525f553c8f1d5c372481780eaff5fb1f7d01a6))
+
+- **genvm**: Migrate to the v0.3 gl_call ABI ⬆️
+  ([#106](https://github.com/genlayerlabs/genlayer-testing-suite/pull/106),
+  [`ac525f5`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/ac525f553c8f1d5c372481780eaff5fb1f7d01a6))
+
+### Continuous Integration
+
+- Install the sim extra — glsim's fastapi/starlette deps live there
+  ([#91](https://github.com/genlayerlabs/genlayer-testing-suite/pull/91),
+  [`60f850f`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/60f850f0dabd06ae019f19bda3634864c0ab7575))
+
+- Keep main forwarded to active dev branch
+  ([#93](https://github.com/genlayerlabs/genlayer-testing-suite/pull/93),
+  [`343e3a3`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/343e3a358f9e235a93b49c60721ce7676585ff07))
+
+- Run glsim suite; add dev-branch push trigger
+  ([#91](https://github.com/genlayerlabs/genlayer-testing-suite/pull/91),
+  [`60f850f`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/60f850f0dabd06ae019f19bda3634864c0ab7575))
+
+- Scope down release/sync-docs to dedicated GitHub Apps
+  ([`27146a4`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/27146a46c7187a5985a335ecc05b7e9a6843a17f))
+
+- **workflows**: Sync e2e-housekeeper.yml from genlayer-e2e
+  ([#85](https://github.com/genlayerlabs/genlayer-testing-suite/pull/85),
+  [`9bf2e85`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/9bf2e85f5bec7de7697bde7cf2c4f3bb289a8732))
+
+- **workflows**: Sync e2e-housekeeper.yml from genlayer-e2e
+  ([#83](https://github.com/genlayerlabs/genlayer-testing-suite/pull/83),
+  [`f58afd7`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/f58afd724bd0b9f733c4a4ee9b81fd2faf6938b0))
+
+- **workflows**: Sync e2e.yml from genlayer-e2e
+  ([#84](https://github.com/genlayerlabs/genlayer-testing-suite/pull/84),
+  [`da7429f`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/da7429f94cee11eb048d4cb4e640a3dc3531dcf1))
+
+- **workflows**: Sync e2e.yml from genlayer-e2e
+  ([#82](https://github.com/genlayerlabs/genlayer-testing-suite/pull/82),
+  [`3de785f`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3de785facdcbc3a5bf36164c8ee6685b7704eaac))
+
+### Documentation
+
+- Add branching guide ([#95](https://github.com/genlayerlabs/genlayer-testing-suite/pull/95),
+  [`cef20a2`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/cef20a282638b185767dbb8c292731474ce11258))
+
+### Features
+
+- --fee-profile reporter — measure per-method fees for developer suggestions
+  ([#94](https://github.com/genlayerlabs/genlayer-testing-suite/pull/94),
+  [`9da7c61`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/9da7c61d912ed7490e01906dfaaf188f14eadb8e))
+
+- Branch-per-major release model
+  ([#80](https://github.com/genlayerlabs/genlayer-testing-suite/pull/80),
+  [`311e22a`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/311e22ae1005c917f2c8811c570b397a4b762b54))
+
+- **glsim**: Accept fee-aware transaction RPCs
+  ([`a1144f5`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/a1144f59b023646e20115ac905dce8eca5866090))
+
+- **gltest**: Fee-aware transactions and backend-agnostic success assertions
+  ([#91](https://github.com/genlayerlabs/genlayer-testing-suite/pull/91),
+  [`60f850f`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/60f850f0dabd06ae019f19bda3634864c0ab7575))
+
+### Testing
+
+- Add v0.30 bug hunt regressions
+  ([#102](https://github.com/genlayerlabs/genlayer-testing-suite/pull/102),
+  [`447d658`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/447d658435c89433b1105f2fcce041db5e41bf68))
+
+- **fixtures**: Migrate to genvm v0.3 SDK
+  ([#98](https://github.com/genlayerlabs/genlayer-testing-suite/pull/98),
+  [`12a7576`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/12a7576d3fa75cc4b3b52e026748a9705f7bdafe))
+
+
 ## v0.29.2 (2026-04-20)
 
 ### Bug Fixes

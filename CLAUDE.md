@@ -100,7 +100,7 @@ GenLayer contracts are Python classes:
 ```python
 import genlayer as gl
 
-class MyContract(gl.Contract):
+class MyContract(gl.contract.Contract):
     def __init__(self, initial_value: int):
         self.value = initial_value
     
@@ -145,7 +145,8 @@ print(stats)  # Shows success rate, reliability score, execution time, etc.
 ### Network Configuration
 
 Networks are configured in `gltest.config.yaml`:
-- `localnet`: Local development (chain ID 61999)
+- `localnet`: Local development (chain ID 61127)
+- `studio_devnet`: Hosted Studio preview (chain ID 61997)
 - `testnet_asimov`: Public testnet (chain ID 4221)
 
 Paths can be configured in `gltest.config.yaml`:
@@ -168,4 +169,4 @@ Multi-file contracts use a `runner.json` manifest:
 2. Contracts are discovered automatically from the contracts directory
 3. Transaction receipts include consensus information and triggered transactions
 4. LLM-based contract methods use `gl.eq_principle_prompt_non_comparative()`
-5. Version is managed automatically via semantic release (no manual updates)
+5. Versions are updated only by `scripts/release.sh` via semantic release; do not edit them manually
