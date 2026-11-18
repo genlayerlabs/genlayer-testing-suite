@@ -36,6 +36,7 @@ _DIRECT_IGNORED_TX_KWARGS = {
     "wait_retries",
     "wait_triggered_transactions",
     "wait_triggered_transactions_status",
+    "wait_triggered_transactions_depth",
     "transaction_context",
     "consensus_max_rotations",
 }

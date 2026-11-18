@@ -5,6 +5,7 @@ from gltest.types import (
     TransactionHashVariant,
     TransactionContext,
 )
+from .wait import DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH
 
 
 @dataclass
@@ -14,6 +15,7 @@ class ContractFunction:
     call_method: Optional[Callable] = None
     analyze_method: Optional[Callable] = None
     transact_method: Optional[Callable] = None
+    raw_transact_method: Optional[Callable] = None
 
     def call(
         self,
@@ -41,6 +43,7 @@ class ContractFunction:
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         transaction_context: Optional[TransactionContext] = None,
+        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
     ):
         """Executes a state-changing contract method through consensus. Returns the transaction receipt."""
         if self.read_only:
@@ -56,6 +59,32 @@ class ContractFunction:
             wait_retries=wait_retries,
             wait_triggered_transactions=wait_triggered_transactions,
             wait_triggered_transactions_status=wait_triggered_transactions_status,
+            wait_triggered_transactions_depth=wait_triggered_transactions_depth,
+            transaction_context=transaction_context,
+        )
+
+    def raw_transact(
+        self,
+        value: int = 0,
+        consensus_max_rotations: Optional[int] = None,
+        fees: Optional[Dict[str, Any]] = None,
+        fee_value: Optional[int] = None,
+        transaction_context: Optional[TransactionContext] = None,
+    ) -> str:
+        """Sends a state-changing transaction without waiting. Returns the transaction hash.
+
+        Use ``gltest.utils.wait_for_transaction`` to wait for it (and, optionally,
+        for its triggered transactions) later.
+        """
+        if self.read_only:
+            raise ValueError("Cannot raw_transact read-only method")
+        if self.raw_transact_method is None:
+            raise NotImplementedError("raw_transact() is not supported by this backend")
+        return self.raw_transact_method(
+            value=value,
+            consensus_max_rotations=consensus_max_rotations,
+            fees=fees,
+            fee_value=fee_value,
             transaction_context=transaction_context,
         )
 
