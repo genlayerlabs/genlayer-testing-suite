@@ -212,6 +212,9 @@ assert tx_execution_succeeded(receipt)
 # Read — call() returns the value
 result = contract.get_storage().call()
 
+# Write methods also support call() via gen_call, returning the method result
+result = contract.update_storage(args=["new_value"]).call()
+
 # Write — transact() returns a receipt
 tx_receipt = contract.update_storage(args=["new_value"]).transact(
     value=0,
