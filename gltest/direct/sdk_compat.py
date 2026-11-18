@@ -7,6 +7,10 @@ from typing import Any
 
 _UNSET = object()
 
+# Synthetic settlement factory inputs shared by direct execution and glsim.
+LOCAL_CREATE2_DEPLOYER = bytes.fromhex("11" * 20)
+LOCAL_CREATE2_CODE_HASH = bytes.fromhex("22" * 32)
+
 
 def import_calldata() -> Any:
     """Return the v0.3 calldata module from the active SDK path."""
@@ -70,6 +74,10 @@ def sync_message_context(
         "origin_address": origin_address,
         "value": value,
         "chain_id": chain_id,
+        "create2": {
+            "deployer": import_address()(LOCAL_CREATE2_DEPLOYER),
+            "code_hash": LOCAL_CREATE2_CODE_HASH,
+        },
     }
     for name, next_value in updates.items():
         if next_value is _UNSET:
