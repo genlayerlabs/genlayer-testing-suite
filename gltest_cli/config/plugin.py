@@ -12,6 +12,11 @@ from gltest_cli.config.general import (
 )
 from gltest_cli.config.types import PluginConfig
 from gltest_cli.config.pytest_context import _pytest_context
+from gltest.decorators import (
+    ONLY_ON_CHAINS_MARKER,
+    SKIP_ON_CHAINS_MARKER,
+    get_chain_skip_reason,
+)
 from gltest_cli.config.constants import (
     DEFAULT_LEADER_ONLY,
     CHAINS,
@@ -91,6 +96,14 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        f"{ONLY_ON_CHAINS_MARKER}(*chains): run the test only on the given chain types",
+    )
+    config.addinivalue_line(
+        "markers",
+        f"{SKIP_ON_CHAINS_MARKER}(*chains): skip the test on the given chain types",
+    )
     try:
         general_config = get_general_config()
 
@@ -237,6 +250,18 @@ def pytest_sessionfinish(session, exitstatus):
 
 def pytest_runtest_setup(item):
     _pytest_context.current_item = item
+    _skip_by_chain_markers(item)
+
+
+def _skip_by_chain_markers(item):
+    only_on = [m.args for m in item.iter_markers(name=ONLY_ON_CHAINS_MARKER)]
+    skip_on = [m.args for m in item.iter_markers(name=SKIP_ON_CHAINS_MARKER)]
+    if not only_on and not skip_on:
+        return
+    chain_type = get_general_config().get_chain_type()
+    reason = get_chain_skip_reason(chain_type, only_on=only_on, skip_on=skip_on)
+    if reason is not None:
+        pytest.skip(reason)
 
 
 def pytest_runtest_teardown(item):

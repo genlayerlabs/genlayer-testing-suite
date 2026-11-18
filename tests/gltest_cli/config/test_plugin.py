@@ -427,3 +427,105 @@ def test_fee_profile_headroom_must_be_positive(pytester):
         general_config.plugin_config.fee_profile_headroom = None
 
     assert result.ret != 0
+
+
+CHAIN_DECORATED_TESTS = """
+import pytest
+from gltest import (
+    only_on_chains,
+    skip_on_chains,
+    only_localnet,
+    skip_studionet,
+)
+
+@only_localnet
+def test_only_localnet():
+    pass
+
+@only_on_chains("studionet", "testnet_asimov")
+def test_only_studionet_or_asimov():
+    pass
+
+@skip_studionet
+def test_skip_studionet():
+    pass
+
+@skip_on_chains("localnet")
+class TestSkipLocalnet:
+    def test_in_class(self):
+        pass
+
+def test_undecorated():
+    pass
+"""
+
+
+def test_chain_decorators_on_localnet(pytester):
+    pytester.makepyfile(CHAIN_DECORATED_TESTS)
+
+    result = pytester.runpytest("--chain-type=localnet", "-v")
+
+    result.stdout.fnmatch_lines_random(
+        [
+            "*::test_only_localnet PASSED*",
+            "*::test_only_studionet_or_asimov SKIPPED*",
+            "*::test_skip_studionet PASSED*",
+            "*::TestSkipLocalnet::test_in_class SKIPPED*",
+            "*::test_undecorated PASSED*",
+        ]
+    )
+    result.assert_outcomes(passed=3, skipped=2)
+
+
+def test_chain_decorators_on_studionet(pytester):
+    pytester.makepyfile(CHAIN_DECORATED_TESTS)
+
+    result = pytester.runpytest("--chain-type=studionet", "-v")
+
+    result.stdout.fnmatch_lines_random(
+        [
+            "*::test_only_localnet SKIPPED*",
+            "*::test_only_studionet_or_asimov PASSED*",
+            "*::test_skip_studionet SKIPPED*",
+            "*::TestSkipLocalnet::test_in_class PASSED*",
+            "*::test_undecorated PASSED*",
+        ]
+    )
+    result.assert_outcomes(passed=3, skipped=2)
+
+
+def test_chain_decorators_module_level_pytestmark(pytester):
+    pytester.makepyfile(
+        """
+        from gltest import only_studionet
+
+        pytestmark = only_studionet
+
+        def test_a():
+            pass
+    """
+    )
+
+    result = pytester.runpytest("--chain-type=localnet", "-v")
+
+    result.assert_outcomes(skipped=1)
+
+
+def test_chain_decorators_follow_network_chain_type(pytester):
+    pytester.makepyfile(
+        """
+        from gltest import only_localnet, skip_localnet
+
+        @only_localnet
+        def test_runs():
+            pass
+
+        @skip_localnet
+        def test_skipped():
+            pass
+    """
+    )
+
+    result = pytester.runpytest("--network=localnet", "-v")
+
+    result.assert_outcomes(passed=1, skipped=1)
