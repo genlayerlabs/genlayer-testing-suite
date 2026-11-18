@@ -60,7 +60,7 @@ class TestResolveVersion:
         monkeypatch.setattr(sdk_loader, "list_cached_versions", lambda: [])
         monkeypatch.setattr(sdk_loader, "_query_latest_version", lambda: None)
 
-        assert sdk_loader.resolve_version() == "v0.6.0-rc3"
+        assert sdk_loader.resolve_version() == sdk_loader.FALLBACK_VERSION
 
     def test_falls_back_to_latest_when_no_cache(self, monkeypatch):
         monkeypatch.delenv(sdk_loader.GENVM_VERSION_ENV, raising=False)

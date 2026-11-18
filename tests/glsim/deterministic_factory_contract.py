@@ -1,6 +1,5 @@
 import genlayer as gl
 
-
 CHILD_CODE = """
 import genlayer as gl
 
@@ -20,11 +19,14 @@ class DeterministicFactory(gl.contract.Contract):
 
     @gl.public.write
     def deploy_child(self, salt: int) -> str:
+        salted = gl.contract.Salted(salt)
+        # glsim has no settlement-chain RPC; use the SDK's local prediction.
+        salted.resolve_hardcoded()
         child_address = gl.contract.deploy(
             code=CHILD_CODE.encode("utf-8"),
             args=[],
             kwargs={},
-            salt_nonce=salt,
+            salted=salted,
             on="decided",
         )
         self.child_address = child_address.as_hex

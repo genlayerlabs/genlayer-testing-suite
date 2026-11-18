@@ -20,9 +20,7 @@ class ContractFunction:
         transaction_hash_variant: TransactionHashVariant = TransactionHashVariant.LATEST_NONFINAL,
         transaction_context: Optional[TransactionContext] = None,
     ):
-        """Executes a read-only contract method call."""
-        if not self.read_only:
-            raise ValueError("call() not implemented for non-readonly method")
+        """Executes a contract method via gen_call, including write methods."""
         return self.call_method(
             transaction_hash_variant=transaction_hash_variant,
             transaction_context=transaction_context,

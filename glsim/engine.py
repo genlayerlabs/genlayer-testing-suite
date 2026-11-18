@@ -659,11 +659,20 @@ class SimEngine:
         deployer = "0x" + vm._contract_address.hex() if isinstance(vm._contract_address, bytes) else str(vm._contract_address)
         if salt_nonce != 0:
             deployer_addr = Address(bytes.fromhex(deployer[2:]))
-            deterministic_addr = create2_address(
-                deployer_addr,
-                salt_nonce,
-                vm._chain_id,
-            )
+            if "code_hash" in inspect.signature(create2_address).parameters:
+                create2 = vm.get_message_raw()["create2"]
+                deterministic_addr = create2_address(
+                    Address(create2["deployer"]),
+                    create2["code_hash"],
+                    deployer_addr,
+                    salt_nonce,
+                )
+            else:
+                deterministic_addr = create2_address(
+                    deployer_addr,
+                    salt_nonce,
+                    vm._chain_id,
+                )
             child_addr = deterministic_addr.as_hex
         else:
             nonce = self.state.get_nonce(deployer)

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 from starlette.testclient import TestClient
 
 from glsim.server import create_app
@@ -19,8 +20,11 @@ def _rpc(client: TestClient, method: str, params=None, req_id: int = 1):
     return body
 
 
-def test_deterministic_in_contract_deploy_uses_returned_address():
-    app = create_app(num_validators=1, llm_provider=None, use_browser=False, verbose=True)
+@pytest.mark.parametrize("salt", [1, 12345, 2**255])
+def test_deterministic_in_contract_deploy_uses_returned_address(salt):
+    app = create_app(
+        num_validators=1, llm_provider=None, use_browser=False, verbose=True
+    )
 
     with TestClient(app) as client:
         deploy_response = _rpc(
@@ -39,9 +43,10 @@ def test_deterministic_in_contract_deploy_uses_returned_address():
             {
                 "to": factory_address,
                 "method": "deploy_child",
-                "args": [12345],
+                "args": [salt],
             },
         )
+        assert "result" in call_response, call_response
         child_address = call_response["result"]["result"]
         assert isinstance(child_address, str)
         assert child_address.startswith("0x")
