@@ -793,9 +793,9 @@ def _rpc_gen_call(state: StateStore, engine: SimEngine, params: dict) -> Any:
     # Decode RLP: [calldata_bytes, leader_only_flag]
     calldata_bytes, _leader_only = decode_gen_call_data(data_hex)
 
-    # Decode calldata and call
+    # The SDK uses an empty key for the method; also accept the legacy shape.
     cd = decode_calldata_bytes(calldata_bytes)
-    method = cd.get("method")
+    method = cd.get("", cd.get("method"))
     args = cd.get("args", [])
     kwargs = cd.get("kwargs", {})
 
@@ -804,10 +804,13 @@ def _rpc_gen_call(state: StateStore, engine: SimEngine, params: dict) -> Any:
 
     _install_sim_config_mocks(engine, sim_config)
     _apply_time_context(engine, state, sim_config)
+    snapshot_id = engine.create_snapshot()
     try:
         result = engine.call_method(to, method, args, kwargs, sender)
     finally:
         _clear_sim_config_mocks(engine)
+        engine.restore_snapshot(snapshot_id)
+        engine._snapshots.pop(snapshot_id, None)
 
     # Encode result as calldata and return hex WITHOUT 0x prefix
     result_bytes = encode_calldata_result(result)
