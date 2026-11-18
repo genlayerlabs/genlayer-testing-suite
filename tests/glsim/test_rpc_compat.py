@@ -681,6 +681,79 @@ def test_gen_call_read(client):
     assert decoded == "gen_call_test"
 
 
+@pytest.mark.parametrize("fail_after_write", [False, True])
+def test_gen_call_write_restores_storage(client, tmp_path, fail_after_write):
+    source = Path(STORAGE_CONTRACT).read_text()
+    if fail_after_write:
+        source = source.replace(
+            "self.storage = new_storage",
+            'self.storage = new_storage\n        raise RuntimeError("preview failed")',
+        )
+    contract_path = tmp_path / "storage.py"
+    contract_path.write_text(source)
+    deployed = _rpc(
+        client,
+        "sim_deploy",
+        {
+            "code_path": str(contract_path),
+            "args": ["original"],
+        },
+    )
+    address = deployed["result"]["contract_address"]
+    snapshots_before = set(client.app.state.engine._snapshots)
+
+    def call(method, args):
+        encoded = calldata.encode({"method": method, "args": args, "kwargs": {}})
+        return _rpc(
+            client,
+            "gen_call",
+            [
+                {
+                    "type": "read",
+                    "to": address,
+                    "from": "0x" + "11" * 20,
+                    "data": "0x" + rlp_mod.encode([encoded, b"\x00"]).hex(),
+                }
+            ],
+        )
+
+    response = call("update_storage", ["MUTATED"])
+    if fail_after_write:
+        assert "preview failed" in response["error"]["message"]
+    else:
+        assert calldata.decode(bytes.fromhex(response["result"])) is None
+    response = call("get_storage", [])
+    assert calldata.decode(bytes.fromhex(response["result"])) == "original"
+    assert set(client.app.state.engine._snapshots) == snapshots_before
+
+
+def test_gltest_write_call_preserves_storage(client, monkeypatch):
+    from genlayer_py.chains import localnet
+    from genlayer_py.client import GenLayerClient
+    from gltest.contracts.contract import Contract
+
+    address = _deploy_simple(client, "original")
+    sdk = GenLayerClient(localnet, account=Account.create())
+
+    # Only adapt HTTP transport: use the real SDK encoding/decoding and glsim.
+    def make_request(method, params):
+        response = _rpc(client, method, params)
+        assert "result" in response, response
+        return response
+
+    monkeypatch.setattr(
+        sdk.provider,
+        "make_request",
+        make_request,
+    )
+    monkeypatch.setattr("gltest.contracts.contract.get_gl_client", lambda: sdk)
+    schema = _rpc(client, "gen_getContractSchema", [address])["result"]
+    contract = Contract.new(address=address, schema=schema)
+
+    assert contract.update_storage(args=["MUTATED"]).call() is None
+    assert contract.get_storage().call() == "original"
+
+
 # ---------------------------------------------------------------------------
 # gen_getContractSchema
 # ---------------------------------------------------------------------------
