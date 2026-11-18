@@ -21,7 +21,12 @@ from typing import Any, Optional, Pattern, List, Tuple, Dict
 from unittest.mock import patch
 
 from ..types import MockedWebResponseData
-from .sdk_compat import import_address_u256, sync_message_context
+from .sdk_compat import (
+    LOCAL_CREATE2_CODE_HASH,
+    LOCAL_CREATE2_DEPLOYER,
+    import_address_u256,
+    sync_message_context,
+)
 
 _sentinel = object()
 
@@ -635,6 +640,11 @@ class VMContext:
             "datetime": self._datetime,
             "is_init": False,
             "chain_id": self._chain_id,
+            # Synthetic settlement factory inputs for local CREATE2 simulation.
+            "create2": {
+                "deployer": LOCAL_CREATE2_DEPLOYER,
+                "code_hash": LOCAL_CREATE2_CODE_HASH,
+            },
             "entry_kind": 0,
             "entry_data": b"",
             "entry_stage_data": None,
