@@ -15,14 +15,14 @@ Args:
 Note: Exactly one of contract_name or contract_file_path must be provided.
 
 ```python
-get_contract_factory(contract_name: Union = None, contract_file_path: Union = None)
+get_contract_factory(contract_name: Optional = None, contract_file_path: Union = None)
 ```
 
 **Parameters:**
 
 | Parameter | Type | Required | Default |
 |-----------|------|----------|---------|
-| `contract_name` | `Union` | No | `None` |
+| `contract_name` | `Optional` | No | `None` |
 | `contract_file_path` | `Union` | No | `None` |
 
 **Returns:** `ContractFactory`
@@ -81,22 +81,26 @@ This is a convenience method that handles receipt validation
 and contract instantiation automatically.
 
 ```python
-factory.deploy(args: Union = None, account: Union = None, consensus_max_rotations: Union = None, wait_interval: Union = None, wait_retries: Union = None, wait_transaction_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, transaction_context: Union = None)
+factory.deploy(args: Optional = None, account: Optional = None, consensus_max_rotations: Optional = None, fees: Optional = None, fee_value: Optional = None, wait_until: Optional = None, wait_interval: Optional = None, wait_retries: Optional = None, wait_transaction_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions_depth: int = 3, transaction_context: Optional = None)
 ```
 
 **Parameters:**
 
 | Parameter | Type | Required | Default |
 |-----------|------|----------|---------|
-| `args` | `Union` | No | `None` |
-| `account` | `Union` | No | `None` |
-| `consensus_max_rotations` | `Union` | No | `None` |
-| `wait_interval` | `Union` | No | `None` |
-| `wait_retries` | `Union` | No | `None` |
-| `wait_transaction_status` | `TransactionStatus` | No | `<TransactionStatus.ACCEPTED: 'ACCEPTED'>` |
+| `args` | `Optional` | No | `None` |
+| `account` | `Optional` | No | `None` |
+| `consensus_max_rotations` | `Optional` | No | `None` |
+| `fees` | `Optional` | No | `None` |
+| `fee_value` | `Optional` | No | `None` |
+| `wait_until` | `Optional` | No | `None` |
+| `wait_interval` | `Optional` | No | `None` |
+| `wait_retries` | `Optional` | No | `None` |
+| `wait_transaction_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
 | `wait_triggered_transactions` | `bool` | No | `False` |
-| `wait_triggered_transactions_status` | `TransactionStatus` | No | `<TransactionStatus.ACCEPTED: 'ACCEPTED'>` |
-| `transaction_context` | `Union` | No | `None` |
+| `wait_triggered_transactions_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
+| `wait_triggered_transactions_depth` | `int` | No | `3` |
+| `transaction_context` | `Optional` | No | `None` |
 
 **Returns:** `Contract`
 
@@ -107,22 +111,26 @@ factory.deploy(args: Union = None, account: Union = None, consensus_max_rotation
 Deploy the contract and return the transaction receipt.
 
 ```python
-factory.deploy_contract_tx(args: Union = None, account: Union = None, consensus_max_rotations: Union = None, wait_interval: Union = None, wait_retries: Union = None, wait_transaction_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, transaction_context: Union = None)
+factory.deploy_contract_tx(args: Optional = None, account: Optional = None, consensus_max_rotations: Optional = None, fees: Optional = None, fee_value: Optional = None, wait_until: Optional = None, wait_interval: Optional = None, wait_retries: Optional = None, wait_transaction_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions_depth: int = 3, transaction_context: Optional = None)
 ```
 
 **Parameters:**
 
 | Parameter | Type | Required | Default |
 |-----------|------|----------|---------|
-| `args` | `Union` | No | `None` |
-| `account` | `Union` | No | `None` |
-| `consensus_max_rotations` | `Union` | No | `None` |
-| `wait_interval` | `Union` | No | `None` |
-| `wait_retries` | `Union` | No | `None` |
-| `wait_transaction_status` | `TransactionStatus` | No | `<TransactionStatus.ACCEPTED: 'ACCEPTED'>` |
+| `args` | `Optional` | No | `None` |
+| `account` | `Optional` | No | `None` |
+| `consensus_max_rotations` | `Optional` | No | `None` |
+| `fees` | `Optional` | No | `None` |
+| `fee_value` | `Optional` | No | `None` |
+| `wait_until` | `Optional` | No | `None` |
+| `wait_interval` | `Optional` | No | `None` |
+| `wait_retries` | `Optional` | No | `None` |
+| `wait_transaction_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
 | `wait_triggered_transactions` | `bool` | No | `False` |
-| `wait_triggered_transactions_status` | `TransactionStatus` | No | `<TransactionStatus.ACCEPTED: 'ACCEPTED'>` |
-| `transaction_context` | `Union` | No | `None` |
+| `wait_triggered_transactions_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
+| `wait_triggered_transactions_depth` | `int` | No | `3` |
+| `transaction_context` | `Optional` | No | `None` |
 
 **Returns:** `GenLayerTransaction`
 
@@ -133,7 +141,7 @@ factory.deploy_contract_tx(args: Union = None, account: Union = None, consensus_
 Build contract from address
 
 ```python
-factory.build_contract(contract_address: Union, account: Union = None)
+factory.build_contract(contract_address: Union, account: Optional = None)
 ```
 
 **Parameters:**
@@ -141,21 +149,21 @@ factory.build_contract(contract_address: Union, account: Union = None)
 | Parameter | Type | Required | Default |
 |-----------|------|----------|---------|
 | `contract_address` | `Union` | Yes |  |
-| `account` | `Union` | No | `None` |
+| `account` | `Optional` | No | `None` |
 
 **Returns:** `Contract`
 
 ---
 ## ContractFunction
 
-ContractFunction(method_name: str, read_only: bool, call_method: Callable | None = None, analyze_method: Callable | None = None, transact_method: Callable | None = None)
+ContractFunction(method_name: str, read_only: bool, call_method: Optional[Callable] = None, analyze_method: Optional[Callable] = None, transact_method: Optional[Callable] = None, raw_transact_method: Optional[Callable] = None)
 
 ### `contract.method_name.call`
 
 Executes a read-only contract method call.
 
 ```python
-contract.method_name.call(transaction_hash_variant: TransactionHashVariant = <TransactionHashVariant.LATEST_NONFINAL: 'latest-nonfinal'>, transaction_context: Union = None)
+contract.method_name.call(transaction_hash_variant: TransactionHashVariant = <TransactionHashVariant.LATEST_NONFINAL: 'latest-nonfinal'>, transaction_context: Optional = None)
 ```
 
 **Parameters:**
@@ -163,7 +171,7 @@ contract.method_name.call(transaction_hash_variant: TransactionHashVariant = <Tr
 | Parameter | Type | Required | Default |
 |-----------|------|----------|---------|
 | `transaction_hash_variant` | `TransactionHashVariant` | No | `<TransactionHashVariant.LATEST_NONFINAL: 'latest-nonfinal'>` |
-| `transaction_context` | `Union` | No | `None` |
+| `transaction_context` | `Optional` | No | `None` |
 
 ---
 
@@ -172,7 +180,7 @@ contract.method_name.call(transaction_hash_variant: TransactionHashVariant = <Tr
 Executes a state-changing contract method through consensus. Returns the transaction receipt.
 
 ```python
-contract.method_name.transact(value: int = 0, consensus_max_rotations: Union = None, wait_transaction_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, wait_interval: Union = None, wait_retries: Union = None, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: TransactionStatus = <TransactionStatus.ACCEPTED: 'ACCEPTED'>, transaction_context: Union = None)
+contract.method_name.transact(value: int = 0, consensus_max_rotations: Optional = None, fees: Optional = None, fee_value: Optional = None, wait_until: Optional = None, wait_transaction_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_interval: Optional = None, wait_retries: Optional = None, wait_triggered_transactions: bool = False, wait_triggered_transactions_status: ProtocolTransactionStatus = <ProtocolTransactionStatus.ACCEPTED: 'Accepted'>, wait_triggered_transactions_depth: int = 3, transaction_context: Optional = None)
 ```
 
 **Parameters:**
@@ -180,13 +188,42 @@ contract.method_name.transact(value: int = 0, consensus_max_rotations: Union = N
 | Parameter | Type | Required | Default |
 |-----------|------|----------|---------|
 | `value` | `int` | No | `0` |
-| `consensus_max_rotations` | `Union` | No | `None` |
-| `wait_transaction_status` | `TransactionStatus` | No | `<TransactionStatus.ACCEPTED: 'ACCEPTED'>` |
-| `wait_interval` | `Union` | No | `None` |
-| `wait_retries` | `Union` | No | `None` |
+| `consensus_max_rotations` | `Optional` | No | `None` |
+| `fees` | `Optional` | No | `None` |
+| `fee_value` | `Optional` | No | `None` |
+| `wait_until` | `Optional` | No | `None` |
+| `wait_transaction_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
+| `wait_interval` | `Optional` | No | `None` |
+| `wait_retries` | `Optional` | No | `None` |
 | `wait_triggered_transactions` | `bool` | No | `False` |
-| `wait_triggered_transactions_status` | `TransactionStatus` | No | `<TransactionStatus.ACCEPTED: 'ACCEPTED'>` |
-| `transaction_context` | `Union` | No | `None` |
+| `wait_triggered_transactions_status` | `ProtocolTransactionStatus` | No | `<ProtocolTransactionStatus.ACCEPTED: 'Accepted'>` |
+| `wait_triggered_transactions_depth` | `int` | No | `3` |
+| `transaction_context` | `Optional` | No | `None` |
+
+---
+
+### `contract.method_name.raw_transact`
+
+Sends a state-changing transaction without waiting. Returns the transaction hash.
+
+Use ``gltest.utils.wait_for_transaction`` to wait for it (and, optionally,
+for its triggered transactions) later.
+
+```python
+contract.method_name.raw_transact(value: int = 0, consensus_max_rotations: Optional = None, fees: Optional = None, fee_value: Optional = None, transaction_context: Optional = None)
+```
+
+**Parameters:**
+
+| Parameter | Type | Required | Default |
+|-----------|------|----------|---------|
+| `value` | `int` | No | `0` |
+| `consensus_max_rotations` | `Optional` | No | `None` |
+| `fees` | `Optional` | No | `None` |
+| `fee_value` | `Optional` | No | `None` |
+| `transaction_context` | `Optional` | No | `None` |
+
+**Returns:** `str`
 
 ---
 
@@ -195,7 +232,7 @@ contract.method_name.transact(value: int = 0, consensus_max_rotations: Union = N
 Runs statistical analysis of method behavior across multiple executions.
 
 ```python
-contract.method_name.analyze(provider: str, model: str, config: Union = None, plugin: Union = None, plugin_config: Union = None, runs: int = 100, genvm_datetime: Union = None)
+contract.method_name.analyze(provider: str, model: str, config: Optional = None, plugin: Optional = None, plugin_config: Optional = None, runs: int = 100, genvm_datetime: Optional = None)
 ```
 
 **Parameters:**
@@ -204,11 +241,11 @@ contract.method_name.analyze(provider: str, model: str, config: Union = None, pl
 |-----------|------|----------|---------|
 | `provider` | `str` | Yes |  |
 | `model` | `str` | Yes |  |
-| `config` | `Union` | No | `None` |
-| `plugin` | `Union` | No | `None` |
-| `plugin_config` | `Union` | No | `None` |
+| `config` | `Optional` | No | `None` |
+| `plugin` | `Optional` | No | `None` |
+| `plugin_config` | `Optional` | No | `None` |
 | `runs` | `int` | No | `100` |
-| `genvm_datetime` | `Union` | No | `None` |
+| `genvm_datetime` | `Optional` | No | `None` |
 
 ---
 ## ValidatorFactory
@@ -267,15 +304,15 @@ validator_factory.batch_create_validators(count: int, stake: int, provider: str,
 
 
 ```python
-validator_factory.create_mock_validator(mock_llm_response: Union = None, mock_web_response: Union = None)
+validator_factory.create_mock_validator(mock_llm_response: Optional = None, mock_web_response: Optional = None)
 ```
 
 **Parameters:**
 
 | Parameter | Type | Required | Default |
 |-----------|------|----------|---------|
-| `mock_llm_response` | `Union` | No | `None` |
-| `mock_web_response` | `Union` | No | `None` |
+| `mock_llm_response` | `Optional` | No | `None` |
+| `mock_web_response` | `Optional` | No | `None` |
 
 **Returns:** `Validator`
 
@@ -286,7 +323,7 @@ validator_factory.create_mock_validator(mock_llm_response: Union = None, mock_we
 
 
 ```python
-validator_factory.batch_create_mock_validators(count: int, mock_llm_response: Union = None, mock_web_response: Union = None)
+validator_factory.batch_create_mock_validators(count: int, mock_llm_response: Optional = None, mock_web_response: Optional = None)
 ```
 
 **Parameters:**
@@ -294,15 +331,15 @@ validator_factory.batch_create_mock_validators(count: int, mock_llm_response: Un
 | Parameter | Type | Required | Default |
 |-----------|------|----------|---------|
 | `count` | `int` | Yes |  |
-| `mock_llm_response` | `Union` | No | `None` |
-| `mock_web_response` | `Union` | No | `None` |
+| `mock_llm_response` | `Optional` | No | `None` |
+| `mock_web_response` | `Optional` | No | `None` |
 
 **Returns:** `List`
 
 ---
 ## Validator
 
-Validator(stake: int, provider: str, model: str, config: Dict[str, Any], plugin: str, plugin_config: Dict[str, Any], mock_enabled: bool, mock_llm_response: gltest.types.MockedLLMResponse | None, mock_web_response: gltest.types.MockedWebResponse | None)
+Validator(stake: int, provider: str, model: str, config: Dict[str, Any], plugin: str, plugin_config: Dict[str, Any], mock_enabled: bool, mock_llm_response: Optional[gltest.types.MockedLLMResponse], mock_web_response: Optional[gltest.types.MockedWebResponse])
 
 ### `validator.to_dict`
 

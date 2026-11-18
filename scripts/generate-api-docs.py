@@ -121,7 +121,7 @@ def main():
 
     integration += generate_class_doc(
         ContractFunction,
-        ["call", "transact", "analyze"],
+        ["call", "transact", "raw_transact", "analyze"],
         "contract.method_name.",
     )
 

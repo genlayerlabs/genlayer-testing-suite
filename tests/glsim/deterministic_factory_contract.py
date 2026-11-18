@@ -1,3 +1,8 @@
+# v0.1.0
+# Pinned to the GenVM runner whose std lib still exposes
+# gl.contract.deploy(salt_nonce=...), the API glsim's deploy handler implements.
+# Newer std libs (GenVM v0.6.0-rc15+) replace it with `salted=`.
+# { "Depends": "py-genlayer:babwp9t37jw9g4j2bccgn14g6x7x9s1f7dsmh7emvz735pz4zxa0" }
 import genlayer as gl
 
 
