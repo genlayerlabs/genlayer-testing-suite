@@ -181,6 +181,28 @@ gltest --rpc-url http://custom:4000/api
 gltest --chain-type localnet
 ```
 
+### Running Tests on Specific Chains
+
+Use these decorators to run or skip tests depending on the selected chain type. The chain type comes from `--chain-type`, or else from the selected network:
+
+```python
+from gltest import only_on_chains, skip_on_chains, only_localnet, skip_studionet
+
+@only_on_chains("localnet", "studionet")
+def test_needs_studio_rpc(): ...
+
+@skip_on_chains("testnet_asimov", "testnet_bradbury")
+class TestSlowFlows: ...
+
+@only_localnet
+def test_localnet_only(): ...
+
+# Whole module
+pytestmark = skip_studionet
+```
+
+Shortcuts: `only_localnet`, `only_studionet`, `only_testnet_asimov`, `only_testnet_bradbury`, and `skip_localnet`, `skip_studionet`, `skip_testnet_asimov`, `skip_testnet_bradbury`. Unknown chain names raise `ValueError` when the module is imported.
+
 ### Contract Deployment
 
 ```python
