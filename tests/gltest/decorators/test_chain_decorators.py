@@ -53,3 +53,16 @@ def test_skip_reason_skip_on():
     assert "skipped on chain localnet" in get_chain_skip_reason(
         "localnet", skip_on=[("localnet",)]
     )
+
+
+def test_shortcuts_cover_every_chain():
+    import gltest.decorators as decorators
+    from gltest_cli.config.constants import CHAINS
+
+    for chain in CHAINS:
+        only_mark = getattr(decorators, f"only_{chain}")
+        skip_mark = getattr(decorators, f"skip_{chain}")
+        assert only_mark.name == ONLY_ON_CHAINS_MARKER
+        assert only_mark.args == (chain,)
+        assert skip_mark.name == SKIP_ON_CHAINS_MARKER
+        assert skip_mark.args == (chain,)

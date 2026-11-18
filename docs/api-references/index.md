@@ -201,7 +201,7 @@ def test_localnet_only(): ...
 pytestmark = skip_studionet
 ```
 
-Shortcuts: `only_localnet`, `only_studionet`, `only_testnet_asimov`, `only_testnet_bradbury`, and `skip_localnet`, `skip_studionet`, `skip_testnet_asimov`, `skip_testnet_bradbury`. Unknown chain names raise `ValueError` when the module is imported.
+Shortcuts: `only_localnet`, `only_studio_devnet`, `only_studionet`, `only_testnet_asimov`, `only_testnet_bradbury`, and the matching `skip_*` versions (`skip_localnet`, `skip_studio_devnet`, `skip_studionet`, `skip_testnet_asimov`, `skip_testnet_bradbury`). Unknown chain names raise `ValueError` when the module is imported.
 
 ### Contract Deployment
 

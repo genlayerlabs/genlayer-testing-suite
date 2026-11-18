@@ -80,10 +80,12 @@ def get_chain_skip_reason(
 
 # Convenience shortcuts
 only_localnet = only_on_chains("localnet")
+only_studio_devnet = only_on_chains("studio_devnet")
 only_studionet = only_on_chains("studionet")
 only_testnet_asimov = only_on_chains("testnet_asimov")
 only_testnet_bradbury = only_on_chains("testnet_bradbury")
 skip_localnet = skip_on_chains("localnet")
+skip_studio_devnet = skip_on_chains("studio_devnet")
 skip_studionet = skip_on_chains("studionet")
 skip_testnet_asimov = skip_on_chains("testnet_asimov")
 skip_testnet_bradbury = skip_on_chains("testnet_bradbury")
@@ -94,10 +96,12 @@ __all__ = [
     "skip_on_chains",
     "get_chain_skip_reason",
     "only_localnet",
+    "only_studio_devnet",
     "only_studionet",
     "only_testnet_asimov",
     "only_testnet_bradbury",
     "skip_localnet",
+    "skip_studio_devnet",
     "skip_studionet",
     "skip_testnet_asimov",
     "skip_testnet_bradbury",
