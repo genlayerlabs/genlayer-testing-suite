@@ -190,6 +190,7 @@ def write_contract_wrapper(
     return ContractFunction(
         method_name=method_name,
         read_only=False,
+        call_method=read_contract_wrapper(self, method_name, args).call_method,
         transact_method=transact_method,
         analyze_method=analyze_method,
     )
