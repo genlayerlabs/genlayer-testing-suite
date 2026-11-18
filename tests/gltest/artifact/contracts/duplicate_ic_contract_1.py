@@ -1,10 +1,10 @@
-# { "Depends": "py-genlayer:test" }
+# { "Depends": "py-genlayer:latest" }
 
-from genlayer import *
+import genlayer as gl
 
 
 # contract class
-class DuplicateContract(gl.Contract):
+class DuplicateContract(gl.contract.Contract):
     storage: str
 
     # constructor
