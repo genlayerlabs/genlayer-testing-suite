@@ -149,6 +149,12 @@ Contracts using `gl.contract.deploy()`, `gl.contract.get_at().view()`, and `gl.c
 - **CallContract** — calls method on deployed contract, returns result
 - **EmitInternalMessage** — fire-and-forget call (no return value)
 
+For deterministic deployment with the current SDK, construct `gl.contract.Salted(salt)`,
+call its `resolve_hardcoded()` method, and pass it as `salted=` to `gl.contract.deploy()`.
+The local runtime supplies synthetic `genlayer.message.create2` factory inputs shared
+with glsim's address derivation. These addresses are for simulation; glsim does not
+query a settlement-chain factory for `Salted.resolve()`.
+
 ### GenVM Library Stubs
 
 Contracts that depend on GenVM-only libraries (e.g. `genlayer_embeddings`) work via built-in stubs:

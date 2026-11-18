@@ -27,7 +27,7 @@ GITHUB_API_RELEASES = "https://api.github.com/repos/genlayerlabs/genvm-manager/r
 # archives required by the direct loader.
 RUNNER_BUNDLE_ASSETS = ("genvm-runners-all.tar.xz", "genvm-universal.tar.xz")
 GENVM_VERSION_ENV = "GENVM_VERSION"
-FALLBACK_VERSION = "v0.6.0-rc3"
+FALLBACK_VERSION = "v0.6.0-rc15"
 
 # v0.3 runner trees use .zip; the v0.2 legacy-runners tree uses .tar.
 RUNNER_ARCHIVE_EXTS = (".tar", ".zip")
