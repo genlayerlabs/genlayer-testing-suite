@@ -16,7 +16,12 @@ from gltest_cli.config.general import get_general_config
 from gltest.fees import maybe_record_fee_observation
 from .contract_functions import ContractFunction
 from .stats_collector import StatsCollector, SimulationConfig
-from .wait import wait_for_transaction_receipt, wait_until_from_status
+from .wait import (
+    DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
+    wait_for_transaction_receipt,
+    wait_for_triggered_transactions,
+    wait_until_from_status,
+)
 
 
 def _fees_with_value(fees: Optional[Dict[str, Any]], fee_value: Optional[int]):
@@ -82,6 +87,40 @@ def write_contract_wrapper(
     Wrapper to the contract write method.
     """
 
+    def _send_write(
+        value: int,
+        consensus_max_rotations: Optional[int],
+        fees: Optional[Dict[str, Any]],
+        fee_value: Optional[int],
+        transaction_context: Optional[TransactionContext],
+    ) -> str:
+        general_config = get_general_config()
+        leader_only = (
+            general_config.get_leader_only()
+            if general_config.check_studio_based_rpc()
+            else False
+        )
+        client = get_gl_client()
+        sim_config = None
+        if transaction_context:
+            try:
+                sim_config = SimConfig(**transaction_context)
+            except TypeError as e:
+                raise ValueError(
+                    f"Invalid transaction_context keys: {sorted(transaction_context.keys())}"
+                ) from e
+        return client.write_contract(
+            address=self.address,
+            function_name=method_name,
+            account=self.account,
+            value=value,
+            consensus_max_rotations=consensus_max_rotations,
+            leader_only=leader_only,
+            args=args,
+            **_fee_kwargs(client.write_contract, fees, fee_value),
+            sim_config=sim_config,
+        )
+
     def transact_method(
         value: int = 0,
         consensus_max_rotations: Optional[int] = None,
@@ -93,6 +132,7 @@ def write_contract_wrapper(
         wait_retries: Optional[int] = None,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
+        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
         transaction_context: Optional[TransactionContext] = None,
     ):
         """
@@ -109,30 +149,13 @@ def write_contract_wrapper(
             if wait_retries is not None
             else general_config.get_default_wait_retries()
         )
-        leader_only = (
-            general_config.get_leader_only()
-            if general_config.check_studio_based_rpc()
-            else False
-        )
         client = get_gl_client()
-        sim_config = None
-        if transaction_context:
-            try:
-                sim_config = SimConfig(**transaction_context)
-            except TypeError as e:
-                raise ValueError(
-                    f"Invalid transaction_context keys: {sorted(transaction_context.keys())}"
-                ) from e
-        tx_hash = client.write_contract(
-            address=self.address,
-            function_name=method_name,
-            account=self.account,
+        tx_hash = _send_write(
             value=value,
             consensus_max_rotations=consensus_max_rotations,
-            leader_only=leader_only,
-            args=args,
-            **_fee_kwargs(client.write_contract, fees, fee_value),
-            sim_config=sim_config,
+            fees=fees,
+            fee_value=fee_value,
+            transaction_context=transaction_context,
         )
         receipt = wait_for_transaction_receipt(
             client,
@@ -145,18 +168,33 @@ def write_contract_wrapper(
             kind="method", method_name=method_name, receipt=receipt
         )
         if wait_triggered_transactions:
-            triggered_transactions = receipt.get("triggered_transactions", [])
-            for triggered_transaction in triggered_transactions:
-                wait_for_transaction_receipt(
-                    client,
-                    transaction_hash=triggered_transaction,
-                    wait_until=wait_until_from_status(
-                        wait_triggered_transactions_status
-                    ),
-                    interval=actual_wait_interval,
-                    retries=actual_wait_retries,
-                )
+            wait_for_triggered_transactions(
+                client,
+                receipt,
+                status=wait_triggered_transactions_status,
+                depth=wait_triggered_transactions_depth,
+                interval=actual_wait_interval,
+                retries=actual_wait_retries,
+            )
         return receipt
+
+    def raw_transact_method(
+        value: int = 0,
+        consensus_max_rotations: Optional[int] = None,
+        fees: Optional[Dict[str, Any]] = None,
+        fee_value: Optional[int] = None,
+        transaction_context: Optional[TransactionContext] = None,
+    ) -> str:
+        """
+        Send the transaction and return its hash without waiting for a receipt.
+        """
+        return _send_write(
+            value=value,
+            consensus_max_rotations=consensus_max_rotations,
+            fees=fees,
+            fee_value=fee_value,
+            transaction_context=transaction_context,
+        )
 
     def analyze_method(
         provider: str,
@@ -191,6 +229,7 @@ def write_contract_wrapper(
         method_name=method_name,
         read_only=False,
         transact_method=transact_method,
+        raw_transact_method=raw_transact_method,
         analyze_method=analyze_method,
     )
 

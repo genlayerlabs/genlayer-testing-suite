@@ -30,7 +30,12 @@ from gltest_cli.config.general import get_general_config
 from gltest.fees import maybe_record_fee_observation
 from gltest.utils import extract_contract_address
 from gltest.types import TransactionContext
-from .wait import wait_for_transaction_receipt, wait_until_from_status
+from .wait import (
+    DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
+    wait_for_transaction_receipt,
+    wait_for_triggered_transactions,
+    wait_until_from_status,
+)
 
 
 def _fees_with_value(fees: Optional[Dict[str, Any]], fee_value: Optional[int]):
@@ -137,6 +142,7 @@ class ContractFactory:
         wait_transaction_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
+        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
         transaction_context: Optional[TransactionContext] = None,
     ) -> Contract:
         """
@@ -157,6 +163,7 @@ class ContractFactory:
             wait_transaction_status=wait_transaction_status,
             wait_triggered_transactions=wait_triggered_transactions,
             wait_triggered_transactions_status=wait_triggered_transactions_status,
+            wait_triggered_transactions_depth=wait_triggered_transactions_depth,
             transaction_context=transaction_context,
         )
 
@@ -179,6 +186,7 @@ class ContractFactory:
         wait_transaction_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
         wait_triggered_transactions: bool = False,
         wait_triggered_transactions_status: ProtocolTransactionStatus = ProtocolTransactionStatus.ACCEPTED,
+        wait_triggered_transactions_depth: int = DEFAULT_TRIGGERED_TRANSACTIONS_DEPTH,
         transaction_context: Optional[TransactionContext] = None,
     ) -> GenLayerTransaction:
         """
@@ -230,17 +238,14 @@ class ContractFactory:
             )
             maybe_record_fee_observation(kind="deploy", receipt=tx_receipt)
             if wait_triggered_transactions:
-                triggered_transactions = tx_receipt.get("triggered_transactions", [])
-                for triggered_transaction in triggered_transactions:
-                    wait_for_transaction_receipt(
-                        client,
-                        transaction_hash=triggered_transaction,
-                        wait_until=wait_until_from_status(
-                            wait_triggered_transactions_status
-                        ),
-                        interval=actual_wait_interval,
-                        retries=actual_wait_retries,
-                    )
+                wait_for_triggered_transactions(
+                    client,
+                    tx_receipt,
+                    status=wait_triggered_transactions_status,
+                    depth=wait_triggered_transactions_depth,
+                    interval=actual_wait_interval,
+                    retries=actual_wait_retries,
+                )
             return tx_receipt
         except Exception as e:
             raise DeploymentError(

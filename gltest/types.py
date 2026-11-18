@@ -5,7 +5,9 @@ from genlayer_py.types import (
     CalldataEncodable,
     TransactionHashVariant,
 )
-from typing import List, TypedDict, Dict, Any
+from dataclasses import dataclass
+from dataclasses import field
+from typing import List, TypedDict, Dict, Any, Optional
 
 try:
     # genlayer-py layers the consumer lifecycle over the raw protocol status.
@@ -64,3 +66,38 @@ class TransactionContext(TypedDict, total=False):
 
     validators: List[ValidatorConfig]  # List to create virtual validators
     genvm_datetime: str  # ISO format datetime string
+
+
+@dataclass
+class TransactionTree:
+    """A transaction receipt together with the receipts of the transactions it triggered."""
+
+    receipt: GenLayerTransaction
+    children: List["TransactionTree"] = field(default_factory=list)
+
+    @property
+    def hash(self) -> Optional[str]:
+        return self.receipt.get("hash") or self.receipt.get("tx_id")
+
+    def flatten(self) -> List[GenLayerTransaction]:
+        """Return this receipt and all descendant receipts (depth-first, pre-order).
+
+        A transaction reachable through several paths is listed once.
+        """
+        result: List[GenLayerTransaction] = []
+        seen: set = set()
+
+        def _visit(node: "TransactionTree") -> None:
+            key = node.hash or id(node.receipt)
+            if key not in seen:
+                seen.add(key)
+                result.append(node.receipt)
+            for child in node.children:
+                _visit(child)
+
+        _visit(self)
+        return result
+
+    def triggered_receipts(self) -> List[GenLayerTransaction]:
+        """Return all descendant receipts, excluding this transaction's own receipt."""
+        return self.flatten()[1:]
