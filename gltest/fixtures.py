@@ -6,6 +6,7 @@ These fixtures can be imported and used in test files.
 import pytest
 from gltest.clients import get_gl_client
 from gltest.accounts import get_accounts, get_default_account
+from gltest.network import get_current_chain_type, get_current_network
 
 
 @pytest.fixture(scope="session")
@@ -36,3 +37,23 @@ def accounts():
     Scope: session - created once per test session
     """
     return get_accounts()
+
+
+@pytest.fixture(scope="session")
+def current_network():
+    """
+    Provides the name of the selected network (e.g. "localnet").
+
+    Scope: session - created once per test session
+    """
+    return get_current_network()
+
+
+@pytest.fixture(scope="session")
+def current_chain_type():
+    """
+    Provides the chain type of the selected network (e.g. "testnet_asimov").
+
+    Scope: session - created once per test session
+    """
+    return get_current_chain_type()
