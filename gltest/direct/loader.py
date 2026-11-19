@@ -299,6 +299,7 @@ def _inject_message_to_fd0(vm: "VMContext") -> None:
         'datetime': vm._datetime,
         'is_init': False,
         'chain_id': vm._chain_id,
+        'create2': vm.get_create2_raw(),
         'entry_kind': 0,
         'entry_data': b'',
         'entry_stage_data': None,
