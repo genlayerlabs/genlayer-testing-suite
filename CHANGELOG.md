@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.30.0-rc.3 (2026-11-19)
+
+### Bug Fixes
+
+- **glsim**: Support salted in-contract deploys on current GenVM SDK (backport #128)
+  ([#132](https://github.com/genlayerlabs/genlayer-testing-suite/pull/132),
+  [`acd792c`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/acd792c262fbbeb3b2c2fba66497ae15e92dfedb))
+
+
 ## v0.30.0-rc.2 (2026-09-03)
 
 ### Bug Fixes
