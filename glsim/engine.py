@@ -632,15 +632,59 @@ class SimEngine:
                 )
             if "PostMessage" in request:
                 return engine._handle_post_in_contract(vm, request["PostMessage"])
+            if "ExternalCall" in request:
+                return engine._handle_external_call(vm, request["ExternalCall"])
             return None
 
         self.vm._gl_call_hook = hook
+
+    @staticmethod
+    def _salted_address(vm: Any, parent: bytes, salt_nonce: int) -> Any:
+        """Deterministic address of a contract deployed by ``parent`` with a salt.
+
+        Current SDKs (``gl.contract.deploy(salted=...)``) derive it from the
+        settlement-chain factory in ``gl.message.create2``; older SDKs
+        (``salt_nonce=``) used ``create2_address(deployer, salt, chain_id)``.
+        """
+        from genlayer._internal import create2_address
+
+        Address = import_address()
+        parent_addr = Address(parent)
+        if len(inspect.signature(create2_address).parameters) >= 4:
+            create2 = vm.get_create2_raw()
+            return create2_address(
+                create2["deployer"], create2["code_hash"], parent_addr, salt_nonce
+            )
+        return create2_address(parent_addr, salt_nonce, vm._chain_id)
+
+    def _handle_external_call(self, vm: Any, data: Dict) -> Optional[bytes]:
+        """Answer EVM view calls glsim can simulate.
+
+        Only the settlement-chain factory's ``predictGhostAddress(uint256,address)``
+        is supported, which ``gl.contract.Salted.resolve()`` uses to predict
+        salted deploy addresses. Returns the raw ABI-encoded result.
+        """
+        from genlayer.types.keccak import Keccak256
+
+        address = data.get("address")
+        address_bytes = getattr(address, "as_bytes", address)
+        payload = bytes(data.get("calldata", b""))
+        selector = Keccak256(b"predictGhostAddress(uint256,address)").digest()[:4]
+        if (
+            bytes(address_bytes) != bytes(vm._create2_deployer)
+            or payload[:4] != selector
+            or len(payload) < 4 + 64
+        ):
+            return None
+        salt_nonce = int.from_bytes(payload[4:36], "big")
+        sender = payload[36 + 12 : 68]
+        predicted = self._salted_address(vm, sender, salt_nonce)
+        return bytes(12) + predicted.as_bytes
 
     def _handle_deploy_in_contract(self, vm: Any, data: Dict) -> bytes:
         """Handle gl.contract.deploy() from within a running contract."""
         calldata = import_calldata()
         Address = import_address()
-        from genlayer._internal import create2_address
         self._ensure_direct_mode_runtime_patches()
 
         code = data.get('code', b'')
@@ -658,13 +702,9 @@ class SimEngine:
         # - nonce-based otherwise
         deployer = "0x" + vm._contract_address.hex() if isinstance(vm._contract_address, bytes) else str(vm._contract_address)
         if salt_nonce != 0:
-            deployer_addr = Address(bytes.fromhex(deployer[2:]))
-            deterministic_addr = create2_address(
-                deployer_addr,
-                salt_nonce,
-                vm._chain_id,
-            )
-            child_addr = deterministic_addr.as_hex
+            child_addr = self._salted_address(
+                vm, bytes.fromhex(deployer[2:]), salt_nonce
+            ).as_hex
         else:
             nonce = self.state.get_nonce(deployer)
             child_addr = self.state.generate_contract_address(deployer, nonce)

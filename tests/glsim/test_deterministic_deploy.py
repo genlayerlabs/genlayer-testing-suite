@@ -46,6 +46,19 @@ def test_deterministic_in_contract_deploy_uses_returned_address():
         assert isinstance(child_address, str)
         assert child_address.startswith("0x")
 
+        # Salted.resolve() (factory prediction) must agree with the SDK's
+        # local CREATE2 formula over gl.message.create2.
+        predict_response = _rpc(
+            client,
+            "sim_read",
+            {
+                "to": factory_address,
+                "method": "predict_child",
+                "args": [12345],
+            },
+        )
+        assert predict_response["result"]["result"].lower() == child_address.lower()
+
         # The returned deterministic address must be an actually deployed contract.
         ping_response = _rpc(
             client,
