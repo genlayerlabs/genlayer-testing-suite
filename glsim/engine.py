@@ -118,6 +118,8 @@ class SimEngine:
             "storages": {key: manager.snapshot() for key, manager in self._storages.items()},
             "classes_keys": set(self._classes.keys()),
             "state_time_offset": self.state._time_offset_seconds,
+            "post_queue": copy.deepcopy(self._post_queue),
+            "captured_triggered_ops": copy.deepcopy(self._captured_triggered_ops),
         }
         return sid
 
@@ -134,6 +136,8 @@ class SimEngine:
         self.state._eth_hash_to_hash = dict(snap["state_eth_hash_to_hash"])
         self.state.transactions = dict(snap["state_transactions"])
         self.state._time_offset_seconds = snap.get("state_time_offset", 0)
+        self._post_queue = copy.deepcopy(snap["post_queue"])
+        self._captured_triggered_ops = copy.deepcopy(snap["captured_triggered_ops"])
 
         # Remove contracts/instances added after snapshot
         for key in list(self._instances.keys()):
@@ -846,7 +850,7 @@ class SimEngine:
 
         address = data.get('address')
         calldata_obj = data.get('calldata', {})
-        method_name = calldata_obj.get('method')
+        method_name = calldata_obj.get('', calldata_obj.get('method'))
         args = calldata_obj.get('args', [])
         kwargs = calldata_obj.get('kwargs', {})
         print(f"[PostMessage] enqueueing {method_name} to {address}")

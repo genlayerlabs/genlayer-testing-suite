@@ -212,7 +212,7 @@ assert tx_execution_succeeded(receipt)
 # Read — call() returns the value
 result = contract.get_storage().call()
 
-# Write methods also support call() via gen_call, returning the method result
+# Preview writes via simulate_write_contract (sim_call), returning the method result
 result = contract.update_storage(args=["new_value"]).call()
 
 # Write — transact() returns a receipt
@@ -224,6 +224,13 @@ tx_receipt = contract.update_storage(args=["new_value"]).transact(
 )
 assert tx_execution_succeeded(tx_receipt)
 ```
+
+Write-method `.call()` requires a simulation-capable Studio/glsim network and
+raises on unsupported chains. It accepts `value`, `fees`, and `fee_value` as
+keyword arguments, in addition to `transaction_hash_variant` and
+`transaction_context`. The simulation result is decoded, execution errors raise,
+and simulated storage changes and emitted messages are discarded. View-method
+`.call()` continues to use `gen_call` and does not accept value or fee options.
 
 ### Fee Profiling
 
