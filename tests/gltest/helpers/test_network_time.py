@@ -41,7 +41,7 @@ def provider(monkeypatch):
     with TestClient(create_app(num_validators=1)) as client:
         provider = _GlsimProvider(client)
         monkeypatch.setattr(network_time, "get_gl_provider", lambda: provider)
-        monkeypatch.setattr(network_time, "_time_supported", None)
+        monkeypatch.setattr(network_time, "_unsupported_urls", set())
         yield provider
 
 
@@ -90,25 +90,78 @@ def test_reset_time_removes_offset(provider):
 
 
 def test_reset_if_supported_resets_shifted_clock(provider, monkeypatch):
-    monkeypatch.setattr(network_time, "_time_supported", None)
+    monkeypatch.setattr(network_time, "_unsupported_urls", set())
     increase_time(60)
     network_time._reset_time_if_supported()
     assert get_network_time().offset_seconds == 0
 
 
-def test_reset_if_supported_ignores_unsupported_backend(monkeypatch):
+@pytest.fixture(autouse=True)
+def _fresh_support_cache(monkeypatch):
+    monkeypatch.setattr(network_time, "_unsupported_urls", set())
+
+
+def test_method_not_found_is_cached_per_url(monkeypatch):
     calls = []
 
-    class _Failing:
+    class _NoMethod:
         def make_request(self, method, params):
             calls.append(method)
-            raise RuntimeError("Method not found")
+            raise RuntimeError("sim_getTime failed (code=-32601): Method not found")
 
-    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Failing())
-    monkeypatch.setattr(network_time, "_time_supported", None)
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _NoMethod())
     network_time._reset_time_if_supported()
     network_time._reset_time_if_supported()
-    assert calls == ["sim_getTime"]  # probed once, then left alone
+    assert calls == ["sim_getTime"]  # definitive answer: probed once
+
+
+def test_unreachable_endpoint_is_skipped_but_not_cached(monkeypatch):
+    import requests
+
+    calls = []
+
+    class _Down:
+        def make_request(self, method, params):
+            calls.append(method)
+            raise requests.exceptions.ConnectionError("refused")
+
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Down())
+    network_time._reset_time_if_supported()
+    network_time._reset_time_if_supported()
+    assert calls == ["sim_getTime", "sim_getTime"]
+    assert not network_time._unsupported_urls
+
+
+def test_transient_failure_recovers_and_resets(monkeypatch):
+    state = {"offset": 60, "fail": 1}
+
+    class _Flaky:
+        def make_request(self, method, params):
+            if state["fail"]:
+                state["fail"] -= 1
+                raise TimeoutError("timed out")
+            if method == "sim_increaseTime":
+                state["offset"] += params[0]
+            return {"result": {
+                "total_offset_seconds": state["offset"],
+                "effective_datetime": "2030-01-01T00:00:00+00:00",
+            }}
+
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Flaky())
+    network_time._reset_time_if_supported()  # first probe times out, retry works
+    assert state["offset"] == 0
+    assert not network_time._unsupported_urls
+
+
+def test_persistent_transient_failure_is_raised(monkeypatch):
+    class _Timeout:
+        def make_request(self, method, params):
+            raise TimeoutError("timed out")
+
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Timeout())
+    with pytest.raises(HelperError):
+        network_time._reset_time_if_supported()
+    assert not network_time._unsupported_urls
 
 
 def test_reset_if_supported_raises_when_reset_fails(monkeypatch):
@@ -122,7 +175,6 @@ def test_reset_if_supported_raises_when_reset_fails(monkeypatch):
             }}
 
     monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Flaky())
-    monkeypatch.setattr(network_time, "_time_supported", None)
     with pytest.raises(HelperError, match="sim_increaseTime"):
         network_time._reset_time_if_supported()
 

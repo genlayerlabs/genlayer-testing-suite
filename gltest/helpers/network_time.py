@@ -15,7 +15,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Union
 
+import requests
+
 from gltest.clients import get_gl_provider
+from gltest_cli.config.general import get_general_config
 from gltest.exceptions import HelperError
 
 
@@ -107,25 +110,57 @@ def reset_time() -> NetworkTime:
     return current
 
 
-_time_supported = None  # unknown until the first probe
+# RPC URLs whose backend definitively answered "method not found" for the time
+# RPCs. Only this answer is cached; transient failures never are.
+_unsupported_urls: set = set()
+
+
+def _cause_chain(error: BaseException):
+    while error is not None:
+        yield error
+        error = error.__cause__
+
+
+def _is_method_unavailable(error: HelperError) -> bool:
+    text = str(error).lower()
+    return "code=-32601" in text or "method not found" in text
+
+
+def _is_unreachable(error: HelperError) -> bool:
+    """Connection refused / DNS failure: nothing is listening, so no clock."""
+    causes = list(_cause_chain(error))
+    if any(isinstance(c, requests.exceptions.Timeout) for c in causes):
+        return False
+    return any(
+        isinstance(c, (requests.exceptions.ConnectionError, ConnectionError))
+        for c in causes
+    )
 
 
 def _reset_time_if_supported() -> None:
     """
     Reset the clock to wall time on a backend that supports it.
 
-    The first call probes ``sim_getTime``; if that fails the backend is
-    treated as unsupported and later calls do nothing. Once supported, any
-    failure while resetting is raised.
+    * A definitive "method not found" answer marks the configured endpoint as
+      unsupported (cached per URL) and the reset is skipped from then on.
+    * An unreachable endpoint (connection refused) is skipped for this call
+      only, so tests that do not need a network keep working and a localnet
+      started later is still reset.
+    * Any other failure (timeout, 5xx, ...) is retried once and then raised,
+      so a stale clock is never silently left behind.
     """
-    global _time_supported
-    if _time_supported is False:
+    url = get_general_config().get_rpc_url()
+    if url in _unsupported_urls:
         return
-    if _time_supported is None:
+    for attempt in (1, 2):
         try:
-            get_network_time()
-        except HelperError:
-            _time_supported = False
+            reset_time()
             return
-        _time_supported = True
-    reset_time()
+        except HelperError as e:
+            if _is_method_unavailable(e):
+                _unsupported_urls.add(url)
+                return
+            if _is_unreachable(e):
+                return
+            if attempt == 2:
+                raise

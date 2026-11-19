@@ -918,11 +918,16 @@ def test_vesting(vesting_contract):
     reset_time()                          # back to the wall clock
 ```
 
-The `gltest` pytest plugin includes an autouse fixture that resets the clock
-after every test that changed it through these helpers, so a shifted clock
-never leaks into the next test. Tests that don't touch time send no extra
-RPCs. To give a test a fixed starting time, call `set_time` in the test or in
-a function-scoped fixture.
+The `gltest` pytest plugin includes an autouse fixture that, on local networks
+(`localnet` / `studio_devnet` with a loopback RPC URL), resets the clock to wall
+time before **and** after every test, so a shifted clock (including one changed
+by raw RPC calls) never leaks into the next test. This costs a `sim_getTime`
+probe (plus `sim_increaseTime` when the offset is non-zero) around each test.
+Hosted networks (`studionet`, testnets) receive no clock RPCs. Backends that
+answer "method not found" are skipped; an unreachable endpoint is skipped for
+that test; other failures (e.g. timeouts) are retried once and then raised.
+To give a test a fixed starting time, call `set_time` in the test or in a
+function-scoped fixture.
 
 ### How It Works
 
