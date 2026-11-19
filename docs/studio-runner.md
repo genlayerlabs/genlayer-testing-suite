@@ -925,7 +925,8 @@ by raw RPC calls) never leaks into the next test. This costs a `sim_getTime`
 probe (plus `sim_increaseTime` when the offset is non-zero) around each test.
 Hosted networks (`studionet`, testnets) receive no clock RPCs. Backends that
 answer "method not found" are skipped; an unreachable endpoint is skipped for
-that test; other failures (e.g. timeouts) are retried once and then raised.
+that test; other failures (timeouts, TLS or dropped connections) are retried once
+and then raised. Each clock request has a 10 s deadline.
 To give a test a fixed starting time, call `set_time` in the test or in a
 function-scoped fixture.
 

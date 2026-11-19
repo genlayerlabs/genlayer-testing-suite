@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Union
 
-import requests
+import threading
 
 from gltest.clients import get_gl_provider
 from gltest_cli.config.general import get_general_config
@@ -35,9 +35,35 @@ class NetworkTime:
 
 
 
+# Seconds to wait for each clock RPC. The SDK provider's HTTP request has no
+# timeout of its own, so a server that accepts the connection but never answers
+# would otherwise hang the whole test run.
+REQUEST_TIMEOUT_SECONDS = 10.0
+
+
+def _make_request_with_deadline(method: str, params: list):
+    provider = get_gl_provider()
+    outcome: dict = {}
+
+    def run():
+        try:
+            outcome["value"] = provider.make_request(method=method, params=params)
+        except BaseException as e:  # noqa: BLE001 - re-raised in the caller
+            outcome["error"] = e
+
+    worker = threading.Thread(target=run, daemon=True, name=f"gltest-{method}")
+    worker.start()
+    worker.join(REQUEST_TIMEOUT_SECONDS)
+    if worker.is_alive():
+        raise TimeoutError(f"no response within {REQUEST_TIMEOUT_SECONDS}s")
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome["value"]
+
+
 def _request(method: str, params: list) -> NetworkTime:
     try:
-        result = get_gl_provider().make_request(method=method, params=params)["result"]
+        result = _make_request_with_deadline(method, params)["result"]
     except HelperError:
         raise
     except Exception as e:
@@ -127,14 +153,17 @@ def _is_method_unavailable(error: HelperError) -> bool:
 
 
 def _is_unreachable(error: HelperError) -> bool:
-    """Connection refused / DNS failure: nothing is listening, so no clock."""
-    causes = list(_cause_chain(error))
-    if any(isinstance(c, requests.exceptions.Timeout) for c in causes):
-        return False
-    return any(
-        isinstance(c, (requests.exceptions.ConnectionError, ConnectionError))
-        for c in causes
-    )
+    """Connection refused: nothing is listening on the endpoint, so no clock.
+
+    Timeouts, TLS failures, dropped connections and the like are *not*
+    treated as "unavailable" and are retried and then raised.
+    """
+    for cause in _cause_chain(error):
+        if isinstance(cause, ConnectionRefusedError):
+            return True
+        if "connection refused" in str(cause).lower() or "errno 111" in str(cause).lower():
+            return True
+    return False
 
 
 def _reset_time_if_supported() -> None:
@@ -143,8 +172,8 @@ def _reset_time_if_supported() -> None:
 
     * A definitive "method not found" answer marks the configured endpoint as
       unsupported (cached per URL) and the reset is skipped from then on.
-    * An unreachable endpoint (connection refused) is skipped for this call
-      only, so tests that do not need a network keep working and a localnet
+    * An endpoint refusing connections is skipped for this call
+      only (connection refused), so tests that do not need a network keep working and a localnet
       started later is still reset.
     * Any other failure (timeout, 5xx, ...) is retried once and then raised,
       so a stale clock is never silently left behind.

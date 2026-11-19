@@ -123,7 +123,9 @@ def test_unreachable_endpoint_is_skipped_but_not_cached(monkeypatch):
     class _Down:
         def make_request(self, method, params):
             calls.append(method)
-            raise requests.exceptions.ConnectionError("refused")
+            raise requests.exceptions.ConnectionError(
+                "HTTPConnectionPool: Max retries exceeded (Caused by NewConnectionError: [Errno 111] Connection refused)"
+            )
 
     monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Down())
     network_time._reset_time_if_supported()
@@ -194,3 +196,58 @@ def test_unsupported_network_raises_helper_error(monkeypatch):
     monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Failing())
     with pytest.raises(HelperError, match="sim_increaseTime"):
         increase_time(60)
+
+
+def test_tls_or_dropped_connection_is_not_silently_skipped(monkeypatch):
+    import requests
+
+    class _Dropped:
+        def make_request(self, method, params):
+            raise requests.exceptions.ConnectionError(
+                "Connection aborted. RemoteDisconnected: closed without response"
+            )
+
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Dropped())
+    with pytest.raises(HelperError):
+        network_time._reset_time_if_supported()
+    assert not network_time._unsupported_urls
+
+
+def test_accepted_connection_that_never_replies_times_out(monkeypatch):
+    import socket
+    import threading
+    import time
+
+    import requests
+
+    server = socket.socket()
+    server.bind(("127.0.0.1", 0))
+    server.listen(5)
+    port = server.getsockname()[1]
+    held = []
+
+    def accept_and_hold():
+        while True:
+            try:
+                conn, _ = server.accept()
+            except OSError:
+                return
+            held.append(conn)  # never answer
+
+    threading.Thread(target=accept_and_hold, daemon=True).start()
+
+    class _Hanging:
+        def make_request(self, method, params):
+            return requests.post(f"http://127.0.0.1:{port}/api", json={}).json()
+
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Hanging())
+    monkeypatch.setattr(network_time, "REQUEST_TIMEOUT_SECONDS", 0.3)
+    start = time.monotonic()
+    try:
+        with pytest.raises(HelperError):
+            network_time._reset_time_if_supported()
+        assert time.monotonic() - start < 5
+    finally:
+        server.close()
+        for c in held:
+            c.close()
