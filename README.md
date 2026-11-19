@@ -351,7 +351,8 @@ def test_mock_only(current_chain_type):
 
 On GLSim you can move the network clock to test expirations, lockups and other
 time-based logic. The shift applies to every later transaction, call and block
-timestamp, and is undone automatically after each test.
+timestamp. On local networks the clock is also reset to wall time before the first
+test, and any change made with the helpers is undone after each test.
 
 ```python
 from datetime import timedelta

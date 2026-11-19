@@ -7,7 +7,10 @@ import pytest
 from gltest.clients import get_gl_client
 from gltest.accounts import get_accounts, get_default_account
 from gltest.network import get_current_chain_type, get_current_network
-from gltest.helpers.network_time import _reset_time_if_modified
+from gltest.helpers.network_time import (
+    _reset_time_if_modified,
+    _reset_time_if_supported,
+)
 
 
 @pytest.fixture(scope="session")
@@ -58,6 +61,23 @@ def current_chain_type():
     Scope: session - created once per test session
     """
     return get_current_chain_type()
+
+
+_LOCAL_CHAIN_TYPES = ("localnet", "studio_devnet", "studionet")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _gltest_baseline_network_time():
+    """
+    Before the first test, bring the network clock of local networks back to
+    wall time, so a clock left shifted by an earlier run is not inherited.
+    Networks without time manipulation support are left untouched.
+
+    Scope: session - runs once, before any test
+    """
+    if get_current_chain_type() in _LOCAL_CHAIN_TYPES:
+        _reset_time_if_supported()
+    yield
 
 
 @pytest.fixture(autouse=True)

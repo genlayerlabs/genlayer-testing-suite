@@ -481,7 +481,7 @@ def test_network_time_is_reset_between_tests(pytester):
         from gltest.helpers import network_time
 
         class FakeProvider:
-            offset = 0
+            offset = 86400  # clock already shifted before the session starts
             calls = []
 
             def make_request(self, method, params):
@@ -500,6 +500,7 @@ def test_network_time_is_reset_between_tests(pytester):
         from gltest.helpers import increase_time, get_network_time
 
         def test_a_shifts_clock():
+            assert get_network_time().offset_seconds == 0
             increase_time(86400)
             assert get_network_time().offset_seconds == 86400
 
@@ -513,7 +514,8 @@ def test_network_time_is_reset_between_tests(pytester):
             assert FakeProvider.calls == []
     """)
 
-    result = pytester.runpytest("-v", "-p", "no:randomly")
+    # Subprocess: the fake provider must not leak into this pytest process.
+    result = pytester.runpytest_subprocess("-v", "-p", "no:randomly")
 
     result.stdout.fnmatch_lines(
         [

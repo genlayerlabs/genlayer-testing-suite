@@ -120,3 +120,11 @@ def _reset_time_if_modified() -> None:
     """Reset the network clock only if a helper in this process changed it."""
     if _time_modified:
         reset_time()
+
+
+def _reset_time_if_supported() -> None:
+    """Reset the clock to wall time; silently do nothing if unsupported."""
+    try:
+        reset_time()
+    except HelperError:
+        pass
