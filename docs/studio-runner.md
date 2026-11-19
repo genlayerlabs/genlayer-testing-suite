@@ -903,6 +903,27 @@ resp = requests.post("http://localhost:4000/api", json={
 # {"total_offset_seconds": 0, "effective_datetime": "2025-02-23T..."}
 ```
 
+### Python Helpers
+
+`gltest.helpers` wraps these RPCs so tests don't need raw requests:
+
+```python
+from datetime import timedelta
+from gltest.helpers import increase_time, set_time, get_network_time, reset_time
+
+def test_vesting(vesting_contract):
+    increase_time(timedelta(days=30))     # sim_increaseTime; ints are seconds
+    set_time("2030-01-01T00:00:00Z")      # sim_setTime; datetime also accepted
+    now = get_network_time()              # sim_getTime -> NetworkTime(offset_seconds, datetime)
+    reset_time()                          # back to the wall clock
+```
+
+The `gltest` pytest plugin includes an autouse fixture that resets the clock
+after every test that changed it through these helpers, so a shifted clock
+never leaks into the next test. Tests that don't touch time send no extra
+RPCs. To give a test a fixed starting time, call `set_time` in the test or in
+a function-scoped fixture.
+
 ### How It Works
 
 GLSim uses the same approach as Anvil's `evm_increaseTime`:

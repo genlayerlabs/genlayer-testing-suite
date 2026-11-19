@@ -473,3 +473,54 @@ def test_current_chain_type_follows_chain_type_flag(pytester):
 
     result.stdout.fnmatch_lines(["*::test_runtime_chain PASSED*"])
     assert result.ret == 0
+
+
+def test_network_time_is_reset_between_tests(pytester):
+    pytester.makeconftest("""
+        import pytest
+        from gltest.helpers import network_time
+
+        class FakeProvider:
+            offset = 0
+            calls = []
+
+            def make_request(self, method, params):
+                FakeProvider.calls.append(method)
+                if method == "sim_increaseTime":
+                    FakeProvider.offset += params[0]
+                return {"result": {
+                    "total_offset_seconds": FakeProvider.offset,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: FakeProvider()
+    """)
+    pytester.makepyfile("""
+        from conftest import FakeProvider
+        from gltest.helpers import increase_time, get_network_time
+
+        def test_a_shifts_clock():
+            increase_time(86400)
+            assert get_network_time().offset_seconds == 86400
+
+        def test_b_sees_reset_clock():
+            assert get_network_time().offset_seconds == 0
+
+        def test_c_untouched_tests_send_no_rpc():
+            FakeProvider.calls.clear()
+
+        def test_d_check_no_rpc_sent():
+            assert FakeProvider.calls == []
+    """)
+
+    result = pytester.runpytest("-v", "-p", "no:randomly")
+
+    result.stdout.fnmatch_lines(
+        [
+            "*::test_a_shifts_clock PASSED*",
+            "*::test_b_sees_reset_clock PASSED*",
+            "*::test_c_untouched_tests_send_no_rpc PASSED*",
+            "*::test_d_check_no_rpc_sent PASSED*",
+        ]
+    )
+    assert result.ret == 0
