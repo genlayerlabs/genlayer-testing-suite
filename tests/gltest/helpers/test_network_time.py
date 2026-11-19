@@ -41,7 +41,7 @@ def provider(monkeypatch):
     with TestClient(create_app(num_validators=1)) as client:
         provider = _GlsimProvider(client)
         monkeypatch.setattr(network_time, "get_gl_provider", lambda: provider)
-        monkeypatch.setattr(network_time, "_time_modified", False)
+        monkeypatch.setattr(network_time, "_time_supported", None)
         yield provider
 
 
@@ -67,7 +67,6 @@ def test_increase_time_is_cumulative_and_accepts_timedelta(provider):
 
 def test_increase_time_zero_does_not_mark_modified(provider):
     assert increase_time(0).offset_seconds == 0
-    assert network_time._time_modified is False
     assert "sim_increaseTime" not in provider.methods
 
 
@@ -86,21 +85,46 @@ def test_set_time_naive_datetime_is_utc(provider):
 
 def test_reset_time_removes_offset(provider):
     increase_time(timedelta(days=7))
-    assert network_time._time_modified is True
     assert reset_time().offset_seconds == 0
     assert get_network_time().offset_seconds == 0
-    assert network_time._time_modified is False
 
 
-def test_reset_if_modified_skips_rpc_when_untouched(provider):
-    network_time._reset_time_if_modified()
-    assert provider.methods == []
-
-
-def test_reset_if_modified_resets_after_change(provider):
+def test_reset_if_supported_resets_shifted_clock(provider, monkeypatch):
+    monkeypatch.setattr(network_time, "_time_supported", None)
     increase_time(60)
-    network_time._reset_time_if_modified()
+    network_time._reset_time_if_supported()
     assert get_network_time().offset_seconds == 0
+
+
+def test_reset_if_supported_ignores_unsupported_backend(monkeypatch):
+    calls = []
+
+    class _Failing:
+        def make_request(self, method, params):
+            calls.append(method)
+            raise RuntimeError("Method not found")
+
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Failing())
+    monkeypatch.setattr(network_time, "_time_supported", None)
+    network_time._reset_time_if_supported()
+    network_time._reset_time_if_supported()
+    assert calls == ["sim_getTime"]  # probed once, then left alone
+
+
+def test_reset_if_supported_raises_when_reset_fails(monkeypatch):
+    class _Flaky:
+        def make_request(self, method, params):
+            if method == "sim_increaseTime":
+                raise RuntimeError("boom")
+            return {"result": {
+                "total_offset_seconds": 60,
+                "effective_datetime": "2030-01-01T00:00:00+00:00",
+            }}
+
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Flaky())
+    monkeypatch.setattr(network_time, "_time_supported", None)
+    with pytest.raises(HelperError, match="sim_increaseTime"):
+        network_time._reset_time_if_supported()
 
 
 def test_invalid_arguments(provider):
@@ -116,7 +140,5 @@ def test_unsupported_network_raises_helper_error(monkeypatch):
             raise RuntimeError("Method not found")
 
     monkeypatch.setattr(network_time, "get_gl_provider", lambda: _Failing())
-    monkeypatch.setattr(network_time, "_time_modified", False)
     with pytest.raises(HelperError, match="sim_increaseTime"):
         increase_time(60)
-    assert network_time._time_modified is False

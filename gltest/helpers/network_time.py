@@ -30,9 +30,6 @@ class NetworkTime:
     """Effective "now" seen by contracts (timezone-aware)."""
 
 
-# True while the network clock may differ from what it was before the current
-# test touched it. Used by the autouse fixture to only reset when needed.
-_time_modified = False
 
 
 def _request(method: str, params: list) -> NetworkTime:
@@ -79,12 +76,10 @@ def increase_time(seconds: Union[int, float, timedelta]) -> NetworkTime:
     Cumulative: ``increase_time(timedelta(days=1))`` twice leaves the network
     two days ahead. Negative values move the clock back.
     """
-    global _time_modified
     delta = _to_seconds(seconds)
     if delta == 0:
         return get_network_time()
     result = _request("sim_increaseTime", [delta])
-    _time_modified = True
     return result
 
 
@@ -94,7 +89,6 @@ def set_time(when: Union[datetime, str]) -> NetworkTime:
     string). Naive datetimes are interpreted as UTC. The clock keeps ticking
     from there.
     """
-    global _time_modified
     if isinstance(when, datetime):
         if when.tzinfo is None:
             when = when.replace(tzinfo=timezone.utc)
@@ -102,29 +96,36 @@ def set_time(when: Union[datetime, str]) -> NetworkTime:
     elif not isinstance(when, str):
         raise TypeError("when must be a datetime or an ISO 8601 string")
     result = _request("sim_setTime", [when])
-    _time_modified = True
     return result
 
 
 def reset_time() -> NetworkTime:
     """Remove any offset so the network clock matches the wall clock again."""
-    global _time_modified
     current = get_network_time()
     if current.offset_seconds != 0:
         current = _request("sim_increaseTime", [-current.offset_seconds])
-    _time_modified = False
     return current
 
 
-def _reset_time_if_modified() -> None:
-    """Reset the network clock only if a helper in this process changed it."""
-    if _time_modified:
-        reset_time()
+_time_supported = None  # unknown until the first probe
 
 
 def _reset_time_if_supported() -> None:
-    """Reset the clock to wall time; silently do nothing if unsupported."""
-    try:
-        reset_time()
-    except HelperError:
-        pass
+    """
+    Reset the clock to wall time on a backend that supports it.
+
+    The first call probes ``sim_getTime``; if that fails the backend is
+    treated as unsupported and later calls do nothing. Once supported, any
+    failure while resetting is raised.
+    """
+    global _time_supported
+    if _time_supported is False:
+        return
+    if _time_supported is None:
+        try:
+            get_network_time()
+        except HelperError:
+            _time_supported = False
+            return
+        _time_supported = True
+    reset_time()

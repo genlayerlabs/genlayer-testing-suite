@@ -3,14 +3,14 @@ This module provides reusable pytest fixtures for common gltest operations.
 These fixtures can be imported and used in test files.
 """
 
+from urllib.parse import urlparse
+
 import pytest
+from gltest_cli.config.general import get_general_config
 from gltest.clients import get_gl_client
 from gltest.accounts import get_accounts, get_default_account
 from gltest.network import get_current_chain_type, get_current_network
-from gltest.helpers.network_time import (
-    _reset_time_if_modified,
-    _reset_time_if_supported,
-)
+from gltest.helpers.network_time import _reset_time_if_supported
 
 
 @pytest.fixture(scope="session")
@@ -63,36 +63,43 @@ def current_chain_type():
     return get_current_chain_type()
 
 
-_LOCAL_CHAIN_TYPES = ("localnet", "studio_devnet", "studionet")
+_LOCAL_CHAIN_TYPES = ("localnet", "studio_devnet")
+_LOOPBACK_HOSTS = ("localhost", "127.0.0.1", "::1", "0.0.0.0")
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _gltest_baseline_network_time():
+def _is_local_network() -> bool:
+    """True only for a local chain type whose RPC URL is a loopback address.
+
+    Hosted networks (testnets, ``studionet``) are never touched.
     """
-    Before the first test, bring the network clock of local networks back to
-    wall time, so a clock left shifted by an earlier run is not inherited.
-    Networks without time manipulation support are left untouched.
-
-    Scope: session - runs once, before any test
-    """
-    if get_current_chain_type() in _LOCAL_CHAIN_TYPES:
-        _reset_time_if_supported()
-    yield
+    try:
+        if get_current_chain_type() not in _LOCAL_CHAIN_TYPES:
+            return False
+        host = urlparse(get_general_config().get_rpc_url()).hostname
+    except ValueError:  # unresolvable configuration: do not touch the network
+        return False
+    return host in _LOOPBACK_HOSTS
 
 
 @pytest.fixture(autouse=True)
 def _gltest_reset_network_time():
     """
-    Undo network clock changes made with ``gltest.helpers`` time helpers
-    (``increase_time`` / ``set_time``) once each test finishes, so a shifted
-    clock never leaks into the next test.
+    Give every test a network clock equal to wall time, on local networks
+    only: the clock is reset before the test starts (so changes made by
+    other means, e.g. raw RPC calls or an earlier run, are not inherited) and
+    again after it ends. Backends without time manipulation support are
+    detected on the first probe and left alone; a failed reset on a backend
+    that does support it raises.
 
-    No RPC is sent unless the clock was changed, so this is a no-op on
-    networks without time manipulation support. To give a test a time
-    baseline, call ``set_time`` in the test or in a function-scoped fixture;
-    it is reset when the test ends.
+    Hosted networks (testnets, ``studionet``) receive no clock RPCs. To give
+    a test a baseline, call ``set_time`` in the test or in a function-scoped
+    fixture; it is reset when the test ends.
 
     Scope: function - runs around every test
     """
+    local = _is_local_network()
+    if local:
+        _reset_time_if_supported()
     yield
-    _reset_time_if_modified()
+    if local:
+        _reset_time_if_supported()
