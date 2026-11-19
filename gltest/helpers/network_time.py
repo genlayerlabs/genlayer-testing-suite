@@ -17,6 +17,8 @@ from typing import Union
 
 import threading
 
+import requests
+
 from gltest.clients import get_gl_provider
 from gltest_cli.config.general import get_general_config
 from gltest.exceptions import HelperError
@@ -41,8 +43,31 @@ class NetworkTime:
 REQUEST_TIMEOUT_SECONDS = 10.0
 
 
+def _post_with_timeout(url: str, method: str, params: list):
+    """JSON-RPC POST with a transport-level timeout (releases the socket)."""
+    payload = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+    response = requests.post(
+        url,
+        json=payload,
+        headers={"Content-Type": "application/json", "User-Agent": "gltest"},
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    resp = response.json()
+    if resp.get("error"):
+        err = resp["error"]
+        raise RuntimeError(
+            f"{method} failed (code={err.get('code', 'unknown')}): "
+            f"{err.get('message', 'unknown error')}"
+        )
+    return resp
+
+
 def _make_request_with_deadline(method: str, params: list):
     provider = get_gl_provider()
+    url = getattr(provider, "url", None)
+    if isinstance(url, str):
+        return _post_with_timeout(url, method, params)
+    # Providers without a URL (e.g. in-process fakes): bound the wait instead.
     outcome: dict = {}
 
     def run():
@@ -175,21 +200,38 @@ def _reset_time_if_supported() -> None:
     * An endpoint refusing connections is skipped for this call
       only (connection refused), so tests that do not need a network keep working and a localnet
       started later is still reset.
-    * Any other failure (timeout, 5xx, ...) is retried once and then raised,
-      so a stale clock is never silently left behind.
+    * Reads are retried once on other failures; the relative write is sent
+      once only and any failure is raised, so a stale clock is never silently
+      left behind and a reset is never applied twice.
     """
     url = get_general_config().get_rpc_url()
     if url in _unsupported_urls:
         return
+
+    def handled(error: HelperError) -> bool:
+        if _is_method_unavailable(error):
+            _unsupported_urls.add(url)
+            return True
+        return _is_unreachable(error)
+
+    # Reading the clock is idempotent, so it may be retried.
     for attempt in (1, 2):
         try:
-            reset_time()
-            return
+            current = get_network_time()
+            break
         except HelperError as e:
-            if _is_method_unavailable(e):
-                _unsupported_urls.add(url)
-                return
-            if _is_unreachable(e):
+            if handled(e):
                 return
             if attempt == 2:
                 raise
+    if current.offset_seconds == 0:
+        return
+    # Shifting the clock is relative: it is sent exactly once. If its outcome
+    # is unknown (timeout), retrying could apply it twice, so the error is
+    # raised and the next test's read-first reset corrects whatever state the
+    # backend ended up in.
+    try:
+        _request("sim_increaseTime", [-current.offset_seconds])
+    except HelperError as e:
+        if not handled(e):
+            raise

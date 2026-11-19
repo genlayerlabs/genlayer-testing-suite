@@ -251,3 +251,34 @@ def test_accepted_connection_that_never_replies_times_out(monkeypatch):
         server.close()
         for c in held:
             c.close()
+
+
+def test_timed_out_reset_write_is_not_retried(monkeypatch):
+    """A write whose outcome is unknown must not be sent a second time."""
+    import threading
+
+    state = {"offset": 60}
+    writes = []
+    release = threading.Event()
+
+    class _SlowWrite:
+        def make_request(self, method, params):
+            if method == "sim_increaseTime":
+                writes.append(params[0])
+                release.wait(5)  # reply (and apply) only after the deadline
+                state["offset"] += params[0]
+            return {"result": {
+                "total_offset_seconds": state["offset"],
+                "effective_datetime": "2030-01-01T00:00:00+00:00",
+            }}
+
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _SlowWrite())
+    monkeypatch.setattr(network_time, "REQUEST_TIMEOUT_SECONDS", 0.2)
+    with pytest.raises(HelperError):
+        network_time._reset_time_if_supported()
+    release.set()
+    import time
+
+    time.sleep(0.2)
+    assert writes == [-60]  # sent exactly once
+    assert state["offset"] == 0  # no double application (would be -60)
