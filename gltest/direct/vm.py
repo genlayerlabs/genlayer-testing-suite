@@ -21,9 +21,15 @@ from typing import Any, Optional, Pattern, List, Tuple, Dict
 from unittest.mock import patch
 
 from ..types import MockedWebResponseData
-from .sdk_compat import import_address_u256, sync_message_context
+from .sdk_compat import import_address, import_address_u256, sync_message_context
 
 _sentinel = object()
+
+# Simulated settlement-chain CREATE2 factory for salted deploys. Real chains
+# expose their factory through ``gl.message.create2``; direct mode and glsim
+# have none, so a fixed placeholder keeps salted addresses deterministic.
+DEFAULT_CREATE2_DEPLOYER = bytes.fromhex("000000000000000000000000000000000000c2ea")
+DEFAULT_CREATE2_CODE_HASH = bytes(32)
 
 
 def _now_iso() -> str:
@@ -163,6 +169,10 @@ class VMContext:
     _value: int = 0
     _chain_id: int = 1
     _datetime: str = field(default_factory=_now_iso)
+    # Settlement-chain CREATE2 inputs exposed as ``gl.message.create2``
+    # (used by ``gl.contract.Salted`` to predict salted deploy addresses).
+    _create2_deployer: bytes = DEFAULT_CREATE2_DEPLOYER
+    _create2_code_hash: bytes = DEFAULT_CREATE2_CODE_HASH
 
     # Storage
     _storage: InmemManager = field(default_factory=InmemManager)
@@ -624,6 +634,16 @@ class VMContext:
             # genlayer not loaded yet, nothing to update
             pass
 
+    def get_create2_raw(self) -> Dict[str, Any]:
+        """Get the ``Create2RawType`` dict exposed as ``gl.message.create2``."""
+        deployer: Any = self._create2_deployer
+        try:
+            Address = import_address()
+            deployer = Address(deployer)
+        except ImportError:
+            pass
+        return {"deployer": deployer, "code_hash": self._create2_code_hash}
+
     def get_message_raw(self) -> Dict[str, Any]:
         """Get MessageRawType dict for stdin injection."""
         return {
@@ -635,6 +655,7 @@ class VMContext:
             "datetime": self._datetime,
             "is_init": False,
             "chain_id": self._chain_id,
+            "create2": self.get_create2_raw(),
             "entry_kind": 0,
             "entry_data": b"",
             "entry_stage_data": None,

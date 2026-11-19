@@ -24,11 +24,15 @@ class DeterministicFactory(gl.contract.Contract):
             code=CHILD_CODE.encode("utf-8"),
             args=[],
             kwargs={},
-            salt_nonce=salt,
+            salted=gl.contract.Salted(salt),
             on="decided",
         )
         self.child_address = child_address.as_hex
         return self.child_address
+
+    @gl.public.view
+    def predict_child(self, salt: int) -> str:
+        return gl.contract.Salted(salt).resolve_hardcoded().as_hex
 
     @gl.public.view
     def get_child(self) -> str:
