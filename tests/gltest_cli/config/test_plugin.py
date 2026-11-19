@@ -427,3 +427,49 @@ def test_fee_profile_headroom_must_be_positive(pytester):
         general_config.plugin_config.fee_profile_headroom = None
 
     assert result.ret != 0
+
+
+def test_current_network_and_chain_type(pytester):
+    pytester.makepyfile("""
+        from gltest import get_current_network, get_current_chain_type
+
+        def test_runtime_network(current_network, current_chain_type):
+            assert current_network == "my_testnet"
+            assert current_chain_type == "testnet_asimov"
+            assert get_current_network() == current_network
+            assert get_current_chain_type() == current_chain_type
+    """)
+
+    pytester.makefile(
+        ".config.yaml",
+        **{
+            "gltest": """
+networks:
+  default: my_testnet
+  my_testnet:
+    id: 55554
+    url: "https://testnet.example.com"
+    accounts:
+      - "0x1111111111111111111111111111111111111111111111111111111111111111"
+    chain_type: "testnet_asimov"
+"""
+        },
+    )
+
+    result = pytester.runpytest("-v")
+
+    result.stdout.fnmatch_lines(["*::test_runtime_network PASSED*"])
+    assert result.ret == 0
+
+
+def test_current_chain_type_follows_chain_type_flag(pytester):
+    pytester.makepyfile("""
+        def test_runtime_chain(current_network, current_chain_type):
+            assert current_network == "localnet"
+            assert current_chain_type == "studionet"
+    """)
+
+    result = pytester.runpytest("--network=localnet", "--chain-type=studionet", "-v")
+
+    result.stdout.fnmatch_lines(["*::test_runtime_chain PASSED*"])
+    assert result.ret == 0

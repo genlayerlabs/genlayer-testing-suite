@@ -237,6 +237,8 @@ assert tx_execution_failed(tx_receipt, match_std_err=r"Method.*failed")
 | `gl_client` | session | GenLayer client for network operations |
 | `default_account` | session | Default account for transactions |
 | `accounts` | session | List of test accounts |
+| `current_network` | session | Name of the selected network (`--network` or configured default) |
+| `current_chain_type` | session | Chain type of the selected network (`localnet`, `studionet`, `testnet_asimov`, ...) |
 
 ```python
 def test_workflow(gl_client, default_account, accounts):
@@ -245,6 +247,36 @@ def test_workflow(gl_client, default_account, accounts):
 
     tx_receipt = contract.some_method(args=["value"], account=accounts[1])
     assert tx_execution_succeeded(tx_receipt)
+```
+
+### Network-Aware Tests
+
+Branch on the selected network at runtime with the `current_network` /
+`current_chain_type` fixtures, or `get_current_network()` /
+`get_current_chain_type()` from `gltest`. Prefer the chain type: it honours
+`--chain-type` and the `chain_type` of custom networks, while the network name
+is whatever key was passed to `--network`.
+
+```python
+import pytest
+from gltest import get_contract_factory, get_validator_factory
+
+def test_oracle(current_chain_type):
+    transaction_context = None
+    if current_chain_type == "localnet":
+        # Mocked validators: fast, deterministic logic check
+        validators = get_validator_factory().batch_create_mock_validators(
+            count=5,
+            mock_llm_response={"nondet_exec_prompt": {"price of": "42"}},
+        )
+        transaction_context = {"validators": [v.to_dict() for v in validators]}
+    contract = get_contract_factory("Oracle").deploy(
+        transaction_context=transaction_context
+    )
+
+def test_mock_only(current_chain_type):
+    if current_chain_type != "localnet":
+        pytest.skip("relies on mocked LLM responses")
 ```
 
 ### Mock LLM Responses
