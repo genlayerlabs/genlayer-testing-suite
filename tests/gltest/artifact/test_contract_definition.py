@@ -1,6 +1,7 @@
 import pytest
 from gltest.artifacts.contract import (
     find_contract_definition_from_name,
+    find_contract_definition_from_path,
     compute_contract_code,
 )
 from gltest_cli.config.general import get_general_config
@@ -53,3 +54,26 @@ def test_class_is_not_intelligent_contract():
 
     with pytest.raises(FileNotFoundError):
         _ = find_contract_definition_from_name("NotICContract")
+
+
+def test_current_style_gl_contract_base():
+    general_config = get_general_config()
+    general_config.set_contracts_dir(Path("tests/gltest/artifact/contracts"))
+
+    contract_definition = find_contract_definition_from_name("CurrentStyleContract")
+
+    assert contract_definition.contract_name == "CurrentStyleContract"
+    assert contract_definition.main_file_path == (
+        Path("tests/gltest/artifact/contracts") / "current_style_contract.py"
+    )
+
+
+def test_current_style_gl_contract_base_from_path():
+    general_config = get_general_config()
+    general_config.set_contracts_dir(Path("tests/gltest/artifact/contracts"))
+
+    contract_definition = find_contract_definition_from_path(
+        "current_style_contract.py"
+    )
+
+    assert contract_definition.contract_name == "CurrentStyleContract"

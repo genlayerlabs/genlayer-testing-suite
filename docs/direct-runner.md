@@ -359,9 +359,9 @@ Direct mode automatically downloads and caches the correct GenLayer SDK version 
 # Contract with version header
 # { "Depends": "py-genlayer:abc123..." }
 
-from genlayer import *
+import genlayer as gl
 
-class MyContract(gl.Contract):
+class MyContract(gl.contract.Contract):
     ...
 ```
 

@@ -71,6 +71,11 @@ def test_get_default_user_config():
     assert isinstance(network.from_account, str)
     assert network.from_account in network.accounts
 
+    studio_preview = config.networks["studio_devnet"]
+    assert studio_preview.id == 61997
+    assert studio_preview.url == "https://studio-dev.genlayer.com/api"
+    assert studio_preview.chain_type == "studio_devnet"
+
     # Check paths
     assert isinstance(config.paths, PathConfig)
     assert config.paths.contracts == DEFAULT_CONTRACTS_DIR
