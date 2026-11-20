@@ -1,18 +1,18 @@
 # v0.1.0
 # { "Depends": "py-genlayer:latest" }
 
-from genlayer import *
+import genlayer as gl
 
 import json
 import typing
 
 
-class PredictionMarket(gl.Contract):
+class PredictionMarket(gl.contract.Contract):
     has_resolved: bool
     team1: str
     team2: str
     resolution_url: str
-    winner: u256
+    winner: gl.u256
     score: str
 
     def __init__(self, game_date: str, team1: str, team2: str):
@@ -37,7 +37,7 @@ class PredictionMarket(gl.Contract):
         )
         self.team1 = team1
         self.team2 = team2
-        self.winner = u256(0)
+        self.winner = 0
         self.score = ""
 
     @gl.public.write

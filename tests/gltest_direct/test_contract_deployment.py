@@ -28,6 +28,25 @@ class TestContractDeployment:
         storage.update_storage("new value")
         assert storage.get_storage() == "new value"
 
+    def test_direct_mode_ignores_fee_kwargs(self, direct_vm, direct_deploy):
+        """Fee-aware dev-env tests do not crash in gasless direct mode."""
+        fees = {
+            "distribution": {"leaderTimeunitsAllocation": 1},
+            "messageAllocations": [],
+            "feeValue": 10,
+        }
+        storage = direct_deploy(
+            str(CONTRACTS_DIR / "storage.py"),
+            "initial value",
+            fees=fees,
+            fee_value=10,
+            wait_until="decided",
+        )
+
+        storage.update_storage("new value", fees=fees, fee_value=10)
+
+        assert storage.get_storage() == "new value"
+
     def test_deploy_user_storage_with_sender(self, direct_vm, direct_deploy):
         """UserStorage respects gl.message.sender_address."""
         user_storage = direct_deploy(str(CONTRACTS_DIR / "user_storage.py"))
