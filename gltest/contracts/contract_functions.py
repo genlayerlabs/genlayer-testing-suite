@@ -19,13 +19,25 @@ class ContractFunction:
         self,
         transaction_hash_variant: TransactionHashVariant = TransactionHashVariant.LATEST_NONFINAL,
         transaction_context: Optional[TransactionContext] = None,
+        *,
+        value: int = 0,
+        fees: Optional[Dict[str, Any]] = None,
+        fee_value: Optional[int] = None,
     ):
-        """Executes a read-only contract method call."""
-        if not self.read_only:
-            raise ValueError("call() not implemented for non-readonly method")
+        """Read a view method or preview a write on a simulation-capable chain."""
+        if self.read_only:
+            if value != 0 or fees is not None or fee_value is not None:
+                raise ValueError("Value and fee options require a write method")
+            return self.call_method(
+                transaction_hash_variant=transaction_hash_variant,
+                transaction_context=transaction_context,
+            )
         return self.call_method(
             transaction_hash_variant=transaction_hash_variant,
             transaction_context=transaction_context,
+            value=value,
+            fees=fees,
+            fee_value=fee_value,
         )
 
     def transact(

@@ -2,6 +2,21 @@ from glsim.engine import SimEngine
 from glsim.state import StateStore
 
 
+def test_snapshot_restores_pending_and_captured_messages():
+    engine = SimEngine(StateStore())
+    engine._post_queue = [{"args": [1]}]
+    engine._captured_triggered_ops = [{"method": "existing"}]
+    snapshot = engine.create_snapshot()
+    engine._post_queue[0]["args"].append(2)
+    engine._captured_triggered_ops.clear()
+    engine.restore_snapshot(snapshot)
+    assert engine._post_queue == [{"args": [1]}]
+    assert engine._captured_triggered_ops == [{"method": "existing"}]
+    engine._post_queue.clear()
+    engine.restore_snapshot(snapshot)
+    assert engine._post_queue == [{"args": [1]}]
+
+
 def test_drain_post_queue_executes_all_messages_in_order(monkeypatch):
     engine = SimEngine(StateStore())
     engine._post_queue = [

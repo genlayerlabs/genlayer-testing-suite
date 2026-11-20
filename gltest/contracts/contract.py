@@ -1,3 +1,4 @@
+import base64
 import inspect
 import types
 from eth_account.signers.local import LocalAccount
@@ -11,6 +12,8 @@ from gltest.types import (
     TransactionContext,
 )
 from genlayer_py.types import SimConfig
+from genlayer_py.abi import calldata
+from genlayer_py.exceptions import GenLayerError
 from typing import List, Any, Optional, Dict, Callable, Literal
 from gltest_cli.config.general import get_general_config
 from gltest.fees import maybe_record_fee_observation
@@ -73,6 +76,21 @@ def read_contract_wrapper(
     )
 
 
+def _decode_simulation_result(receipt: Dict[str, Any]) -> Any:
+    """Decode Studio's execution receipt or glsim's legacy leader receipt."""
+    studio_receipt = "execution_result" in receipt
+    if not studio_receipt:
+        receipt = receipt["consensus_data"]["leader_receipt"]
+        if isinstance(receipt, list):
+            receipt = receipt[0]
+    result = base64.b64decode(receipt["result"], validate=True)
+    status = receipt["execution_result"]
+    if status != "SUCCESS" or (studio_receipt and (not result or result[0] != 0)):
+        detail = result[1:].decode("utf-8", errors="replace") if studio_receipt else ""
+        raise GenLayerError(f"Write simulation failed ({status}): {detail}")
+    return calldata.decode(result[1:] if studio_receipt else result)
+
+
 def write_contract_wrapper(
     self,
     method_name: str,
@@ -81,6 +99,28 @@ def write_contract_wrapper(
     """
     Wrapper to the contract write method.
     """
+
+    def call_method(
+        transaction_hash_variant: TransactionHashVariant = TransactionHashVariant.LATEST_NONFINAL,
+        transaction_context: Optional[TransactionContext] = None,
+        value: int = 0,
+        fees: Optional[Dict[str, Any]] = None,
+        fee_value: Optional[int] = None,
+    ):
+        client = get_gl_client()
+        receipt = client.simulate_write_contract(
+            address=self.address,
+            function_name=method_name,
+            account=self.account,
+            args=args,
+            value=value,
+            **_fee_kwargs(client.simulate_write_contract, fees, fee_value),
+            transaction_hash_variant=transaction_hash_variant,
+            sim_config=(
+                SimConfig(**transaction_context) if transaction_context else None
+            ),
+        )
+        return _decode_simulation_result(receipt)
 
     def transact_method(
         value: int = 0,
@@ -190,6 +230,7 @@ def write_contract_wrapper(
     return ContractFunction(
         method_name=method_name,
         read_only=False,
+        call_method=call_method,
         transact_method=transact_method,
         analyze_method=analyze_method,
     )
