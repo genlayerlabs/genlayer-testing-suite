@@ -60,12 +60,17 @@ def parse_contract_header(contract_path: Path) -> Dict[str, str]:
 
 def _query_latest_version() -> Optional[str]:
     """Newest suitable stable release, or newest RC when no stable exists."""
+    headers = {
+        "User-Agent": "gltest-direct",
+        "Accept": "application/vnd.github+json",
+    }
+    # Unauthenticated API calls share a low per-IP rate limit (shared CI
+    # runners hit HTTP 403); authenticate when a token is available.
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(
-        f"{GITHUB_API_RELEASES}?per_page=100",
-        headers={
-            "User-Agent": "gltest-direct",
-            "Accept": "application/vnd.github+json",
-        },
+        f"{GITHUB_API_RELEASES}?per_page=100", headers=headers
     )
     with urllib.request.urlopen(req, timeout=10) as resp:
         releases = json.loads(resp.read().decode("utf-8"))

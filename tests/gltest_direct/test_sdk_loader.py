@@ -70,6 +70,40 @@ class TestResolveVersion:
         assert sdk_loader.resolve_version() == "v0.9.9"
 
 
+class TestQueryLatestVersionAuth:
+    """The release lookup authenticates when a token is present."""
+
+    def _capture(self, monkeypatch):
+        seen = {}
+
+        def fake_urlopen(req, *a, **k):
+            seen["headers"] = dict(req.header_items())
+            return _FakeResponse([])
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+        return seen
+
+    def test_sends_bearer_token(self, monkeypatch):
+        monkeypatch.setenv("GITHUB_TOKEN", "tok")
+        seen = self._capture(monkeypatch)
+        sdk_loader._query_latest_version()
+        assert seen["headers"]["Authorization"] == "Bearer tok"
+
+    def test_falls_back_to_gh_token(self, monkeypatch):
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+        monkeypatch.setenv("GH_TOKEN", "ghtok")
+        seen = self._capture(monkeypatch)
+        sdk_loader._query_latest_version()
+        assert seen["headers"]["Authorization"] == "Bearer ghtok"
+
+    def test_anonymous_without_token(self, monkeypatch):
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+        monkeypatch.delenv("GH_TOKEN", raising=False)
+        seen = self._capture(monkeypatch)
+        sdk_loader._query_latest_version()
+        assert "Authorization" not in seen["headers"]
+
+
 class TestGetLatestVersion:
     """get_latest_version() selects current RCs and skips unusable releases."""
 
