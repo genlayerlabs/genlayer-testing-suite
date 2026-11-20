@@ -12,6 +12,9 @@ jobs:
   test-with-python:
     name: Test with Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    env:
+      # Authenticated GenVM release lookup; anonymous calls hit the runner IP quota.
+      GITHUB_TOKEN: ${{ github.token }}
     strategy:
       matrix:
         python-version: [3.12, 3.13]
