@@ -11,9 +11,6 @@ on:
 jobs:
   test-with-python:
     name: Test with Python ${{ matrix.python-version }}
-    env:
-      # Authenticates the GenVM release lookup (avoids API rate-limit 403s).
-      GITHUB_TOKEN: ${{ github.token }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -38,6 +35,9 @@ jobs:
       - name: Action | Run gltest tests
         run: uv run gltest tests/gltest/
       - name: Run glsim tests
+        # Authenticates the GenVM release lookup (avoids API rate-limit 403s).
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: uv run gltest tests/glsim/
 
       # Unit tests only — integration tests here download the GenVM SDK.

@@ -58,22 +58,36 @@ def parse_contract_header(contract_path: Path) -> Dict[str, str]:
     return deps
 
 
+def _fetch_releases(token: Optional[str]) -> list:
+    """Fetch the manager releases, authenticating with token when given."""
+    req = urllib.request.Request(
+        f"{GITHUB_API_RELEASES}?per_page=100",
+        headers={
+            "User-Agent": "gltest-direct",
+            "Accept": "application/vnd.github+json",
+        },
+    )
+    if token:
+        # Unredirected: urllib forwards regular headers across redirects,
+        # which would leak the token to whatever host is redirected to.
+        req.add_unredirected_header("Authorization", f"Bearer {token}")
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
 def _query_latest_version() -> Optional[str]:
     """Newest suitable stable release, or newest RC when no stable exists."""
-    headers = {
-        "User-Agent": "gltest-direct",
-        "Accept": "application/vnd.github+json",
-    }
     # Unauthenticated API calls share a low per-IP rate limit (shared CI
     # runners hit HTTP 403); authenticate when a token is available.
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    req = urllib.request.Request(
-        f"{GITHUB_API_RELEASES}?per_page=100", headers=headers
-    )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        releases = json.loads(resp.read().decode("utf-8"))
+    try:
+        releases = _fetch_releases(token)
+    except urllib.error.HTTPError as exc:
+        if exc.code != 401 or not token:
+            raise
+        # A rejected (expired/invalid) token must not make the lookup fail
+        # when the anonymous request would succeed.
+        releases = _fetch_releases(None)
 
     prerelease_candidate = None
     for release in releases:
