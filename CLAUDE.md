@@ -47,7 +47,8 @@ uv run gltest tests/gltest/
 
 # Example suite: must run from tests/examples/ (it resolves `contracts/` and
 # gltest.config.yaml relative to the working directory) and needs a reachable
-# GenLayer Studio (local Docker `localnet` by default, or e.g. --network studionet)
+# GenLayer Studio (local Docker `localnet` by default, or e.g. --network studionet),
+# plus ACCOUNT_PRIVATE_KEY_1.. set in tests/examples/.env or the environment
 cd tests/examples && uv run --project ../.. gltest tests/
 ```
 
