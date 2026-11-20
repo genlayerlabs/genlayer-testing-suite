@@ -37,16 +37,11 @@ def search_path_by_class_name(contracts_dir: Path, contract_name: str) -> Path:
             # Search for class definitions
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef) and node.name == contract_name:
-                    # Check if the class directly inherits from gl.Contract
+                    # Check if the class directly inherits from gl.contract.Contract
                     for base in node.bases:
-                        if isinstance(base, ast.Attribute):
-                            if (
-                                isinstance(base.value, ast.Name)
-                                and base.value.id == "gl"
-                                and base.attr == "Contract"
-                            ):
-                                matching_files.append(file_path)
-                                break
+                        if _is_genlayer_contract_base(base):
+                            matching_files.append(file_path)
+                            break
                     break
         except Exception as e:
             raise ValueError(f"Error reading file {file_path}: {e}") from e
@@ -97,21 +92,30 @@ def _extract_contract_name_from_file(file_path: Path) -> str:
             content = f.read()
         tree = ast.parse(content)
 
-        # Search for class definitions that inherit from gl.Contract
+        # Search for class definitions that inherit from gl.contract.Contract
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
                 for base in node.bases:
-                    if (
-                        isinstance(base, ast.Attribute)
-                        and isinstance(base.value, ast.Name)
-                        and base.value.id == "gl"
-                        and base.attr == "Contract"
-                    ):
+                    if _is_genlayer_contract_base(base):
                         return node.name
     except Exception as e:
         raise ValueError(f"Error parsing contract file {file_path}: {e}") from e
 
     raise ValueError(f"No valid contract class found in {file_path}")
+
+
+def _attribute_path(node: ast.expr) -> list[str]:
+    if isinstance(node, ast.Name):
+        return [node.id]
+    if isinstance(node, ast.Attribute):
+        return [*_attribute_path(node.value), node.attr]
+    return []
+
+
+def _is_genlayer_contract_base(base: ast.expr) -> bool:
+    """Return True for supported GenLayer contract base classes."""
+    path = _attribute_path(base)
+    return path in (["gl", "contract", "Contract"], ["gl", "Contract"])
 
 
 def _create_contract_definition(

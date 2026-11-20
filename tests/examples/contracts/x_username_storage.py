@@ -1,18 +1,17 @@
 # {
 #   "Seq": [
-#     { "Depends": "py-lib-genlayer-embeddings:09h0i209wrzh4xzq86f79c60x0ifs7xcjwl53ysrnw06i54ddxyi" },
-#     { "Depends": "py-genlayer:1j12s63yfjpva9ik2xgnffgrs6v44y1f52jvj9w7xvdn7qckd379" }
+#     { "Depends": "py-genlayer:latest" }
 #   ]
 # }
 
-from genlayer import *
+import genlayer as gl
 
 import json
 import typing
 import urllib.parse
 
 
-class XUsernameStorage(gl.Contract):
+class XUsernameStorage(gl.contract.Contract):
     username: str
     tweet_api_url: str
 
