@@ -92,21 +92,35 @@ class ContractFactory:
         3. Local client
 
         Returns:
-            Optional[Dict[str, Any]]: The contract schema if successful, None if all attempts fail.
+            Dict[str, Any]: The contract schema from the first successful client.
+
+        Raises:
+            ValueError: If all clients fail, including each client's error details.
         """
         clients = (
-            ("default", get_gl_client()),
-            ("hosted studio", get_gl_hosted_studio_client()),
-            ("local", get_local_client()),
+            ("default", get_gl_client),
+            ("hosted studio", get_gl_hosted_studio_client),
+            ("local", get_local_client),
         )
-        for label, client in clients:
+        errors = []
+        last_error = None
+        for label, get_client in clients:
             try:
-                return client.get_contract_schema_for_code(
+                client = get_client()
+                schema = client.get_contract_schema_for_code(
                     contract_code=self.contract_code
                 )
+                if schema is None:
+                    raise ValueError("Client returned no schema")
+                return schema
             except Exception as e:
+                errors.append(f"{label}: {type(e).__name__}: {e}")
+                last_error = e
                 logger.warning("Schema fetch via %s client failed: %s", label, e)
-        return None
+        raise ValueError(
+            "Failed to get schema from all clients (default, hosted studio, and local) "
+            f"for contract {self.contract_name!r}:\n" + "\n".join(errors)
+        ) from last_error
 
     def build_contract(
         self,
@@ -117,10 +131,6 @@ class ContractFactory:
         Build contract from address
         """
         schema = self._get_schema_with_fallback()
-        if schema is None:
-            raise ValueError(
-                "Failed to get schema from all clients (default, hosted studio, and local)"
-            )
 
         return Contract.new(address=contract_address, schema=schema, account=account)
 
