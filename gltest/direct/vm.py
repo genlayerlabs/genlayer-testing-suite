@@ -21,8 +21,15 @@ from typing import Any, Optional, Pattern, List, Tuple, Dict
 from unittest.mock import patch
 
 from ..types import MockedWebResponseData
+from .sdk_compat import import_address, import_address_u256, sync_message_context
 
 _sentinel = object()
+
+# Simulated settlement-chain CREATE2 factory for salted deploys. Real chains
+# expose their factory through ``gl.message.create2``; direct mode and glsim
+# have none, so a fixed placeholder keeps salted addresses deterministic.
+DEFAULT_CREATE2_DEPLOYER = bytes.fromhex("000000000000000000000000000000000000c2ea")
+DEFAULT_CREATE2_CODE_HASH = bytes(32)
 
 
 def _now_iso() -> str:
@@ -51,7 +58,7 @@ class Snapshot:
 
 class InmemManager:
     """
-    In-memory storage manager compatible with genlayer.py.storage.
+    In-memory storage manager compatible with genlayer.storage.
     """
 
     def __init__(self):
@@ -112,7 +119,7 @@ class InmemManager:
 
 
 class Slot:
-    """Storage slot compatible with genlayer.py.storage."""
+    """Storage slot compatible with genlayer.storage."""
 
     __slots__ = ('id', 'manager', '_indir_cache')
 
@@ -162,6 +169,10 @@ class VMContext:
     _value: int = 0
     _chain_id: int = 1
     _datetime: str = field(default_factory=_now_iso)
+    # Settlement-chain CREATE2 inputs exposed as ``gl.message.create2``
+    # (used by ``gl.contract.Salted`` to predict salted deploy addresses).
+    _create2_deployer: bytes = DEFAULT_CREATE2_DEPLOYER
+    _create2_code_hash: bytes = DEFAULT_CREATE2_CODE_HASH
 
     # Storage
     _storage: InmemManager = field(default_factory=InmemManager)
@@ -201,7 +212,7 @@ class VMContext:
     _live_web_handler: Optional[Any] = None
     _live_llm_handler: Optional[Any] = None
 
-    # Cross-contract call hook (for glsim — handles DeployContract/CallContract/PostMessage)
+    # Cross-contract call hook (glsim accepts current and rc7 request names).
     _gl_call_hook: Optional[Any] = None
 
     # Debug tracing
@@ -371,10 +382,10 @@ class VMContext:
 
         stored_result, leader_fn, validator_fn = self._captured_validators[index]
 
-        import genlayer.gl.vm as gl_vm
+        import genlayer.vm as gl_vm
 
         if leader_error is not None:
-            wrapped = gl_vm.UserError(message=str(leader_error))
+            wrapped = gl_vm.UserError(str(leader_error))
         elif leader_result is not _sentinel:
             wrapped = gl_vm.Return(calldata=leader_result)
         else:
@@ -583,21 +594,20 @@ class VMContext:
 
     def _refresh_gl_message(self) -> None:
         """
-        Refresh gl.message and gl.message_raw to reflect current sender.
+        Refresh genlayer.message to reflect current sender.
 
-        GenLayer SDK caches gl.message at import time. This method updates
-        the cached values so contracts see the current vm.sender.
+        The SDK reads genlayer.message from stdin at import time. This method
+        updates the loaded module so contracts see the current vm.sender.
 
-        Only updates if genlayer.gl is already imported - we must not trigger
-        a fresh import as that would read from stdin before message is injected.
+        Only updates if genlayer.message is already imported - we must not
+        trigger a fresh import as that would read from stdin before message is
+        injected.
         """
-        # Only proceed if genlayer.gl is already loaded
-        if 'genlayer.gl' not in sys.modules:
+        if 'genlayer.message' not in sys.modules:
             return
 
         try:
-            gl = sys.modules['genlayer.gl']
-            from genlayer.py.types import Address, u256
+            Address, u256 = import_address_u256()
 
             # Convert sender to Address if needed
             sender = self.sender
@@ -614,23 +624,25 @@ class VMContext:
                 elif hasattr(origin, 'as_bytes'):
                     origin = Address(origin.as_bytes)
 
-            # Update message_raw dict (mutable)
-            if hasattr(gl, 'message_raw') and gl.message_raw is not None:
-                gl.message_raw['sender_address'] = sender
-                gl.message_raw['origin_address'] = origin
-
-            # Replace gl.message with new NamedTuple (immutable, must recreate)
-            if hasattr(gl, 'message') and gl.message is not None:
-                gl.message = gl.MessageType(
-                    contract_address=gl.message.contract_address,
-                    sender_address=sender,
-                    origin_address=origin,
-                    value=u256(self._value),
-                    chain_id=u256(self._chain_id),
-                )
+            sync_message_context(
+                sender_address=sender,
+                origin_address=origin,
+                value=u256(self._value),
+                chain_id=u256(self._chain_id),
+            )
         except ImportError:
             # genlayer not loaded yet, nothing to update
             pass
+
+    def get_create2_raw(self) -> Dict[str, Any]:
+        """Get the ``Create2RawType`` dict exposed as ``gl.message.create2``."""
+        deployer: Any = self._create2_deployer
+        try:
+            Address = import_address()
+            deployer = Address(deployer)
+        except ImportError:
+            pass
+        return {"deployer": deployer, "code_hash": self._create2_code_hash}
 
     def get_message_raw(self) -> Dict[str, Any]:
         """Get MessageRawType dict for stdin injection."""
@@ -643,6 +655,7 @@ class VMContext:
             "datetime": self._datetime,
             "is_init": False,
             "chain_id": self._chain_id,
+            "create2": self.get_create2_raw(),
             "entry_kind": 0,
             "entry_data": b"",
             "entry_stage_data": None,

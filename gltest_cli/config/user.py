@@ -18,7 +18,13 @@ from gltest_cli.config.constants import (
     DEFAULT_LEADER_ONLY,
     CHAINS,
 )
-from genlayer_py.chains import localnet, studionet, testnet_asimov, testnet_bradbury
+from genlayer_py.chains import (
+    localnet,
+    studio_devnet,
+    studionet,
+    testnet_asimov,
+    testnet_bradbury,
+)
 from gltest_cli.config.types import UserConfig, NetworkConfigData, PathConfig
 
 VALID_ROOT_KEYS = ["networks", "paths", "environment"]
@@ -50,6 +56,16 @@ def get_default_user_config() -> UserConfig:
             default_wait_interval=DEFAULT_WAIT_INTERVAL,
             default_wait_retries=DEFAULT_WAIT_RETRIES,
             chain_type="localnet",
+        ),
+        "studio_devnet": NetworkConfigData(
+            id=studio_devnet.id,
+            url=studio_devnet.rpc_urls["default"]["http"][0],
+            accounts=accounts_private_keys,
+            from_account=accounts_private_keys[0],
+            leader_only=DEFAULT_LEADER_ONLY,
+            default_wait_interval=DEFAULT_WAIT_INTERVAL,
+            default_wait_retries=DEFAULT_WAIT_RETRIES,
+            chain_type="studio_devnet",
         ),
         "studionet": NetworkConfigData(
             id=studionet.id,
@@ -275,6 +291,8 @@ def _get_overridden_networks(raw_config: dict) -> tuple[dict, str]:
 
             if "url" in network_config:
                 networks_config[network_name].url = network_config["url"]
+            if "id" in network_config:
+                networks_config[network_name].id = network_config["id"]
             if "accounts" in network_config:
                 networks_config[network_name].accounts = network_config["accounts"]
                 networks_config[network_name].from_account = network_config["accounts"][
