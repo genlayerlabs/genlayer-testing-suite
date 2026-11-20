@@ -10,16 +10,22 @@ GenLayer Testing Suite (`gltest`) is a pytest-based testing framework for GenLay
 
 ### Development Setup
 ```bash
-# Install dependencies from lockfile
-uv sync
+# Install dependencies from lockfile, including the `sim` extra
+# (fastapi, uvicorn, httpx, eth-account, numpy). The glsim simulator and its
+# tests (tests/glsim/) import starlette/fastapi, so a plain `uv sync` fails
+# collection with `ModuleNotFoundError: No module named 'starlette'`.
+uv sync --extra sim
+
+# Verify uv.lock matches pyproject.toml (CI-style check)
+uv lock --check
 
 # Requires Python >= 3.12
 ```
 
 ### Running Tests
 ```bash
-# Run all tests
-uv run gltest
+# Run all tests (needs `uv sync --extra sim`, see above)
+uv run --extra sim gltest
 
 # Run specific test file
 uv run gltest tests/test_mycontract.py
@@ -60,7 +66,7 @@ uv build
 When making changes to the framework code, sync and run via uv:
 ```bash
 # Sync dependencies (picks up local changes automatically)
-uv sync
+uv sync --extra sim
 
 # Run tests
 uv run gltest tests/gltest_cli/

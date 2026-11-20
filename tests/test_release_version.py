@@ -110,3 +110,14 @@ def test_publish_workflow_is_tag_only_and_enforces_release_provenance():
     )
     assert "release_version.py is-prerelease" in github_release
     assert "--prerelease" in github_release
+
+
+def test_uv_lock_editable_version_matches_pyproject():
+    root = Path(__file__).parents[1]
+    project = tomllib.loads((root / "pyproject.toml").read_text())["project"]
+    lock = tomllib.loads((root / "uv.lock").read_text())
+    locked = next(p for p in lock["package"] if p["name"] == project["name"])
+
+    assert release_version.parse_release_version(
+        locked["version"]
+    ) == release_version.parse_release_version(project["version"])
