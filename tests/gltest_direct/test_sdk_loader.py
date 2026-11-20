@@ -70,6 +70,143 @@ class TestResolveVersion:
         assert sdk_loader.resolve_version() == "v0.9.9"
 
 
+class TestQueryLatestVersionAuth:
+    """The release lookup authenticates when a token is present."""
+
+    def _capture(self, monkeypatch):
+        seen = {}
+
+        def fake_urlopen(req, *a, **k):
+            seen["headers"] = dict(req.header_items())
+            return _FakeResponse([])
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+        return seen
+
+    def test_sends_bearer_token(self, monkeypatch):
+        monkeypatch.setenv("GITHUB_TOKEN", "tok")
+        seen = self._capture(monkeypatch)
+        sdk_loader._query_latest_version()
+        assert seen["headers"]["Authorization"] == "Bearer tok"
+
+    def test_falls_back_to_gh_token(self, monkeypatch):
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+        monkeypatch.setenv("GH_TOKEN", "ghtok")
+        seen = self._capture(monkeypatch)
+        sdk_loader._query_latest_version()
+        assert seen["headers"]["Authorization"] == "Bearer ghtok"
+
+    def test_anonymous_without_token(self, monkeypatch):
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+        monkeypatch.delenv("GH_TOKEN", raising=False)
+        seen = self._capture(monkeypatch)
+        sdk_loader._query_latest_version()
+        assert "Authorization" not in seen["headers"]
+
+
+class TestQueryLatestVersionTokenSafety:
+    def test_token_not_forwarded_on_redirect(self, monkeypatch):
+        import threading
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+
+        seen = {}
+
+        class Target(BaseHTTPRequestHandler):
+            def do_GET(self):
+                seen["target"] = self.headers.get("Authorization")
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"[]")
+
+            def log_message(self, *a):
+                pass
+
+        target = HTTPServer(("127.0.0.1", 0), Target)
+
+        class Origin(BaseHTTPRequestHandler):
+            def do_GET(self):
+                seen["origin"] = self.headers.get("Authorization")
+                self.send_response(302)
+                self.send_header(
+                    "Location", f"http://127.0.0.1:{target.server_port}/x"
+                )
+                self.end_headers()
+
+            def log_message(self, *a):
+                pass
+
+        origin = HTTPServer(("127.0.0.1", 0), Origin)
+        threads = [
+            threading.Thread(target=s.serve_forever, daemon=True)
+            for s in (origin, target)
+        ]
+        for t in threads:
+            t.start()
+        try:
+            monkeypatch.setenv("GITHUB_TOKEN", "secret")
+            monkeypatch.setattr(
+                sdk_loader,
+                "GITHUB_API_RELEASES",
+                f"http://127.0.0.1:{origin.server_port}/releases",
+            )
+            sdk_loader._query_latest_version()
+        finally:
+            origin.shutdown()
+            target.shutdown()
+        assert seen["origin"] == "Bearer secret"
+        assert seen["target"] is None
+
+
+class TestQueryLatestVersionRejectedToken:
+    def _urlopen(self, calls):
+        releases = [
+            {
+                "tag_name": "v0.9.9",
+                "prerelease": False,
+                "assets": [{"name": "genvm-universal.tar.xz"}],
+            }
+        ]
+
+        def fake(req, *a, **k):
+            auth = dict(req.header_items()).get("Authorization")
+            calls.append(auth)
+            if auth:
+                raise urllib.error.HTTPError(
+                    req.full_url, 401, "Bad credentials", {}, None
+                )
+            return _FakeResponse(releases)
+
+        return fake
+
+    def test_retries_anonymously_on_401(self, monkeypatch):
+        calls = []
+        monkeypatch.setenv("GITHUB_TOKEN", "bad")
+        monkeypatch.setattr("urllib.request.urlopen", self._urlopen(calls))
+        assert sdk_loader._query_latest_version() == "v0.9.9"
+        assert calls == ["Bearer bad", None]
+
+    def test_resolve_prefers_release_over_cache_on_401(self, monkeypatch):
+        calls = []
+        monkeypatch.delenv(sdk_loader.GENVM_VERSION_ENV, raising=False)
+        monkeypatch.setenv("GITHUB_TOKEN", "bad")
+        monkeypatch.setattr(sdk_loader, "list_cached_versions", lambda: ["v0.6.0-rc0"])
+        monkeypatch.setattr("urllib.request.urlopen", self._urlopen(calls))
+        assert sdk_loader.resolve_version() == "v0.9.9"
+
+    def test_non_401_errors_are_not_retried(self, monkeypatch):
+        calls = []
+        monkeypatch.setenv("GITHUB_TOKEN", "tok")
+
+        def fake(req, *a, **k):
+            calls.append(1)
+            raise urllib.error.HTTPError(req.full_url, 403, "rate limit", {}, None)
+
+        monkeypatch.setattr("urllib.request.urlopen", fake)
+        with pytest.raises(urllib.error.HTTPError):
+            sdk_loader._query_latest_version()
+        assert len(calls) == 1
+
+
 class TestGetLatestVersion:
     """get_latest_version() selects current RCs and skips unusable releases."""
 
