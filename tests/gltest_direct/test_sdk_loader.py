@@ -60,7 +60,7 @@ class TestResolveVersion:
         monkeypatch.setattr(sdk_loader, "list_cached_versions", lambda: [])
         monkeypatch.setattr(sdk_loader, "_query_latest_version", lambda: None)
 
-        assert sdk_loader.resolve_version() == "v0.6.0-rc3"
+        assert sdk_loader.resolve_version() == sdk_loader.FALLBACK_VERSION
 
     def test_falls_back_to_latest_when_no_cache(self, monkeypatch):
         monkeypatch.delenv(sdk_loader.GENVM_VERSION_ENV, raising=False)
@@ -148,6 +148,57 @@ class TestGetLatestVersion:
             "urllib.request.urlopen", lambda *a, **k: _FakeResponse(releases)
         )
         assert sdk_loader.get_latest_version() == "v0.6.0-rc3"
+
+    @pytest.mark.parametrize("env_name", ["GITHUB_TOKEN", "GH_TOKEN"])
+    def test_sends_token_when_available(self, monkeypatch, env_name):
+        seen = {}
+
+        def _capture(req, *a, **k):
+            seen["auth"] = req.get_header("Authorization")
+            return _FakeResponse([])
+
+        for name in sdk_loader.GITHUB_TOKEN_ENVS:
+            monkeypatch.delenv(name, raising=False)
+        monkeypatch.setenv(env_name, "t0ken")
+        monkeypatch.setattr("urllib.request.urlopen", _capture)
+
+        sdk_loader.get_latest_version()
+
+        assert seen["auth"] == "Bearer t0ken"
+
+    def test_sends_no_authorization_without_token(self, monkeypatch):
+        seen = {}
+
+        def _capture(req, *a, **k):
+            seen["auth"] = req.get_header("Authorization")
+            return _FakeResponse([])
+
+        for name in sdk_loader.GITHUB_TOKEN_ENVS:
+            monkeypatch.delenv(name, raising=False)
+        monkeypatch.setattr("urllib.request.urlopen", _capture)
+
+        sdk_loader.get_latest_version()
+
+        assert seen["auth"] is None
+
+    def test_retries_anonymously_when_token_is_rejected(self, monkeypatch):
+        releases = [
+            {
+                "tag_name": "v0.3.0",
+                "prerelease": False,
+                "assets": [{"name": "genvm-runners-all.tar.xz"}],
+            }
+        ]
+
+        def _reject_token(req, *a, **k):
+            if req.get_header("Authorization"):
+                raise urllib.error.HTTPError(req.full_url, 401, "bad", {}, None)
+            return _FakeResponse(releases)
+
+        monkeypatch.setenv("GITHUB_TOKEN", "stale")
+        monkeypatch.setattr("urllib.request.urlopen", _reject_token)
+
+        assert sdk_loader.get_latest_version() == "v0.3.0"
 
     def test_returns_fallback_when_api_unreachable(self, monkeypatch, capsys):
         def _boom(*a, **k):

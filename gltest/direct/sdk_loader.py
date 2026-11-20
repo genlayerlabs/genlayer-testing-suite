@@ -27,7 +27,8 @@ GITHUB_API_RELEASES = "https://api.github.com/repos/genlayerlabs/genvm-manager/r
 # archives required by the direct loader.
 RUNNER_BUNDLE_ASSETS = ("genvm-runners-all.tar.xz", "genvm-universal.tar.xz")
 GENVM_VERSION_ENV = "GENVM_VERSION"
-FALLBACK_VERSION = "v0.6.0-rc3"
+FALLBACK_VERSION = "v0.6.0-rc16"
+GITHUB_TOKEN_ENVS = ("GITHUB_TOKEN", "GH_TOKEN")
 
 # v0.3 runner trees use .zip; the v0.2 legacy-runners tree uses .tar.
 RUNNER_ARCHIVE_EXTS = (".tar", ".zip")
@@ -60,15 +61,25 @@ def parse_contract_header(contract_path: Path) -> Dict[str, str]:
 
 def _query_latest_version() -> Optional[str]:
     """Newest suitable stable release, or newest RC when no stable exists."""
-    req = urllib.request.Request(
-        f"{GITHUB_API_RELEASES}?per_page=100",
-        headers={
-            "User-Agent": "gltest-direct",
-            "Accept": "application/vnd.github+json",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        releases = json.loads(resp.read().decode("utf-8"))
+    headers = {
+        "User-Agent": "gltest-direct",
+        "Accept": "application/vnd.github+json",
+    }
+    # Anonymous calls share a per-IP quota that CI runners exhaust.
+    token = next((os.environ[k] for k in GITHUB_TOKEN_ENVS if os.environ.get(k)), None)
+    url = f"{GITHUB_API_RELEASES}?per_page=100"
+    try:
+        auth = {"Authorization": f"Bearer {token}"} if token else {}
+        req = urllib.request.Request(url, headers={**headers, **auth})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            releases = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError:
+        if not token:
+            raise
+        # A stale token must not be worse than no token.
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            releases = json.loads(resp.read().decode("utf-8"))
 
     prerelease_candidate = None
     for release in releases:
