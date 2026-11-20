@@ -10,22 +10,23 @@ GenLayer Testing Suite (`gltest`) is a pytest-based testing framework for GenLay
 
 ### Development Setup
 ```bash
+# Verify uv.lock matches pyproject.toml. Run this BEFORE any unlocked
+# `uv sync`/`uv run`, which silently rewrites a stale lockfile and hides it.
+uv lock --check
+
 # Install dependencies from lockfile, including the `sim` extra
 # (fastapi, uvicorn, httpx, eth-account, numpy). The glsim simulator and its
 # tests (tests/glsim/) import starlette/fastapi, so a plain `uv sync` fails
 # collection with `ModuleNotFoundError: No module named 'starlette'`.
 uv sync --extra sim
 
-# Verify uv.lock matches pyproject.toml (CI-style check)
-uv lock --check
-
 # Requires Python >= 3.12
 ```
 
 ### Running Tests
 ```bash
-# Run all tests (needs `uv sync --extra sim`, see above)
-uv run --extra sim gltest
+# Run the suites that work from the repository root (needs the sim extra, see above)
+uv run --extra sim gltest tests/gltest_cli/ tests/gltest/ tests/glsim/
 
 # Run specific test file
 uv run gltest tests/test_mycontract.py
@@ -43,7 +44,11 @@ uv run gltest --artifacts-dir /path/to/artifacts
 # Run specific test suites
 uv run gltest tests/gltest_cli/
 uv run gltest tests/gltest/
-uv run gltest tests/examples/tests/
+
+# Example suite: must run from tests/examples/ (it resolves `contracts/` and
+# gltest.config.yaml relative to the working directory) and needs a reachable
+# GenLayer Studio (local Docker `localnet` by default, or e.g. --network studionet)
+cd tests/examples && uv run --project ../.. gltest tests/
 ```
 
 ### Code Formatting
