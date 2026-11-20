@@ -473,3 +473,91 @@ def test_current_chain_type_follows_chain_type_flag(pytester):
 
     result.stdout.fnmatch_lines(["*::test_runtime_chain PASSED*"])
     assert result.ret == 0
+
+
+def test_network_time_is_reset_between_tests(pytester):
+    pytester.makeconftest("""
+        import pytest
+        from gltest.helpers import network_time
+
+        class FakeProvider:
+            offset = 86400  # clock already shifted before the session starts
+            calls = []
+
+            def make_request(self, method, params):
+                FakeProvider.calls.append(method)
+                if method == "sim_increaseTime":
+                    FakeProvider.offset += params[0]
+                return {"result": {
+                    "total_offset_seconds": FakeProvider.offset,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: FakeProvider()
+    """)
+    pytester.makepyfile("""
+        from conftest import FakeProvider
+        from gltest.helpers import increase_time, get_network_time
+
+        def test_a_shifts_clock():
+            assert get_network_time().offset_seconds == 0
+            increase_time(86400)
+            assert get_network_time().offset_seconds == 86400
+
+        def test_b_sees_reset_clock():
+            assert get_network_time().offset_seconds == 0
+            FakeProvider.offset += 60  # raw RPC-style shift, not via helpers
+
+        def test_b2_raw_shift_does_not_leak():
+            assert get_network_time().offset_seconds == 0
+
+        def test_c_clear():
+            FakeProvider.calls.clear()
+    """)
+
+    # Subprocess: the fake provider must not leak into this pytest process.
+    result = pytester.runpytest_subprocess("-v", "-p", "no:randomly")
+
+    result.stdout.fnmatch_lines(
+        [
+            "*::test_a_shifts_clock PASSED*",
+            "*::test_b_sees_reset_clock PASSED*",
+            "*::test_b2_raw_shift_does_not_leak PASSED*",
+            "*::test_c_clear PASSED*",
+        ]
+    )
+    assert result.ret == 0
+
+
+def test_network_time_not_touched_on_hosted_studio(pytester):
+    pytester.makeconftest("""
+        from gltest.helpers import network_time
+
+        class FakeProvider:
+            calls = []
+
+            def make_request(self, method, params):
+                FakeProvider.calls.append(method)
+                return {"result": {
+                    "total_offset_seconds": 60,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: FakeProvider()
+    """)
+    pytester.makepyfile("""
+        from conftest import FakeProvider
+
+        def test_one():
+            pass
+
+        def test_two_no_clock_rpc():
+            assert FakeProvider.calls == []
+    """)
+
+    result = pytester.runpytest_subprocess(
+        "-v", "-p", "no:randomly", "--network=studionet"
+    )
+
+    result.stdout.fnmatch_lines(["*::test_two_no_clock_rpc PASSED*"])
+    assert result.ret == 0

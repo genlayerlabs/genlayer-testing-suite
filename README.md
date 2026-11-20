@@ -347,6 +347,28 @@ def test_mock_only(current_chain_type):
         pytest.skip("relies on mocked LLM responses")
 ```
 
+### Time Travel
+
+On GLSim you can move the network clock to test expirations, lockups and other
+time-based logic. The shift applies to every later transaction, call and block
+timestamp. On local networks (loopback RPC URL only; never hosted Studio or testnets) the clock is reset to wall time before and after every
+test, including changes made by raw RPC calls.
+
+```python
+from datetime import timedelta
+from gltest.helpers import increase_time, set_time, get_network_time, reset_time
+
+def test_lockup_expires(lockup_contract):
+    increase_time(timedelta(weeks=1))      # cumulative; ints are seconds
+    set_time("2030-01-01T00:00:00Z")       # or an absolute datetime
+    print(get_network_time().datetime)     # effective "now" on the network
+    reset_time()                           # optional: back to the wall clock
+```
+
+These helpers need a network with GLSim's `sim_increaseTime` / `sim_setTime` /
+`sim_getTime` RPCs; elsewhere they raise `HelperError`. To override time for a
+single call instead, pass `genvm_datetime` in the transaction context.
+
 ### Mock LLM Responses
 
 Simulate LLM responses for deterministic tests:
