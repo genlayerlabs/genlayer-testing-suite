@@ -53,3 +53,12 @@ def test_parameter_kinds_are_preserved():
         pass
 
     assert "kw_only(a, *, b)" in generate_api_docs.generate_method_doc("kw_only", kw_only)
+
+
+def test_type_normalization_keeps_literal_contents():
+    from typing import Literal, Optional
+
+    assert (
+        generate_api_docs.format_type(Optional[Literal["profile.Production"]])
+        == "Optional[Literal['profile.Production']]"
+    )
