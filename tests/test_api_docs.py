@@ -37,3 +37,19 @@ def test_every_public_method_is_documented(tmp_path):
 def test_defaults_and_types_are_deterministic():
     assert generate_api_docs.format_default(object()) == "<sentinel>"
     assert generate_api_docs.format_type(__import__("typing").Optional[str]) == "Optional[str]"
+
+
+def test_parameter_kinds_are_preserved():
+    def sample(a, /, b, *args, c=1, **kwargs):
+        pass
+
+    doc = generate_api_docs.generate_method_doc("sample", sample)
+    assert "sample(a, /, b, *args, c = 1, **kwargs)" in doc.replace("c=1", "c = 1")
+    assert "| `*args` | variadic positional |" in doc
+    assert "| `**kwargs` | variadic keyword |  | No |" in doc
+    assert "| `c` | keyword-only |  | No | `1` |" in doc
+
+    def kw_only(a, *, b):
+        pass
+
+    assert "kw_only(a, *, b)" in generate_api_docs.generate_method_doc("kw_only", kw_only)

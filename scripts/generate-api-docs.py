@@ -21,7 +21,12 @@ def clean_readme(content):
 def format_type(annotation):
     if annotation is inspect.Parameter.empty:
         return ""
-    return inspect.formatannotation(annotation).replace("ForwardRef('", "").replace("')", "")
+    if isinstance(annotation, str):
+        return annotation.strip("'\"")
+    text = inspect.formatannotation(annotation).replace("ForwardRef('", "").replace("')", "")
+    # Drop module prefixes (e.g. pathlib._local.Path on 3.13 vs pathlib.Path on 3.12)
+    # so the output is identical across Python versions.
+    return re.sub(r"\b(?:[A-Za-z_]\w*\.)+(?=[A-Z])", "", text)
 
 
 def format_default(value):
@@ -48,6 +53,15 @@ def public_methods(cls):
     return names
 
 
+KIND_LABELS = {
+    inspect.Parameter.POSITIONAL_ONLY: "positional-only",
+    inspect.Parameter.POSITIONAL_OR_KEYWORD: "positional or keyword",
+    inspect.Parameter.VAR_POSITIONAL: "variadic positional",
+    inspect.Parameter.KEYWORD_ONLY: "keyword-only",
+    inspect.Parameter.VAR_KEYWORD: "variadic keyword",
+}
+
+
 def generate_method_doc(name, method, prefix=""):
     sig = inspect.signature(method)
     docstring = inspect.getdoc(method) or ""
@@ -59,30 +73,52 @@ def generate_method_doc(name, method, prefix=""):
         default = ""
         if param.default is not inspect.Parameter.empty:
             default = f" = {format_default(param.default)}"
-        required = param.default is inspect.Parameter.empty
-        params.append((pname, type_str, required, default))
+        variadic = param.kind in (
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        )
+        required = param.default is inspect.Parameter.empty and not variadic
+        params.append((pname, type_str, required, default, param.kind))
 
     lines = [f"### `{prefix}{name}`\n"]
     lines.append(f"{docstring}\n")
 
     param_parts = []
-    for pname, type_str, required, default in params:
-        display = f"{pname}: {type_str}" if type_str else pname
+    seen_keyword_marker = False
+    for i, (pname, type_str, required, default, kind) in enumerate(params):
+        if kind == inspect.Parameter.KEYWORD_ONLY and not seen_keyword_marker:
+            if not any(k == inspect.Parameter.VAR_POSITIONAL for *_, k in params):
+                param_parts.append("*")
+            seen_keyword_marker = True
+        star = {
+            inspect.Parameter.VAR_POSITIONAL: "*",
+            inspect.Parameter.VAR_KEYWORD: "**",
+        }.get(kind, "")
+        display = f"{star}{pname}: {type_str}" if type_str else f"{star}{pname}"
         display += default
         param_parts.append(display)
+        next_kind = params[i + 1][4] if i + 1 < len(params) else None
+        if kind == inspect.Parameter.POSITIONAL_ONLY and next_kind != kind:
+            param_parts.append("/")
 
     if param_parts:
         lines.append(f"```python\n{prefix}{name}({', '.join(param_parts)})\n```\n")
 
     if params:
         lines.append("**Parameters:**\n")
-        lines.append("| Parameter | Type | Required | Default |")
-        lines.append("|-----------|------|----------|---------|")
-        for pname, type_str, required, default in params:
+        lines.append("| Parameter | Kind | Type | Required | Default |")
+        lines.append("|-----------|------|------|----------|---------|")
+        for pname, type_str, required, default, kind in params:
             req_str = "Yes" if required else "No"
             type_display = f"`{type_str}`" if type_str else ""
-            default_display = f"`{default.strip(' = ')}`" if default else ""
-            lines.append(f"| `{pname}` | {type_display} | {req_str} | {default_display} |")
+            default_display = f"`{default[3:]}`" if default else ""
+            label = {
+                inspect.Parameter.VAR_POSITIONAL: f"*{pname}",
+                inspect.Parameter.VAR_KEYWORD: f"**{pname}",
+            }.get(kind, pname)
+            lines.append(
+                f"| `{label}` | {KIND_LABELS[kind]} | {type_display} | {req_str} | {default_display} |"
+            )
         lines.append("")
 
     ret = format_type(sig.return_annotation)

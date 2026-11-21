@@ -1,13 +1,23 @@
 name: Generate API Docs and PR to genlayer-docs
 
+# Called by publish.yml after a stable release is published (releases created
+# with GITHUB_TOKEN do not trigger `release` workflows), or run manually.
 on:
   workflow_dispatch:
-  release:
-    types: [published]
+    inputs:
+      ref:
+        description: Tag or branch to generate the reference from (default: selected ref)
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      ref:
+        description: Release tag to generate the reference from
+        required: true
+        type: string
 
 jobs:
   generate-and-sync:
-    if: github.event_name != 'release' || !contains(github.event.release.tag_name, '-')
     runs-on: ubuntu-latest
     environment: Sync-docs
     permissions:
@@ -15,6 +25,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -27,8 +39,10 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            echo "value=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          if [ -n "${{ inputs.ref }}" ]; then
+            echo "value=${{ inputs.ref }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "value=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           else
             echo "value=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')" >> $GITHUB_OUTPUT
           fi

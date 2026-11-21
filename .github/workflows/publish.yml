@@ -25,6 +25,8 @@ jobs:
     needs: run-tests
     runs-on: ubuntu-latest
     environment: Publish
+    outputs:
+      is_prerelease: ${{ steps.release.outputs.is_prerelease }}
 
     steps:
       - name: Checkout tag
@@ -69,11 +71,14 @@ jobs:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Create GitHub Release
+        id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_FLAGS=()
-          if [ "$(python scripts/release_version.py is-prerelease "$GITHUB_REF_NAME")" = "true" ]; then
+          IS_PRERELEASE="$(python scripts/release_version.py is-prerelease "$GITHUB_REF_NAME")"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+          if [ "$IS_PRERELEASE" = "true" ]; then
             RELEASE_FLAGS+=(--prerelease)
           fi
           NOTES="$(awk -v ver="$GITHUB_REF_NAME" '
@@ -88,3 +93,12 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --notes "$NOTES" \
             "${RELEASE_FLAGS[@]}"
+
+  sync-docs:
+    name: Sync API reference to genlayer-docs
+    needs: publish-to-pypi
+    if: needs.publish-to-pypi.outputs.is_prerelease != 'true'
+    uses: ./.github/workflows/sync-docs.yml
+    with:
+      ref: ${{ github.ref_name }}
+    secrets: inherit
