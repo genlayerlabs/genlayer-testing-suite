@@ -5,9 +5,19 @@ This repo follows the GenLayer release-train model.
 ## Current Train
 
 - Current stable branch: `v0.29`
-- Active integration branch: `v0.30-dev`
-- Next stable target: `v0.30`
-- `main`: default/static branch alias for the active integration branch
+- Release-candidate integration branch: `v0.30-dev` (next stable target `v0.30`;
+  receives only fixes and backports while `v0.30.0-rc.N` tags are cut)
+- Next integration branch: `v0.31-dev` (next stable target `v0.31`; feature PRs
+  for new work target this branch)
+- `main`: default/static branch alias for the branch named in
+  `support/ci/ACTIVE_DEV_BRANCH` (currently `v0.30-dev`)
+
+Two integration branches are open at the same time. `support/ci/ACTIVE_DEV_BRANCH`
+names only the branch that `main` is forwarded from and that PRs opened against
+`main` are retargeted to. It does not decide where a PR belongs: the PR's target
+is the train its change ships in. The file is the same on both branches and is
+switched to `v0.31-dev` (together with the `genlayer-e2e` matrix, see `main`
+below) only when `v0.30` is promoted and `v0.30-dev` is retired.
 
 ## Stable Branches
 

@@ -110,3 +110,12 @@ def test_publish_workflow_is_tag_only_and_enforces_release_provenance():
     )
     assert "release_version.py is-prerelease" in github_release
     assert "--prerelease" in github_release
+
+
+def test_branching_doc_names_active_dev_branch_marker():
+    root = Path(__file__).parents[1]
+    active = (root / "support" / "ci" / "ACTIVE_DEV_BRANCH").read_text().strip()
+    doc = (root / "docs" / "BRANCHING.md").read_text()
+
+    assert f"`{active}`" in doc.split("## Stable Branches")[0]
+    assert "(currently `" + active + "`)" in doc
