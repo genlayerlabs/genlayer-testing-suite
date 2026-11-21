@@ -46,3 +46,6 @@ jobs:
 
       - name: Action | Validate release version policy
         run: uv run pytest tests/test_release_version.py
+
+      - name: Validate generated API docs are current
+        run: uv run pytest tests/test_api_docs.py

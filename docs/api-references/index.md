@@ -1,6 +1,5 @@
 # GenLayer Testing Suite
 
-[![PyPI version](https://badge.fury.io/py/genlayer-test.svg)](https://badge.fury.io/py/genlayer-test)
 
 A pytest-based testing framework for [GenLayer](https://docs.genlayer.com/) intelligent contracts. Built on top of [genlayer-py](https://docs.genlayer.com/api-references/genlayer-py).
 
@@ -207,6 +206,9 @@ assert tx_execution_succeeded(receipt)
 # Read — call() returns the value
 result = contract.get_storage().call()
 
+# Preview writes via simulate_write_contract (sim_call), returning the method result
+result = contract.update_storage(args=["new_value"]).call()
+
 # Write — transact() returns a receipt
 tx_receipt = contract.update_storage(args=["new_value"]).transact(
     value=0,
@@ -216,6 +218,66 @@ tx_receipt = contract.update_storage(args=["new_value"]).transact(
 )
 assert tx_execution_succeeded(tx_receipt)
 ```
+
+Write-method `.call()` requires a simulation-capable Studio/glsim network and
+raises on unsupported chains. It accepts `value`, `fees`, and `fee_value` as
+keyword arguments, in addition to `transaction_hash_variant` and
+`transaction_context`. The simulation result is decoded, execution errors raise,
+and simulated storage changes and emitted messages are discarded. View-method
+`.call()` continues to use `gen_call` and does not accept value or fee options.
+
+### Fee Profiling
+
+Generate a frontend-ready fee profile from the deploys and write transactions
+executed during a gltest session:
+
+```bash
+gltest --fee-profile artifacts/fee-profile.json
+gltest --fee-profile artifacts/fee-profile.json --fee-profile-headroom 1.5
+```
+
+`--fee-profile` writes JSON that can be used as developer fee suggestions by
+transaction-kit, genlayer-js, genlayer-py, or CLI-based submission flows. The optional
+`--fee-profile-headroom` multiplier defaults to `1.25`. Fee and time-unit
+values are multiplied by headroom, rounded up, and emitted as decimal strings.
+When the same method is observed in multiple tests, the profile records the
+maximum observed value for each field across all of those branches.
+`rotationsPerRound` is recorded exactly because it is a posture choice rather
+than a consumed fee amount.
+
+```json
+{
+  "version": 1,
+  "network": "localnet",
+  "chainId": 61127,
+  "measuredAt": "2026-06-10T12:00:00Z",
+  "deploy": {
+    "leaderTimeunitsAllocation": "125",
+    "validatorTimeunitsAllocation": "250",
+    "executionBudgetPerRound": "625000",
+    "totalMessageFees": "0",
+    "rotationsPerRound": "0"
+  },
+  "methods": {
+    "create_bet": {
+      "leaderTimeunitsAllocation": "125",
+      "validatorTimeunitsAllocation": "250",
+      "executionBudgetPerRound": "312500",
+      "totalMessageFees": "12500",
+      "rotationsPerRound": "0"
+    }
+  }
+}
+```
+
+Fee profiling is currently measurable on Studio-based networks whose receipts
+include consumed fee data. Testnet receipts do not expose consumed fees yet, and
+direct/sim mode does not go through these receipt paths. Time-unit allocations
+are recorded from the submitted fee distribution when the backend receipt
+includes it. Live price caps and `feeValue` are intentionally omitted so the SDK
+can quote them from the current network policy at transaction time. The numeric
+`chainId` scopes the measurements to the exact selected runtime chain; consumers
+must fall back to network defaults when it is absent or does not match.
 
 ### Assertions
 

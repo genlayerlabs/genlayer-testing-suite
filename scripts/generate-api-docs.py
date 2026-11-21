@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generate multi-page Markdown API reference for the GenLayer Testing Suite."""
 
+import enum
 import inspect
 import os
 import re
@@ -20,10 +21,31 @@ def clean_readme(content):
 def format_type(annotation):
     if annotation is inspect.Parameter.empty:
         return ""
-    name = getattr(annotation, "__name__", None)
-    if name:
-        return name
-    return str(annotation).replace("typing.", "").replace("ForwardRef('", "").replace("')", "")
+    return inspect.formatannotation(annotation).replace("ForwardRef('", "").replace("')", "")
+
+
+def format_default(value):
+    """Render a default value deterministically (no memory addresses, short enums)."""
+    if isinstance(value, enum.Enum):
+        return f"{type(value).__name__}.{value.name}"
+    text = repr(value)
+    if re.search(r" at 0x[0-9a-fA-F]+>", text):
+        return "<sentinel>"
+    return text
+
+
+def public_methods(cls):
+    """Public callables defined on cls (or its bases), in definition order."""
+    names = []
+    for klass in reversed(cls.__mro__):
+        if klass is object:
+            continue
+        for name, value in vars(klass).items():
+            if name.startswith("_") or name in names:
+                continue
+            if callable(value) or isinstance(value, (staticmethod, classmethod)):
+                names.append(name)
+    return names
 
 
 def generate_method_doc(name, method, prefix=""):
@@ -36,7 +58,7 @@ def generate_method_doc(name, method, prefix=""):
         type_str = format_type(param.annotation)
         default = ""
         if param.default is not inspect.Parameter.empty:
-            default = f" = {param.default!r}"
+            default = f" = {format_default(param.default)}"
         required = param.default is inspect.Parameter.empty
         params.append((pname, type_str, required, default))
 
@@ -71,18 +93,22 @@ def generate_method_doc(name, method, prefix=""):
     return "\n".join(lines)
 
 
-def generate_class_doc(cls, method_names, prefix=""):
+def generate_class_doc(cls, prefix="", exclude=()):
+    """Document every public method of cls, so new methods appear automatically."""
     docstring = inspect.getdoc(cls) or ""
     lines = [f"## {cls.__name__}\n", f"{docstring}\n"]
-    for name in method_names:
+    for name in public_methods(cls):
+        if name in exclude:
+            continue
         method = getattr(cls, name, None)
         if method and callable(method):
             lines.append(generate_method_doc(name, method, prefix))
     return "\n".join(lines)
 
 
-def main():
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "docs", "api-references")
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    output_dir = argv[0] if argv else os.path.join(os.path.dirname(__file__), "..", "docs", "api-references")
     os.makedirs(output_dir, exist_ok=True)
 
     # === index.md (copy README as overview page) ===
@@ -115,13 +141,12 @@ def main():
 
     integration += generate_class_doc(
         ContractFactory,
-        ["deploy", "deploy_contract_tx", "build_contract"],
         "factory.",
+        exclude=("from_name", "from_file_path"),
     )
 
     integration += generate_class_doc(
         ContractFunction,
-        ["call", "transact", "analyze"],
         "contract.method_name.",
     )
 
@@ -129,12 +154,10 @@ def main():
     from gltest.validators import ValidatorFactory, Validator
     integration += generate_class_doc(
         ValidatorFactory,
-        ["create_validator", "batch_create_validators", "create_mock_validator", "batch_create_mock_validators"],
         "validator_factory.",
     )
     integration += generate_class_doc(
         Validator,
-        ["to_dict", "clone", "batch_clone"],
         "validator.",
     )
 
@@ -159,13 +182,8 @@ def main():
 
     direct += generate_class_doc(
         VMContext,
-        [
-            "activate", "warp", "deal", "snapshot", "revert",
-            "mock_web", "mock_llm", "clear_mocks",
-            "prank", "startPrank", "stopPrank", "expect_revert",
-            "run_validator", "clear_validators",
-        ],
         "vm.",
+        exclude=("get_create2_raw", "get_message_raw"),
     )
 
     with open(os.path.join(output_dir, "direct.md"), "w") as f:
