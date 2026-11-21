@@ -62,3 +62,13 @@ def test_type_normalization_keeps_literal_contents():
         generate_api_docs.format_type(Optional[Literal["profile.Production"]])
         == "Optional[Literal['profile.Production']]"
     )
+
+
+def test_type_normalization_keeps_quote_paren_and_escapes():
+    from typing import ForwardRef, Literal, Optional
+
+    fmt = generate_api_docs.format_type
+    assert fmt(Literal["closing')"]) == "Literal[\"closing')\"]"
+    assert fmt(Literal["it's"]) == "Literal[\"it's\"]"
+    assert fmt(Literal["a.B"]) == "Literal['a.B']"
+    assert fmt(Optional[ForwardRef("Foo")]) == "Optional[Foo]"

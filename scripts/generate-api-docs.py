@@ -23,13 +23,16 @@ def format_type(annotation):
         return ""
     if isinstance(annotation, str):
         return annotation.strip("'\"")
-    text = inspect.formatannotation(annotation).replace("ForwardRef('", "").replace("')", "")
+    text = inspect.formatannotation(annotation)
     # Drop module prefixes (e.g. pathlib._local.Path on 3.13 vs pathlib.Path on 3.12)
-    # so the output is identical across Python versions.
-    # Quoted segments (Literal values, forward refs) are kept verbatim.
+    # so the output is identical across Python versions. Quoted strings (Literal
+    # values, including escapes) are kept verbatim; ForwardRef('X') wrappers are
+    # unwrapped to X.
     return re.sub(
-        r"""('[^']*'|"[^"]*")|\b(?:[A-Za-z_]\w*\.)+(?=[A-Z])""",
-        lambda m: m.group(1) or "",
+        r"""ForwardRef\('((?:[^'\\]|\\.)*)'\)"""
+        r"""|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")"""
+        r"""|\b(?:[A-Za-z_]\w*\.)+(?=[A-Z])""",
+        lambda m: m.group(1) or m.group(2) or "",
         text,
     )
 
