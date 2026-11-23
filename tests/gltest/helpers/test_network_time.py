@@ -368,3 +368,36 @@ def test_refused_detected_via_context_args_and_windows_text():
                 "target machine actively refused it")
     )
     assert not network_time._is_connection_refused(OSError("TLS handshake failed"))
+
+
+def test_unrelated_outer_refusal_does_not_mask_timed_out_write(monkeypatch):
+    import threading
+    import time
+
+    release = threading.Event()
+
+    class _SlowWrite:
+        def make_request(self, method, params):
+            if method == "sim_increaseTime":
+                release.wait(5)
+            return {"result": {
+                "total_offset_seconds": 0,
+                "effective_datetime": "2030-01-01T00:00:00+00:00",
+            }}
+
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _SlowWrite())
+    monkeypatch.setattr(network_time, "REQUEST_TIMEOUT_SECONDS", 0.2)
+    try:
+        try:
+            raise ConnectionRefusedError("[Errno 111] Connection refused")
+        except ConnectionRefusedError:
+            increase_time(60)  # times out while handling an unrelated refusal
+    except HelperError as e:
+        assert not network_time._is_connection_refused(e)
+    else:
+        pytest.fail("expected HelperError")
+    from gltest_cli.config.general import get_general_config
+
+    assert get_general_config().get_rpc_url() in network_time._unknown_write_urls
+    release.set()
+    time.sleep(0.1)

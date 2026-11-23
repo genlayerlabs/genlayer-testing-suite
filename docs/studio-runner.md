@@ -513,11 +513,6 @@ mock_web_response: MockedWebResponse = {
 
 All standard HTTP methods are supported: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS.
 
-**Parallel runs:** the offset is global to the server, and the plugin resets it
-before and after every test, so workers sharing one GLSim (e.g. `pytest-xdist`)
-would disturb each other. Run time-travel tests serially or give each worker
-its own GLSim. Durations are whole seconds; fractions raise `ValueError`.
-
 ### How It Works
 
 When a contract calls any web method:
@@ -934,6 +929,15 @@ that test; other failures (timeouts, TLS or dropped connections) are retried onc
 and then raised. Each clock request has a 10 s deadline.
 To give a test a fixed starting time, call `set_time` in the test or in a
 function-scoped fixture.
+
+**Parallel runs and endpoint configuration:** the offset is global to the server, and the plugin resets it
+before and after every test, so workers sharing one GLSim (e.g. `pytest-xdist`)
+would disturb each other. Run time-travel tests serially or give each worker
+its own GLSim. Durations are whole seconds; fractions raise `ValueError`.
+The automatic probe depends on the endpoint: loopback local networks are probed
+around every test; non-loopback local endpoints (e.g. `http://glsim:4000`) are
+reset only after a test in which a helper changed the clock; hosted networks
+are never touched.
 
 ### How It Works
 

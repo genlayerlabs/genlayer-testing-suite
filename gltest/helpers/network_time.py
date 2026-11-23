@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Union
 
+import sys
 import threading
 
 import requests
@@ -99,12 +100,12 @@ def _quarantine_error(url: str) -> HelperError:
     )
 
 
-def _is_definitive_failure(error: BaseException) -> bool:
+def _is_definitive_failure(error: BaseException, ignore: frozenset = frozenset()) -> bool:
     """The request certainly did not change the clock."""
     text = str(error).lower()
     if "code=" in text or "method not found" in text:  # JSON-RPC error reply
         return True
-    return _is_connection_refused(error)
+    return _is_connection_refused(error, ignore)
 
 
 def raise_if_quarantined(url: str) -> None:
@@ -120,6 +121,10 @@ def clock_was_modified(url: str) -> bool:
 
 def _request(method: str, params: list) -> NetworkTime:
     mutating = method in _MUTATING_METHODS
+    # An exception being handled by our caller is unrelated to this request:
+    # it must never be consulted when classifying this request's failure.
+    outer = sys.exc_info()[1]
+    ignore = frozenset(id(c) for c in _cause_chain(outer)) if outer else frozenset()
     url = get_general_config().get_rpc_url() if mutating else None
     if mutating and url in _unknown_write_urls:
         raise _quarantine_error(url)
@@ -128,15 +133,18 @@ def _request(method: str, params: list) -> NetworkTime:
     except HelperError:
         raise
     except Exception as e:
-        if mutating and not _is_definitive_failure(e):
+        refused = _is_connection_refused(e, ignore)
+        if mutating and not _is_definitive_failure(e, ignore):
             # Outcome unknown: the write may still land later. Stop using the
             # endpoint so it cannot be compounded or mistaken for a clean slate.
             _unknown_write_urls.add(url)
             _modified_urls.add(url)
-        raise HelperError(
+        failure = HelperError(
             f"{method} failed: {e}. Network time manipulation requires a "
             "network that supports it (e.g. glsim)."
-        ) from e
+        )
+        failure.connection_refused = refused
+        raise failure from e
     if mutating:
         _modified_urls.add(url)
     try:
@@ -218,14 +226,14 @@ _unsupported_urls: set = set()
 _unknown_write_urls: set = set()
 
 
-def _cause_chain(error: BaseException):
+def _cause_chain(error, ignore: frozenset = frozenset()):
     """Yield ``error`` and every exception reachable through ``__cause__``,
     ``__context__``, ``args`` and urllib3's ``reason``."""
     seen: set = set()
     stack = [error]
     while stack:
         current = stack.pop()
-        if not isinstance(current, BaseException) or id(current) in seen:
+        if not isinstance(current, BaseException) or id(current) in seen or id(current) in ignore:
             continue
         seen.add(id(current))
         yield current
@@ -237,9 +245,16 @@ def _cause_chain(error: BaseException):
 _REFUSED_MARKERS = ("connection refused", "errno 111", "winerror 10061", "actively refused")
 
 
-def _is_connection_refused(error: BaseException) -> bool:
-    """Nothing is listening. Prefers the exception type; text is a fallback."""
-    causes = list(_cause_chain(error))
+def _is_connection_refused(error: BaseException, ignore: frozenset = frozenset()) -> bool:
+    """Nothing is listening. Prefers the exception type; text is a fallback.
+
+    ``ignore`` holds ids of unrelated exceptions (e.g. one being handled by
+    the caller) that implicit ``__context__`` links may lead into.
+    """
+    flagged = getattr(error, "connection_refused", None)
+    if flagged is not None:
+        return flagged
+    causes = list(_cause_chain(error, ignore))
     if any(isinstance(c, ConnectionRefusedError) for c in causes):
         return True
     return any(m in str(c).lower() for c in causes for m in _REFUSED_MARKERS)
