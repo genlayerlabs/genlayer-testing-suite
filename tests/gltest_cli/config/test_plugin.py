@@ -649,3 +649,53 @@ def test_timed_out_write_blocks_next_test_on_non_loopback_localnet(pytester):
     out = result.stdout.str()
     assert "body executed with a pending clock write" not in out
     assert result.ret != 0
+
+
+def test_interrupted_teardown_does_not_leak_shift_on_non_loopback_localnet(pytester):
+    pytester.makepyfile("""
+        import pytest
+        from conftest import Provider
+        from gltest.helpers import increase_time
+
+        def test_a_shift_then_outage():
+            increase_time(60)
+            Provider.down = True  # refused during teardown
+
+        def test_b_still_down_is_blocked():
+            raise AssertionError("ran while clock cleanup was pending")
+
+        def test_c_recovered():
+            assert Provider.offset == 0
+    """)
+    pytester.makeconftest("""
+        import pytest
+        from gltest.helpers import network_time
+
+        class Provider:
+            offset = 0
+            down = False
+
+            def make_request(self, method, params):
+                if Provider.down:
+                    raise ConnectionRefusedError("[Errno 111] Connection refused")
+                if method == "sim_increaseTime":
+                    Provider.offset += params[0]
+                return {"result": {
+                    "total_offset_seconds": Provider.offset,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: Provider()
+
+        def pytest_runtest_logreport(report):
+            # The outage ends once test_b was blocked in setup.
+            if "test_b" in report.nodeid and report.when == "setup" and report.failed:
+                Provider.down = False
+    """)
+    result = pytester.runpytest_subprocess(
+        "-v", "-p", "no:randomly", "--network=localnet", "--rpc-url=http://glsim:4000/api"
+    )
+    out = result.stdout.str()
+    assert "ran while clock cleanup was pending" not in out
+    result.stdout.fnmatch_lines(["*::test_c_recovered PASSED*"])
+    result.stdout.fnmatch_lines(["*test_b_still_down_is_blocked ERROR*"])

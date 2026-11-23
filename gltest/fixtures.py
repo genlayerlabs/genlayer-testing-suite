@@ -6,6 +6,7 @@ These fixtures can be imported and used in test files.
 from urllib.parse import urlparse
 
 import pytest
+from gltest.exceptions import HelperError
 from gltest_cli.config.general import get_general_config
 from gltest.clients import get_gl_client
 from gltest.accounts import get_accounts, get_default_account
@@ -122,11 +123,17 @@ def _gltest_reset_network_time():
     Scope: function - runs around every test
     """
     local = _is_local_network()
-    if local:
+    if local or _helper_changed_local_clock():
         _reset_time_if_supported()
+        # A skipped reset (e.g. connection refused during an earlier teardown)
+        # leaves the endpoint marked as modified: never admit the test then.
+        url = get_general_config().get_rpc_url()
+        if clock_was_modified(url):
+            raise HelperError(
+                f"The network clock at {url} could not be reset after an "
+                "earlier change; refusing to run the test on a shifted clock."
+            )
     elif _is_local_chain_type():
-        # Non-loopback local endpoint: no probe, but never admit a test while
-        # an earlier clock write is still of unknown outcome.
         raise_if_quarantined(get_general_config().get_rpc_url())
     yield
     if local or _helper_changed_local_clock():
