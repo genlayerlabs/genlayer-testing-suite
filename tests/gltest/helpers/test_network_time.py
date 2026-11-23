@@ -42,6 +42,7 @@ def provider(monkeypatch):
         provider = _GlsimProvider(client)
         monkeypatch.setattr(network_time, "get_gl_provider", lambda: provider)
         monkeypatch.setattr(network_time, "_unsupported_urls", set())
+        monkeypatch.setattr(network_time, "_unknown_write_urls", set())
         yield provider
 
 
@@ -91,6 +92,7 @@ def test_reset_time_removes_offset(provider):
 
 def test_reset_if_supported_resets_shifted_clock(provider, monkeypatch):
     monkeypatch.setattr(network_time, "_unsupported_urls", set())
+    monkeypatch.setattr(network_time, "_unknown_write_urls", set())
     increase_time(60)
     network_time._reset_time_if_supported()
     assert get_network_time().offset_seconds == 0
@@ -99,6 +101,7 @@ def test_reset_if_supported_resets_shifted_clock(provider, monkeypatch):
 @pytest.fixture(autouse=True)
 def _fresh_support_cache(monkeypatch):
     monkeypatch.setattr(network_time, "_unsupported_urls", set())
+    monkeypatch.setattr(network_time, "_unknown_write_urls", set())
 
 
 def test_method_not_found_is_cached_per_url(monkeypatch):
@@ -276,6 +279,12 @@ def test_timed_out_reset_write_is_not_retried(monkeypatch):
     monkeypatch.setattr(network_time, "REQUEST_TIMEOUT_SECONDS", 0.2)
     with pytest.raises(HelperError):
         network_time._reset_time_if_supported()
+    # A second fixture invocation while the write is still pending must not
+    # touch the clock again.
+    writes_before = list(writes)
+    with pytest.raises(HelperError, match="unknown outcome"):
+        network_time._reset_time_if_supported()
+    assert writes == writes_before
     release.set()
     import time
 

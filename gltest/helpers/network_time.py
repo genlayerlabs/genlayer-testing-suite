@@ -164,6 +164,8 @@ def reset_time() -> NetworkTime:
 # RPC URLs whose backend definitively answered "method not found" for the time
 # RPCs. Only this answer is cached; transient failures never are.
 _unsupported_urls: set = set()
+# URLs where a relative clock write ended with an unknown outcome.
+_unknown_write_urls: set = set()
 
 
 def _cause_chain(error: BaseException):
@@ -207,6 +209,12 @@ def _reset_time_if_supported() -> None:
     url = get_general_config().get_rpc_url()
     if url in _unsupported_urls:
         return
+    if url in _unknown_write_urls:
+        raise HelperError(
+            f"A previous clock reset on {url} has an unknown outcome (the "
+            "request may still be applied), so the network clock is not "
+            "touched again in this session. Restart the network and rerun."
+        )
 
     def handled(error: HelperError) -> bool:
         if _is_method_unavailable(error):
@@ -234,4 +242,7 @@ def _reset_time_if_supported() -> None:
         _request("sim_increaseTime", [-current.offset_seconds])
     except HelperError as e:
         if not handled(e):
+            # Outcome unknown: the write may still land later. Stop using the
+            # endpoint so a later reset cannot be undone by this one.
+            _unknown_write_urls.add(url)
             raise
