@@ -86,16 +86,58 @@ def _make_request_with_deadline(method: str, params: list):
     return outcome["value"]
 
 
+_MUTATING_METHODS = ("sim_increaseTime", "sim_setTime")
+# RPC URLs whose clock was successfully or ambiguously changed by a helper.
+_modified_urls: set = set()
+
+
+def _quarantine_error(url: str) -> HelperError:
+    return HelperError(
+        f"A previous clock change on {url} has an unknown outcome (the "
+        "request may still be applied), so the network clock is not "
+        "touched again in this session. Restart the network and rerun."
+    )
+
+
+def _is_definitive_failure(error: BaseException) -> bool:
+    """The request certainly did not change the clock."""
+    text = str(error).lower()
+    if "code=" in text or "method not found" in text:  # JSON-RPC error reply
+        return True
+    for cause in _cause_chain(error):
+        if isinstance(cause, ConnectionRefusedError):
+            return True
+        if "connection refused" in str(cause).lower() or "errno 111" in str(cause).lower():
+            return True
+    return False
+
+
+def clock_was_modified(url: str) -> bool:
+    """True if a helper changed (or may have changed) the clock at ``url``."""
+    return url in _modified_urls
+
+
 def _request(method: str, params: list) -> NetworkTime:
+    mutating = method in _MUTATING_METHODS
+    url = get_general_config().get_rpc_url() if mutating else None
+    if mutating and url in _unknown_write_urls:
+        raise _quarantine_error(url)
     try:
         result = _make_request_with_deadline(method, params)["result"]
     except HelperError:
         raise
     except Exception as e:
+        if mutating and not _is_definitive_failure(e):
+            # Outcome unknown: the write may still land later. Stop using the
+            # endpoint so it cannot be compounded or mistaken for a clean slate.
+            _unknown_write_urls.add(url)
+            _modified_urls.add(url)
         raise HelperError(
             f"{method} failed: {e}. Network time manipulation requires a "
             "network that supports it (e.g. glsim)."
         ) from e
+    if mutating:
+        _modified_urls.add(url)
     try:
         effective = datetime.fromisoformat(
             str(result["effective_datetime"]).replace("Z", "+00:00")
@@ -210,11 +252,7 @@ def _reset_time_if_supported() -> None:
     if url in _unsupported_urls:
         return
     if url in _unknown_write_urls:
-        raise HelperError(
-            f"A previous clock reset on {url} has an unknown outcome (the "
-            "request may still be applied), so the network clock is not "
-            "touched again in this session. Restart the network and rerun."
-        )
+        raise _quarantine_error(url)
 
     def handled(error: HelperError) -> bool:
         if _is_method_unavailable(error):
@@ -233,6 +271,7 @@ def _reset_time_if_supported() -> None:
             if attempt == 2:
                 raise
     if current.offset_seconds == 0:
+        _modified_urls.discard(url)
         return
     # Shifting the clock is relative: it is sent exactly once. If its outcome
     # is unknown (timeout), retrying could apply it twice, so the error is
@@ -242,7 +281,6 @@ def _reset_time_if_supported() -> None:
         _request("sim_increaseTime", [-current.offset_seconds])
     except HelperError as e:
         if not handled(e):
-            # Outcome unknown: the write may still land later. Stop using the
-            # endpoint so a later reset cannot be undone by this one.
-            _unknown_write_urls.add(url)
             raise
+    else:
+        _modified_urls.discard(url)

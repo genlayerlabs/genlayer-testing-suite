@@ -10,7 +10,7 @@ from gltest_cli.config.general import get_general_config
 from gltest.clients import get_gl_client
 from gltest.accounts import get_accounts, get_default_account
 from gltest.network import get_current_chain_type, get_current_network
-from gltest.helpers.network_time import _reset_time_if_supported
+from gltest.helpers.network_time import _reset_time_if_supported, clock_was_modified
 
 
 @pytest.fixture(scope="session")
@@ -81,6 +81,17 @@ def _is_local_network() -> bool:
     return host in _LOOPBACK_HOSTS
 
 
+def _helper_changed_local_clock() -> bool:
+    """Non-loopback local endpoints (e.g. ``http://glsim:4000`` in Compose) are
+    only cleaned up after a test when a time helper changed their clock."""
+    try:
+        if get_current_chain_type() not in _LOCAL_CHAIN_TYPES:
+            return False
+        return clock_was_modified(get_general_config().get_rpc_url())
+    except ValueError:
+        return False
+
+
 @pytest.fixture(autouse=True)
 def _gltest_reset_network_time():
     """
@@ -91,7 +102,9 @@ def _gltest_reset_network_time():
     detected on the first probe and left alone; a failed reset on a backend
     that does support it raises.
 
-    Hosted networks (testnets, ``studionet``) receive no clock RPCs. To give
+    Hosted networks (testnets, ``studionet``) receive no clock RPCs. Local
+    endpoints that are not loopback (e.g. a Compose hostname) are probed only
+    after a test in which a time helper changed the clock. To give
     a test a baseline, call ``set_time`` in the test or in a function-scoped
     fixture; it is reset when the test ends.
 
@@ -101,5 +114,5 @@ def _gltest_reset_network_time():
     if local:
         _reset_time_if_supported()
     yield
-    if local:
+    if local or _helper_changed_local_clock():
         _reset_time_if_supported()

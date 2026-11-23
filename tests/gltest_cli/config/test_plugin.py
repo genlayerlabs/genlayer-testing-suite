@@ -561,3 +561,46 @@ def test_network_time_not_touched_on_hosted_studio(pytester):
 
     result.stdout.fnmatch_lines(["*::test_two_no_clock_rpc PASSED*"])
     assert result.ret == 0
+
+
+def test_network_time_cleanup_on_non_loopback_localnet(pytester):
+    """A Compose-style URL is only touched after a helper changed the clock."""
+    pytester.makeconftest("""
+        from gltest.helpers import network_time
+
+        class FakeProvider:
+            offset = 0
+            calls = []
+
+            def make_request(self, method, params):
+                FakeProvider.calls.append(method)
+                if method == "sim_increaseTime":
+                    FakeProvider.offset += params[0]
+                return {"result": {
+                    "total_offset_seconds": FakeProvider.offset,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: FakeProvider()
+    """)
+    pytester.makepyfile("""
+        from conftest import FakeProvider
+        from gltest.helpers import increase_time, get_network_time
+
+        def test_a_untouched_sends_no_rpc():
+            assert FakeProvider.calls == []
+
+        def test_b_helper_shift():
+            increase_time(86400)
+            assert FakeProvider.offset == 86400
+
+        def test_c_shift_was_cleaned_up():
+            assert FakeProvider.offset == 0
+    """)
+    result = pytester.runpytest_subprocess(
+        "-v", "-p", "no:randomly", "--network=localnet", "--rpc-url=http://glsim:4000/api"
+    )
+    result.stdout.fnmatch_lines(
+        ["*::test_a_untouched_sends_no_rpc PASSED*", "*::test_c_shift_was_cleaned_up PASSED*"]
+    )
+    assert result.ret == 0

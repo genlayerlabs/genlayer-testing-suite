@@ -43,6 +43,7 @@ def provider(monkeypatch):
         monkeypatch.setattr(network_time, "get_gl_provider", lambda: provider)
         monkeypatch.setattr(network_time, "_unsupported_urls", set())
         monkeypatch.setattr(network_time, "_unknown_write_urls", set())
+        monkeypatch.setattr(network_time, "_modified_urls", set())
         yield provider
 
 
@@ -93,6 +94,7 @@ def test_reset_time_removes_offset(provider):
 def test_reset_if_supported_resets_shifted_clock(provider, monkeypatch):
     monkeypatch.setattr(network_time, "_unsupported_urls", set())
     monkeypatch.setattr(network_time, "_unknown_write_urls", set())
+    monkeypatch.setattr(network_time, "_modified_urls", set())
     increase_time(60)
     network_time._reset_time_if_supported()
     assert get_network_time().offset_seconds == 0
@@ -102,6 +104,7 @@ def test_reset_if_supported_resets_shifted_clock(provider, monkeypatch):
 def _fresh_support_cache(monkeypatch):
     monkeypatch.setattr(network_time, "_unsupported_urls", set())
     monkeypatch.setattr(network_time, "_unknown_write_urls", set())
+    monkeypatch.setattr(network_time, "_modified_urls", set())
 
 
 def test_method_not_found_is_cached_per_url(monkeypatch):
@@ -291,3 +294,49 @@ def test_timed_out_reset_write_is_not_retried(monkeypatch):
     time.sleep(0.2)
     assert writes == [-60]  # sent exactly once
     assert state["offset"] == 0  # no double application (would be -60)
+
+
+def test_timed_out_public_write_quarantines_across_teardown_and_setup(monkeypatch):
+    """increase_time() times out; later resets must not touch the clock."""
+    import threading
+    import time
+
+    state = {"offset": 0}
+    release = threading.Event()
+    writes = []
+
+    class _SlowWrite:
+        def make_request(self, method, params):
+            if method == "sim_increaseTime":
+                writes.append(params[0])
+                release.wait(5)
+                state["offset"] += params[0]
+            return {"result": {
+                "total_offset_seconds": state["offset"],
+                "effective_datetime": "2030-01-01T00:00:00+00:00",
+            }}
+
+    monkeypatch.setattr(network_time, "get_gl_provider", lambda: _SlowWrite())
+    monkeypatch.setattr(network_time, "REQUEST_TIMEOUT_SECONDS", 0.2)
+    with pytest.raises(HelperError):
+        increase_time(60)
+    for _ in range(2):  # teardown, then next test's setup
+        with pytest.raises(HelperError, match="unknown outcome"):
+            network_time._reset_time_if_supported()
+    with pytest.raises(HelperError, match="unknown outcome"):
+        increase_time(5)
+    assert writes == [60]
+    release.set()
+    time.sleep(0.2)
+
+
+def test_helper_change_is_tracked_for_reset(provider):
+    from gltest_cli.config.general import get_general_config
+
+    url = get_general_config().get_rpc_url()
+    assert not network_time.clock_was_modified(url)
+    increase_time(60)
+    assert network_time.clock_was_modified(url)
+    network_time._reset_time_if_supported()
+    assert not network_time.clock_was_modified(url)
+    assert get_network_time().offset_seconds == 0
