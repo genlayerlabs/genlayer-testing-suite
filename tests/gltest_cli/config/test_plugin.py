@@ -473,3 +473,229 @@ def test_current_chain_type_follows_chain_type_flag(pytester):
 
     result.stdout.fnmatch_lines(["*::test_runtime_chain PASSED*"])
     assert result.ret == 0
+
+
+def test_network_time_is_reset_between_tests(pytester):
+    pytester.makeconftest("""
+        import pytest
+        from gltest.helpers import network_time
+
+        class FakeProvider:
+            offset = 86400  # clock already shifted before the session starts
+            calls = []
+
+            def make_request(self, method, params):
+                FakeProvider.calls.append(method)
+                if method == "sim_increaseTime":
+                    FakeProvider.offset += params[0]
+                return {"result": {
+                    "total_offset_seconds": FakeProvider.offset,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: FakeProvider()
+    """)
+    pytester.makepyfile("""
+        from conftest import FakeProvider
+        from gltest.helpers import increase_time, get_network_time
+
+        def test_a_shifts_clock():
+            assert get_network_time().offset_seconds == 0
+            increase_time(86400)
+            assert get_network_time().offset_seconds == 86400
+
+        def test_b_sees_reset_clock():
+            assert get_network_time().offset_seconds == 0
+            FakeProvider.offset += 60  # raw RPC-style shift, not via helpers
+
+        def test_b2_raw_shift_does_not_leak():
+            assert get_network_time().offset_seconds == 0
+
+        def test_c_clear():
+            FakeProvider.calls.clear()
+    """)
+
+    # Subprocess: the fake provider must not leak into this pytest process.
+    result = pytester.runpytest_subprocess("-v", "-p", "no:randomly")
+
+    result.stdout.fnmatch_lines(
+        [
+            "*::test_a_shifts_clock PASSED*",
+            "*::test_b_sees_reset_clock PASSED*",
+            "*::test_b2_raw_shift_does_not_leak PASSED*",
+            "*::test_c_clear PASSED*",
+        ]
+    )
+    assert result.ret == 0
+
+
+def test_network_time_not_touched_on_hosted_studio(pytester):
+    pytester.makeconftest("""
+        from gltest.helpers import network_time
+
+        class FakeProvider:
+            calls = []
+
+            def make_request(self, method, params):
+                FakeProvider.calls.append(method)
+                return {"result": {
+                    "total_offset_seconds": 60,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: FakeProvider()
+    """)
+    pytester.makepyfile("""
+        from conftest import FakeProvider
+
+        def test_one():
+            pass
+
+        def test_two_no_clock_rpc():
+            assert FakeProvider.calls == []
+    """)
+
+    result = pytester.runpytest_subprocess(
+        "-v", "-p", "no:randomly", "--network=studionet"
+    )
+
+    result.stdout.fnmatch_lines(["*::test_two_no_clock_rpc PASSED*"])
+    assert result.ret == 0
+
+
+def test_network_time_cleanup_on_non_loopback_localnet(pytester):
+    """A Compose-style URL is only touched after a helper changed the clock."""
+    pytester.makeconftest("""
+        from gltest.helpers import network_time
+
+        class FakeProvider:
+            offset = 0
+            calls = []
+
+            def make_request(self, method, params):
+                FakeProvider.calls.append(method)
+                if method == "sim_increaseTime":
+                    FakeProvider.offset += params[0]
+                return {"result": {
+                    "total_offset_seconds": FakeProvider.offset,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: FakeProvider()
+    """)
+    pytester.makepyfile("""
+        from conftest import FakeProvider
+        from gltest.helpers import increase_time, get_network_time
+
+        def test_a_untouched_sends_no_rpc():
+            assert FakeProvider.calls == []
+
+        def test_b_helper_shift():
+            increase_time(86400)
+            assert FakeProvider.offset == 86400
+
+        def test_c_shift_was_cleaned_up():
+            assert FakeProvider.offset == 0
+    """)
+    result = pytester.runpytest_subprocess(
+        "-v", "-p", "no:randomly", "--network=localnet", "--rpc-url=http://glsim:4000/api"
+    )
+    result.stdout.fnmatch_lines(
+        ["*::test_a_untouched_sends_no_rpc PASSED*", "*::test_c_shift_was_cleaned_up PASSED*"]
+    )
+    assert result.ret == 0
+
+
+def test_timed_out_write_blocks_next_test_on_non_loopback_localnet(pytester):
+    pytester.makeconftest("""
+        import threading
+        from gltest.helpers import network_time
+
+        release = threading.Event()
+
+        class SlowProvider:
+            offset = 0
+
+            def make_request(self, method, params):
+                if method == "sim_increaseTime":
+                    release.wait(10)
+                    SlowProvider.offset += params[0]
+                return {"result": {
+                    "total_offset_seconds": SlowProvider.offset,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: SlowProvider()
+        network_time.REQUEST_TIMEOUT_SECONDS = 0.2
+
+        def pytest_sessionfinish(session, exitstatus):
+            release.set()
+    """)
+    pytester.makepyfile("""
+        import pytest
+        from gltest.helpers import increase_time
+
+        def test_a_write_times_out():
+            with pytest.raises(Exception):
+                increase_time(60)
+
+        def test_b_must_not_run():
+            raise AssertionError("body executed with a pending clock write")
+    """)
+    result = pytester.runpytest_subprocess(
+        "-v", "-p", "no:randomly", "--network=localnet", "--rpc-url=http://glsim:4000/api"
+    )
+    result.stdout.fnmatch_lines(["*unknown outcome*"])
+    out = result.stdout.str()
+    assert "body executed with a pending clock write" not in out
+    assert result.ret != 0
+
+
+def test_interrupted_teardown_does_not_leak_shift_on_non_loopback_localnet(pytester):
+    pytester.makepyfile("""
+        import pytest
+        from conftest import Provider
+        from gltest.helpers import increase_time
+
+        def test_a_shift_then_outage():
+            increase_time(60)
+            Provider.down = True  # refused during teardown
+
+        def test_b_still_down_is_blocked():
+            raise AssertionError("ran while clock cleanup was pending")
+
+        def test_c_recovered():
+            assert Provider.offset == 0
+    """)
+    pytester.makeconftest("""
+        import pytest
+        from gltest.helpers import network_time
+
+        class Provider:
+            offset = 0
+            down = False
+
+            def make_request(self, method, params):
+                if Provider.down:
+                    raise ConnectionRefusedError("[Errno 111] Connection refused")
+                if method == "sim_increaseTime":
+                    Provider.offset += params[0]
+                return {"result": {
+                    "total_offset_seconds": Provider.offset,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: Provider()
+
+        def pytest_runtest_logreport(report):
+            # The outage ends once test_b was blocked in setup.
+            if "test_b" in report.nodeid and report.when == "setup" and report.failed:
+                Provider.down = False
+    """)
+    result = pytester.runpytest_subprocess(
+        "-v", "-p", "no:randomly", "--network=localnet", "--rpc-url=http://glsim:4000/api"
+    )
+    out = result.stdout.str()
+    assert "ran while clock cleanup was pending" not in out
+    result.stdout.fnmatch_lines(["*::test_c_recovered PASSED*"])
+    result.stdout.fnmatch_lines(["*test_b_still_down_is_blocked ERROR*"])

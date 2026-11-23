@@ -903,6 +903,42 @@ resp = requests.post("http://localhost:4000/api", json={
 # {"total_offset_seconds": 0, "effective_datetime": "2025-02-23T..."}
 ```
 
+### Python Helpers
+
+`gltest.helpers` wraps these RPCs so tests don't need raw requests:
+
+```python
+from datetime import timedelta
+from gltest.helpers import increase_time, set_time, get_network_time, reset_time
+
+def test_vesting(vesting_contract):
+    increase_time(timedelta(days=30))     # sim_increaseTime; ints are seconds
+    set_time("2030-01-01T00:00:00Z")      # sim_setTime; datetime also accepted
+    now = get_network_time()              # sim_getTime -> NetworkTime(offset_seconds, datetime)
+    reset_time()                          # back to the wall clock
+```
+
+The `gltest` pytest plugin includes an autouse fixture that, on local networks
+(`localnet` / `studio_devnet` with a loopback RPC URL), resets the clock to wall
+time before **and** after every test, so a shifted clock (including one changed
+by raw RPC calls) never leaks into the next test. This costs a `sim_getTime`
+probe (plus `sim_increaseTime` when the offset is non-zero) around each test.
+Hosted networks (`studionet`, testnets) receive no clock RPCs. Backends that
+answer "method not found" are skipped; an unreachable endpoint is skipped for
+that test; other failures (timeouts, TLS or dropped connections) are retried once
+and then raised. Each clock request has a 10 s deadline.
+To give a test a fixed starting time, call `set_time` in the test or in a
+function-scoped fixture.
+
+**Parallel runs and endpoint configuration:** the offset is global to the server, and the plugin resets it
+before and after every test, so workers sharing one GLSim (e.g. `pytest-xdist`)
+would disturb each other. Run time-travel tests serially or give each worker
+its own GLSim. Durations are whole seconds; fractions raise `ValueError`.
+The automatic probe depends on the endpoint: loopback local networks are probed
+around every test; non-loopback local endpoints (e.g. `http://glsim:4000`) are
+reset only after a test in which a helper changed the clock; hosted networks
+are never touched.
+
 ### How It Works
 
 GLSim uses the same approach as Anvil's `evm_increaseTime`:
