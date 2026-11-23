@@ -513,6 +513,11 @@ mock_web_response: MockedWebResponse = {
 
 All standard HTTP methods are supported: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS.
 
+**Parallel runs:** the offset is global to the server, and the plugin resets it
+before and after every test, so workers sharing one GLSim (e.g. `pytest-xdist`)
+would disturb each other. Run time-travel tests serially or give each worker
+its own GLSim. Durations are whole seconds; fractions raise `ValueError`.
+
 ### How It Works
 
 When a contract calls any web method:

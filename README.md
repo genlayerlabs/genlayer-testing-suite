@@ -365,6 +365,9 @@ def test_lockup_expires(lockup_contract):
     reset_time()                           # optional: back to the wall clock
 ```
 
+The clock is global to the server: time-travel tests need a serial run (no
+`pytest-xdist`) or one GLSim per worker. Durations are whole seconds.
+
 These helpers need a network with GLSim's `sim_increaseTime` / `sim_setTime` /
 `sim_getTime` RPCs; elsewhere they raise `HelperError`. To override time for a
 single call instead, pass `genvm_datetime` in the transaction context.

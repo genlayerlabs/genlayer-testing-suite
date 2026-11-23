@@ -104,12 +104,7 @@ def _is_definitive_failure(error: BaseException) -> bool:
     text = str(error).lower()
     if "code=" in text or "method not found" in text:  # JSON-RPC error reply
         return True
-    for cause in _cause_chain(error):
-        if isinstance(cause, ConnectionRefusedError):
-            return True
-        if "connection refused" in str(cause).lower() or "errno 111" in str(cause).lower():
-            return True
-    return False
+    return _is_connection_refused(error)
 
 
 def raise_if_quarantined(url: str) -> None:
@@ -160,9 +155,14 @@ def _request(method: str, params: list) -> NetworkTime:
 
 def _to_seconds(value: Union[int, float, timedelta]) -> int:
     if isinstance(value, timedelta):
-        return int(value.total_seconds())
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        value = value.total_seconds()
+    elif isinstance(value, bool) or not isinstance(value, (int, float)):
         raise TypeError("seconds must be an int, float or timedelta")
+    if value != int(value):
+        raise ValueError(
+            f"{value!r} is not a whole number of seconds; the network clock "
+            "has a resolution of one second"
+        )
     return int(value)
 
 
@@ -174,6 +174,8 @@ def get_network_time() -> NetworkTime:
 def increase_time(seconds: Union[int, float, timedelta]) -> NetworkTime:
     """
     Move the network clock forward by ``seconds`` (an int or a ``timedelta``).
+
+    Whole seconds only (fractions raise ``ValueError``).
 
     Cumulative: ``increase_time(timedelta(days=1))`` twice leaves the network
     two days ahead. Negative values move the clock back.
@@ -217,9 +219,30 @@ _unknown_write_urls: set = set()
 
 
 def _cause_chain(error: BaseException):
-    while error is not None:
-        yield error
-        error = error.__cause__
+    """Yield ``error`` and every exception reachable through ``__cause__``,
+    ``__context__``, ``args`` and urllib3's ``reason``."""
+    seen: set = set()
+    stack = [error]
+    while stack:
+        current = stack.pop()
+        if not isinstance(current, BaseException) or id(current) in seen:
+            continue
+        seen.add(id(current))
+        yield current
+        stack.extend([current.__cause__, current.__context__])
+        stack.extend(a for a in current.args if isinstance(a, BaseException))
+        stack.append(getattr(current, "reason", None))
+
+
+_REFUSED_MARKERS = ("connection refused", "errno 111", "winerror 10061", "actively refused")
+
+
+def _is_connection_refused(error: BaseException) -> bool:
+    """Nothing is listening. Prefers the exception type; text is a fallback."""
+    causes = list(_cause_chain(error))
+    if any(isinstance(c, ConnectionRefusedError) for c in causes):
+        return True
+    return any(m in str(c).lower() for c in causes for m in _REFUSED_MARKERS)
 
 
 def _is_method_unavailable(error: HelperError) -> bool:
@@ -233,12 +256,7 @@ def _is_unreachable(error: HelperError) -> bool:
     Timeouts, TLS failures, dropped connections and the like are *not*
     treated as "unavailable" and are retried and then raised.
     """
-    for cause in _cause_chain(error):
-        if isinstance(cause, ConnectionRefusedError):
-            return True
-        if "connection refused" in str(cause).lower() or "errno 111" in str(cause).lower():
-            return True
-    return False
+    return _is_connection_refused(error)
 
 
 def _reset_time_if_supported() -> None:

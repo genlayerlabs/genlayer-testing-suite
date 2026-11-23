@@ -340,3 +340,31 @@ def test_helper_change_is_tracked_for_reset(provider):
     network_time._reset_time_if_supported()
     assert not network_time.clock_was_modified(url)
     assert get_network_time().offset_seconds == 0
+
+
+def test_fractional_seconds_are_rejected(provider):
+    with pytest.raises(ValueError):
+        increase_time(0.5)
+    with pytest.raises(ValueError):
+        increase_time(timedelta(milliseconds=1500))
+    assert increase_time(2.0).offset_seconds == 2
+    assert increase_time(timedelta(seconds=3)).offset_seconds == 5
+
+
+def test_refused_detected_via_context_args_and_windows_text():
+    refused = ConnectionRefusedError()
+    wrapped = HelperError("x")
+    try:
+        try:
+            raise refused
+        except ConnectionRefusedError:
+            raise RuntimeError("wrapper")  # implicit __context__ only
+    except RuntimeError as e:
+        wrapped = e
+    assert network_time._is_connection_refused(wrapped)
+    assert network_time._is_connection_refused(OSError(OSError(), refused))
+    assert network_time._is_connection_refused(
+        OSError("[WinError 10061] No connection could be made because the "
+                "target machine actively refused it")
+    )
+    assert not network_time._is_connection_refused(OSError("TLS handshake failed"))
