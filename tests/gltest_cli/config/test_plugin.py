@@ -604,3 +604,48 @@ def test_network_time_cleanup_on_non_loopback_localnet(pytester):
         ["*::test_a_untouched_sends_no_rpc PASSED*", "*::test_c_shift_was_cleaned_up PASSED*"]
     )
     assert result.ret == 0
+
+
+def test_timed_out_write_blocks_next_test_on_non_loopback_localnet(pytester):
+    pytester.makeconftest("""
+        import threading
+        from gltest.helpers import network_time
+
+        release = threading.Event()
+
+        class SlowProvider:
+            offset = 0
+
+            def make_request(self, method, params):
+                if method == "sim_increaseTime":
+                    release.wait(10)
+                    SlowProvider.offset += params[0]
+                return {"result": {
+                    "total_offset_seconds": SlowProvider.offset,
+                    "effective_datetime": "2030-01-01T00:00:00+00:00",
+                }}
+
+        network_time.get_gl_provider = lambda: SlowProvider()
+        network_time.REQUEST_TIMEOUT_SECONDS = 0.2
+
+        def pytest_sessionfinish(session, exitstatus):
+            release.set()
+    """)
+    pytester.makepyfile("""
+        import pytest
+        from gltest.helpers import increase_time
+
+        def test_a_write_times_out():
+            with pytest.raises(Exception):
+                increase_time(60)
+
+        def test_b_must_not_run():
+            raise AssertionError("body executed with a pending clock write")
+    """)
+    result = pytester.runpytest_subprocess(
+        "-v", "-p", "no:randomly", "--network=localnet", "--rpc-url=http://glsim:4000/api"
+    )
+    result.stdout.fnmatch_lines(["*unknown outcome*"])
+    out = result.stdout.str()
+    assert "body executed with a pending clock write" not in out
+    assert result.ret != 0

@@ -10,7 +10,11 @@ from gltest_cli.config.general import get_general_config
 from gltest.clients import get_gl_client
 from gltest.accounts import get_accounts, get_default_account
 from gltest.network import get_current_chain_type, get_current_network
-from gltest.helpers.network_time import _reset_time_if_supported, clock_was_modified
+from gltest.helpers.network_time import (
+    _reset_time_if_supported,
+    clock_was_modified,
+    raise_if_quarantined,
+)
 
 
 @pytest.fixture(scope="session")
@@ -81,6 +85,13 @@ def _is_local_network() -> bool:
     return host in _LOOPBACK_HOSTS
 
 
+def _is_local_chain_type() -> bool:
+    try:
+        return get_current_chain_type() in _LOCAL_CHAIN_TYPES
+    except ValueError:
+        return False
+
+
 def _helper_changed_local_clock() -> bool:
     """Non-loopback local endpoints (e.g. ``http://glsim:4000`` in Compose) are
     only cleaned up after a test when a time helper changed their clock."""
@@ -113,6 +124,10 @@ def _gltest_reset_network_time():
     local = _is_local_network()
     if local:
         _reset_time_if_supported()
+    elif _is_local_chain_type():
+        # Non-loopback local endpoint: no probe, but never admit a test while
+        # an earlier clock write is still of unknown outcome.
+        raise_if_quarantined(get_general_config().get_rpc_url())
     yield
     if local or _helper_changed_local_clock():
         _reset_time_if_supported()

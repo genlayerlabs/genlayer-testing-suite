@@ -112,6 +112,12 @@ def _is_definitive_failure(error: BaseException) -> bool:
     return False
 
 
+def raise_if_quarantined(url: str) -> None:
+    """Raise if a clock write at ``url`` has an unknown outcome."""
+    if url in _unknown_write_urls:
+        raise _quarantine_error(url)
+
+
 def clock_was_modified(url: str) -> bool:
     """True if a helper changed (or may have changed) the clock at ``url``."""
     return url in _modified_urls
