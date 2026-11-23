@@ -20,18 +20,28 @@ def test_committed_api_docs_match_generator(tmp_path):
 
 
 def test_every_public_method_is_documented(tmp_path):
+    import inspect
+
     from gltest.contracts.contract_factory import ContractFactory
+    from gltest.contracts.contract_functions import ContractFunction
     from gltest.direct import VMContext
+    from gltest.validators import Validator, ValidatorFactory
 
     generate_api_docs.main([str(tmp_path)])
     text = (tmp_path / "integration.md").read_text() + (
         tmp_path / "direct.md"
     ).read_text()
     skipped = {"from_name", "from_file_path", "get_create2_raw", "get_message_raw"}
-    for cls in (ContractFactory, VMContext):
-        for name in generate_api_docs.public_methods(cls):
-            if name not in skipped:
-                assert f".{name}`" in text
+    for cls in (ContractFactory, ContractFunction, ValidatorFactory, Validator, VMContext):
+        # Independent of generate_api_docs.public_methods: use inspect directly.
+        expected = {
+            name
+            for name, value in inspect.getmembers(cls)
+            if not name.startswith("_") and callable(value)
+        } - skipped
+        assert expected
+        for name in expected:
+            assert f".{name}`" in text, f"{cls.__name__}.{name} is not documented"
 
 
 def test_defaults_and_types_are_deterministic():

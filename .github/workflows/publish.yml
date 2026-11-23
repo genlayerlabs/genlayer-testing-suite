@@ -98,6 +98,9 @@ jobs:
     name: Sync API reference to genlayer-docs
     needs: publish-to-pypi
     if: needs.publish-to-pypi.outputs.is_prerelease != 'true'
+    # The package and GitHub release are already out by now; a docs sync failure
+    # must not mark the release run as failed (re-run sync-docs.yml manually).
+    continue-on-error: true
     uses: ./.github/workflows/sync-docs.yml
     with:
       ref: ${{ github.ref_name }}
