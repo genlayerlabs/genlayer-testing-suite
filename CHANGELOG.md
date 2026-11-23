@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.30.0 (2026-11-23)
+
+### Bug Fixes
+
+- **direct**: Authenticate the GenVM release lookup and refresh the offline fallback
+  ([#133](https://github.com/genlayerlabs/genlayer-testing-suite/pull/133),
+  [`c9ff74f`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/c9ff74fa2e0edce7b042a3a90b3a608984e68679))
+
+
 ## v0.30.0-rc.3 (2026-11-19)
 
 ### Bug Fixes
