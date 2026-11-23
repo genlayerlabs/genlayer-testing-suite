@@ -1,4 +1,6 @@
 import importlib.util
+import inspect
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
@@ -19,20 +21,32 @@ def test_committed_api_docs_match_generator(tmp_path):
         )
 
 
-def test_every_public_method_is_documented(tmp_path):
-    import inspect
+def _sections(markdown):
+    """Map '## Heading' -> section text."""
+    parts = re.split(r"^## ", markdown, flags=re.MULTILINE)[1:]
+    return {part.split("\n", 1)[0].strip(): part for part in parts}
 
+
+def test_every_public_method_is_documented_under_its_class(tmp_path):
     from gltest.contracts.contract_factory import ContractFactory
     from gltest.contracts.contract_functions import ContractFunction
     from gltest.direct import VMContext
     from gltest.validators import Validator, ValidatorFactory
 
     generate_api_docs.main([str(tmp_path)])
-    text = (tmp_path / "integration.md").read_text() + (
-        tmp_path / "direct.md"
-    ).read_text()
+    pages = {
+        "integration.md": _sections((tmp_path / "integration.md").read_text()),
+        "direct.md": _sections((tmp_path / "direct.md").read_text()),
+    }
     skipped = {"from_name", "from_file_path", "get_create2_raw", "get_message_raw"}
-    for cls in (ContractFactory, ContractFunction, ValidatorFactory, Validator, VMContext):
+    expected_layout = (
+        (ContractFactory, "integration.md", "factory."),
+        (ContractFunction, "integration.md", "contract.method_name."),
+        (ValidatorFactory, "integration.md", "validator_factory."),
+        (Validator, "integration.md", "validator."),
+        (VMContext, "direct.md", "vm."),
+    )
+    for cls, page, prefix in expected_layout:
         # Independent of generate_api_docs.public_methods: use inspect directly.
         expected = {
             name
@@ -40,8 +54,11 @@ def test_every_public_method_is_documented(tmp_path):
             if not name.startswith("_") and callable(value)
         } - skipped
         assert expected
+        section = pages[page][cls.__name__]
         for name in expected:
-            assert f".{name}`" in text, f"{cls.__name__}.{name} is not documented"
+            assert f"### `{prefix}{name}`" in section, (
+                f"{cls.__name__}.{name} missing from the {cls.__name__} section of {page}"
+            )
 
 
 def test_defaults_and_types_are_deterministic():

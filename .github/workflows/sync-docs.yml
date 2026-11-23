@@ -18,6 +18,10 @@ on:
 
 jobs:
   generate-and-sync:
+    # When called from publish.yml the package and release are already out, so a
+    # docs failure must not fail the release run (the failing steps stay visible
+    # in this job; re-run sync-docs.yml manually). Manual dispatch still fails.
+    continue-on-error: ${{ github.event_name != 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     environment: Sync-docs
     permissions:
