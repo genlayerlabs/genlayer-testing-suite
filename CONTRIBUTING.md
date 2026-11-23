@@ -48,7 +48,7 @@ Only `--promote` lands the promotion PR. Never use the merge button, GitHub auto
 
 The stable branch only accepts commits that already have a green `E2E Tests` check, which is why the version bump happens on dev before promotion and not on the stable branch after it. `--dry-run` runs the checks of any of these commands without changing anything; options are accepted before or after the version (`scripts/release.sh --dry-run 0.30.1`). See `.claude/skills/release/SKILL.md` for the full flow.
 
-**Semver-zero rule**: this package is on 0.x, so minor IS the breaking-change boundary. `0.29 → 0.30` is a major bump and needs a new branch — the script refuses `minor`/`major` keywords without `--allow-major`.
+**Semver-zero rule**: this package is on 0.x, so minor IS the breaking-change boundary. `0.29 → 0.30` is a major bump and needs a new branch — the script refuses `minor`/`major` keywords without `--allow-major`. The first RC of a new line is `scripts/release.sh minor --allow-major`, cut after the previous line's stable branch was merged into the new dev branch (see "Starting a new line" in `docs/BRANCHING.md`).
 
 ### Bug fixing and Feature development
 
