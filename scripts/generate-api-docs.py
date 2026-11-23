@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generate multi-page Markdown API reference for the GenLayer Testing Suite."""
 
+import enum
 import inspect
 import os
 import re
@@ -20,10 +21,53 @@ def clean_readme(content):
 def format_type(annotation):
     if annotation is inspect.Parameter.empty:
         return ""
-    name = getattr(annotation, "__name__", None)
-    if name:
-        return name
-    return str(annotation).replace("typing.", "").replace("ForwardRef('", "").replace("')", "")
+    if isinstance(annotation, str):
+        return annotation.strip("'\"")
+    text = inspect.formatannotation(annotation)
+    # Drop module prefixes (e.g. pathlib._local.Path on 3.13 vs pathlib.Path on 3.12)
+    # so the output is identical across Python versions. Quoted strings (Literal
+    # values, including escapes) are kept verbatim; ForwardRef('X') wrappers are
+    # unwrapped to X.
+    return re.sub(
+        r"""ForwardRef\('((?:[^'\\]|\\.)*)'\)"""
+        r"""|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")"""
+        r"""|\b(?:[A-Za-z_]\w*\.)+(?=[A-Z])""",
+        lambda m: m.group(1) or m.group(2) or "",
+        text,
+    )
+
+
+def format_default(value):
+    """Render a default value deterministically (no memory addresses, short enums)."""
+    if isinstance(value, enum.Enum):
+        return f"{type(value).__name__}.{value.name}"
+    text = repr(value)
+    if re.search(r" at 0x[0-9a-fA-F]+>", text):
+        return "<sentinel>"
+    return text
+
+
+def public_methods(cls):
+    """Public callables defined on cls (or its bases), in definition order."""
+    names = []
+    for klass in reversed(cls.__mro__):
+        if klass is object:
+            continue
+        for name, value in vars(klass).items():
+            if name.startswith("_") or name in names:
+                continue
+            if callable(value) or isinstance(value, (staticmethod, classmethod)):
+                names.append(name)
+    return names
+
+
+KIND_LABELS = {
+    inspect.Parameter.POSITIONAL_ONLY: "positional-only",
+    inspect.Parameter.POSITIONAL_OR_KEYWORD: "positional or keyword",
+    inspect.Parameter.VAR_POSITIONAL: "variadic positional",
+    inspect.Parameter.KEYWORD_ONLY: "keyword-only",
+    inspect.Parameter.VAR_KEYWORD: "variadic keyword",
+}
 
 
 def generate_method_doc(name, method, prefix=""):
@@ -36,31 +80,53 @@ def generate_method_doc(name, method, prefix=""):
         type_str = format_type(param.annotation)
         default = ""
         if param.default is not inspect.Parameter.empty:
-            default = f" = {param.default!r}"
-        required = param.default is inspect.Parameter.empty
-        params.append((pname, type_str, required, default))
+            default = f" = {format_default(param.default)}"
+        variadic = param.kind in (
+            inspect.Parameter.VAR_POSITIONAL,
+            inspect.Parameter.VAR_KEYWORD,
+        )
+        required = param.default is inspect.Parameter.empty and not variadic
+        params.append((pname, type_str, required, default, param.kind))
 
     lines = [f"### `{prefix}{name}`\n"]
     lines.append(f"{docstring}\n")
 
     param_parts = []
-    for pname, type_str, required, default in params:
-        display = f"{pname}: {type_str}" if type_str else pname
+    seen_keyword_marker = False
+    for i, (pname, type_str, required, default, kind) in enumerate(params):
+        if kind == inspect.Parameter.KEYWORD_ONLY and not seen_keyword_marker:
+            if not any(k == inspect.Parameter.VAR_POSITIONAL for *_, k in params):
+                param_parts.append("*")
+            seen_keyword_marker = True
+        star = {
+            inspect.Parameter.VAR_POSITIONAL: "*",
+            inspect.Parameter.VAR_KEYWORD: "**",
+        }.get(kind, "")
+        display = f"{star}{pname}: {type_str}" if type_str else f"{star}{pname}"
         display += default
         param_parts.append(display)
+        next_kind = params[i + 1][4] if i + 1 < len(params) else None
+        if kind == inspect.Parameter.POSITIONAL_ONLY and next_kind != kind:
+            param_parts.append("/")
 
     if param_parts:
         lines.append(f"```python\n{prefix}{name}({', '.join(param_parts)})\n```\n")
 
     if params:
         lines.append("**Parameters:**\n")
-        lines.append("| Parameter | Type | Required | Default |")
-        lines.append("|-----------|------|----------|---------|")
-        for pname, type_str, required, default in params:
+        lines.append("| Parameter | Kind | Type | Required | Default |")
+        lines.append("|-----------|------|------|----------|---------|")
+        for pname, type_str, required, default, kind in params:
             req_str = "Yes" if required else "No"
             type_display = f"`{type_str}`" if type_str else ""
-            default_display = f"`{default.strip(' = ')}`" if default else ""
-            lines.append(f"| `{pname}` | {type_display} | {req_str} | {default_display} |")
+            default_display = f"`{default[3:]}`" if default else ""
+            label = {
+                inspect.Parameter.VAR_POSITIONAL: f"*{pname}",
+                inspect.Parameter.VAR_KEYWORD: f"**{pname}",
+            }.get(kind, pname)
+            lines.append(
+                f"| `{label}` | {KIND_LABELS[kind]} | {type_display} | {req_str} | {default_display} |"
+            )
         lines.append("")
 
     ret = format_type(sig.return_annotation)
@@ -71,18 +137,22 @@ def generate_method_doc(name, method, prefix=""):
     return "\n".join(lines)
 
 
-def generate_class_doc(cls, method_names, prefix=""):
+def generate_class_doc(cls, prefix="", exclude=()):
+    """Document every public method of cls, so new methods appear automatically."""
     docstring = inspect.getdoc(cls) or ""
     lines = [f"## {cls.__name__}\n", f"{docstring}\n"]
-    for name in method_names:
+    for name in public_methods(cls):
+        if name in exclude:
+            continue
         method = getattr(cls, name, None)
         if method and callable(method):
             lines.append(generate_method_doc(name, method, prefix))
     return "\n".join(lines)
 
 
-def main():
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "docs", "api-references")
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    output_dir = argv[0] if argv else os.path.join(os.path.dirname(__file__), "..", "docs", "api-references")
     os.makedirs(output_dir, exist_ok=True)
 
     # === index.md (copy README as overview page) ===
@@ -115,13 +185,12 @@ def main():
 
     integration += generate_class_doc(
         ContractFactory,
-        ["deploy", "deploy_contract_tx", "build_contract"],
         "factory.",
+        exclude=("from_name", "from_file_path"),
     )
 
     integration += generate_class_doc(
         ContractFunction,
-        ["call", "transact", "analyze"],
         "contract.method_name.",
     )
 
@@ -129,12 +198,10 @@ def main():
     from gltest.validators import ValidatorFactory, Validator
     integration += generate_class_doc(
         ValidatorFactory,
-        ["create_validator", "batch_create_validators", "create_mock_validator", "batch_create_mock_validators"],
         "validator_factory.",
     )
     integration += generate_class_doc(
         Validator,
-        ["to_dict", "clone", "batch_clone"],
         "validator.",
     )
 
@@ -159,13 +226,8 @@ def main():
 
     direct += generate_class_doc(
         VMContext,
-        [
-            "activate", "warp", "deal", "snapshot", "revert",
-            "mock_web", "mock_llm", "clear_mocks",
-            "prank", "startPrank", "stopPrank", "expect_revert",
-            "run_validator", "clear_validators",
-        ],
         "vm.",
+        exclude=("get_create2_raw", "get_message_raw"),
     )
 
     with open(os.path.join(output_dir, "direct.md"), "w") as f:
