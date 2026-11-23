@@ -37,6 +37,11 @@ class ReleaseVersion:
         return self.rc is not None
 
     @property
+    def sort_key(self) -> tuple[int, int, int, bool, int]:
+        # A final sorts after every release candidate of the same X.Y.Z.
+        return (self.major, self.minor, self.patch, self.rc is None, self.rc or 0)
+
+    @property
     def stable_branch(self) -> str:
         return f"v{self.major}.{self.minor}"
 
@@ -91,10 +96,25 @@ _RED_CONCLUSIONS = frozenset(
 )
 
 
+def assert_newer(value: str, existing: list[str]) -> ReleaseVersion:
+    """Refuse a version that does not sort after every version already cut."""
+    version = parse_release_version(value)
+    for raw in existing:
+        other = parse_release_version(raw)
+        if other.sort_key >= version.sort_key:
+            raise ValueError(
+                f"{version.normalized} is not newer than {other.normalized}, "
+                "which this line already has"
+            )
+    return version
+
+
 def runs_verdict(conclusions: list[str]) -> str:
-    """Summarize the workflow runs of one commit: green, red or missing."""
+    """Summarize the workflow runs of one commit: green, red, pending or missing."""
     if any(conclusion in _RED_CONCLUSIONS for conclusion in conclusions):
         return "red"
+    if "pending" in conclusions:
+        return "pending"
     return "green" if "success" in conclusions else "missing"
 
 
@@ -103,7 +123,9 @@ def _usage() -> str:
         "usage: release_version.py normalize <version> | branch <version> | "
         "dev-branch <version> | stable-branch <version> | "
         "is-prerelease <version> | validate <branch> <version> | "
-        "verify-tag <tag> <package-version> | runs-verdict [conclusion ...]"
+        "verify-tag <tag> <package-version> | "
+        "assert-newer <version> [existing-version ...] | "
+        "runs-verdict [conclusion ...]"
     )
 
 
@@ -131,6 +153,8 @@ def main(argv: list[str]) -> int:
                     f"version {package_version.normalized}"
                 )
             print(tag_version.normalized)
+        elif command == "assert-newer" and len(argv) >= 3:
+            print(assert_newer(argv[2], argv[3:]).normalized)
         elif command == "runs-verdict":
             print(runs_verdict(argv[2:]))
         else:
