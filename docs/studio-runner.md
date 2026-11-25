@@ -275,6 +275,48 @@ tx_receipt = contract.update_storage(args=["new_value"]).transact(
 assert tx_execution_succeeded(tx_receipt)
 ```
 
+## Fees
+
+The deploy and write examples above send no fees. That works on glsim and on a
+Studio whose fee policy is disabled. On a Studio that charges fees, `deploy()` and `.transact()`
+need explicit fees: genlayer-py rejects a call without them before sending
+anything (genlayer-py 0.19.1 and earlier send it and the transaction reverts
+with `FeeValueMustBeNonZero`). Build the fees with the client's estimators and pass
+them through `fees`:
+
+```python
+from gltest import get_contract_factory, get_gl_client
+
+client = get_gl_client()
+factory = get_contract_factory("Storage")
+
+deploy_fees = client.estimate_transaction_fees()
+contract = factory.deploy(
+    args=["initial_value"],
+    fees={
+        "distribution": deploy_fees["distribution"],
+        "feeValue": deploy_fees["feeValue"],
+    },
+)
+
+write_fees = client.estimate_transaction_fees_for_write(
+    address=contract.address,
+    function_name="update_storage",
+    args=["new_value"],
+)
+tx_receipt = contract.update_storage(args=["new_value"]).transact(
+    fees={
+        "distribution": write_fees["distribution"],
+        "messageAllocations": write_fees.get("messageAllocations"),
+        "feeValue": write_fees["feeValue"],
+    },
+)
+```
+
+`estimate_transaction_fees_for_write` simulates the call on Studio, so it sizes
+the fees for that method and its arguments. gltest never estimates fees on its
+own.
+
 ## Assertions
 
 ### Basic Transaction Assertions

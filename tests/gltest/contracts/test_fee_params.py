@@ -1,6 +1,10 @@
+import pytest
+from genlayer_py.exceptions import GenLayerError
+
 from gltest.contracts.contract import Contract
 from gltest.contracts.contract_factory import ContractFactory
 from gltest.contracts.wait import wait_for_transaction_receipt
+from gltest.exceptions import DeploymentError
 from gltest.types import TransactionStatus
 
 
@@ -150,3 +154,48 @@ def test_deploy_threads_fee_params_to_sdk(monkeypatch):
         "interval": 1,
         "retries": 1,
     }
+
+
+FEES_REQUIRED = "fees are required on this chain: build them with estimate_transaction_fees()"
+
+
+class FeesRequiredClient(FakeClient):
+    def write_contract(self, **kwargs):
+        raise GenLayerError(FEES_REQUIRED)
+
+    def deploy_contract(self, **kwargs):
+        raise GenLayerError(FEES_REQUIRED)
+
+
+def test_transact_surfaces_sdk_fees_required_error(monkeypatch):
+    client = FeesRequiredClient()
+    monkeypatch.setattr("gltest.contracts.contract.get_gl_client", lambda: client)
+    monkeypatch.setattr(
+        "gltest.contracts.contract.get_general_config", lambda: FakeGeneralConfig()
+    )
+    contract = Contract.new(
+        address="0x123",
+        schema={"methods": {"set_value": {"readonly": False}}},
+    )
+
+    with pytest.raises(GenLayerError) as error:
+        contract.set_value([1]).transact()
+
+    assert str(error.value) == FEES_REQUIRED
+    assert client.wait_for_transaction_receipt_calls == []
+
+
+def test_deploy_surfaces_sdk_fees_required_error(monkeypatch):
+    client = FeesRequiredClient()
+    monkeypatch.setattr("gltest.contracts.contract_factory.get_gl_client", lambda: client)
+    monkeypatch.setattr(
+        "gltest.contracts.contract_factory.get_general_config",
+        lambda: FakeGeneralConfig(),
+    )
+    factory = ContractFactory(contract_name="Example", contract_code="class Example: pass")
+
+    with pytest.raises(DeploymentError) as error:
+        factory.deploy_contract_tx(args=["hello"])
+
+    assert FEES_REQUIRED in str(error.value)
+    assert client.wait_for_transaction_receipt_calls == []
