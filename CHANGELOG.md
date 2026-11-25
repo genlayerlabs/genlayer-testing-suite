@@ -2,6 +2,36 @@
 
 <!-- version list -->
 
+## v0.30.1 (2026-11-25)
+
+### Bug Fixes
+
+- **deps**: Require genlayer-py 0.19.1 so testnet_bradbury targets Bradbury Phase 3
+  ([`b242003`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/b24200335d6b27dd9955b15413ee976b66f35e21))
+
+### Continuous Integration
+
+- **release**: Cut finals on the dev branch and promote by fast-forward
+  ([#139](https://github.com/genlayerlabs/genlayer-testing-suite/pull/139),
+  [`40d7168`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/40d7168455b053a4cbf5ebf2996add4d6b95a314))
+
+- **release**: Fail closed on unreadable release state and name /merge in the docs
+  ([#140](https://github.com/genlayerlabs/genlayer-testing-suite/pull/140),
+  [`3682043`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/3682043474c4066009d8da14653ef2e3d868dc49))
+
+- **release**: Harden the dev-first release flow after review
+  ([#139](https://github.com/genlayerlabs/genlayer-testing-suite/pull/139),
+  [`40d7168`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/40d7168455b053a4cbf5ebf2996add4d6b95a314))
+
+- **release**: Never skip a version and require the previous final in history
+  ([#142](https://github.com/genlayerlabs/genlayer-testing-suite/pull/142),
+  [`08a1b18`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/08a1b1873ddcbf76166f00686895b2f814ee70ee))
+
+- **release**: Repeat the previous-line check in --promote
+  ([#144](https://github.com/genlayerlabs/genlayer-testing-suite/pull/144),
+  [`fec97c0`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/fec97c0762fb095e1518a2dee5e990d24554ac1f))
+
+
 ## v0.30.0 (2026-11-23)
 
 ### Bug Fixes
