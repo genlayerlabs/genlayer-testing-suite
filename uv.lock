@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 
 [[package]]
@@ -688,19 +688,19 @@ wheels = [
 
 [[package]]
 name = "genlayer-py"
-version = "0.19.0rc2"
+version = "0.19.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "web3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/af/17/1a82ff1db9d6b33ca8a73c8edb9c1786860462ee1fa16eb5261e50b1b7ac/genlayer_py-0.19.0rc2.tar.gz", hash = "sha256:92056aa1b9eb336550a86c7cc3dbd9c7b10afd18d9d846d094e4bc7dd8d7224a", size = 90588, upload-time = "2026-09-03T14:22:46.187Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/2a/e6c6d857c455317959196348630094cd5cfb662e45079fc2b5b4c8243db7/genlayer_py-0.19.1.tar.gz", hash = "sha256:f78f6b2e84650819e10dace540751a22ee8718d132035eae49ecc99de3fc59e1", size = 93816, upload-time = "2026-11-25T10:19:03.281Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8c/cb/b9df445c0aa09d0307561579b306e5a1133e736f1619b8bb1687ed8e8f50/genlayer_py-0.19.0rc2-py3-none-any.whl", hash = "sha256:40f96bb2b0ded2174a98533d199cbdfc57235255a5b8ed84a0b9464851cb708c", size = 106602, upload-time = "2026-09-03T14:22:45.109Z" },
+    { url = "https://files.pythonhosted.org/packages/13/07/330ad7f3fe202ea7201ab95e4430f2b08c3c6e859f9eb1320c3d7325d880/genlayer_py-0.19.1-py3-none-any.whl", hash = "sha256:59e8904bc8673fe2329dac8bb879539efffebf1189b2f59927c85b5742052736", size = 109948, upload-time = "2026-11-25T10:19:01.996Z" },
 ]
 
 [[package]]
 name = "genlayer-test"
-version = "0.29.2"
+version = "0.30.0"
 source = { editable = "." }
 dependencies = [
     { name = "colorama" },
@@ -724,7 +724,7 @@ requires-dist = [
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "eth-account", marker = "extra == 'sim'", specifier = ">=0.10" },
     { name = "fastapi", marker = "extra == 'sim'", specifier = ">=0.100" },
-    { name = "genlayer-py", specifier = ">=0.19.0rc2,<0.20.0" },
+    { name = "genlayer-py", specifier = ">=0.19.1,<0.20.0" },
     { name = "httpx", marker = "extra == 'sim'", specifier = ">=0.24" },
     { name = "numpy", marker = "extra == 'sim'", specifier = ">=1.26" },
     { name = "pytest" },
