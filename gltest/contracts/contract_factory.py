@@ -25,7 +25,7 @@ from gltest.types import (
     CalldataEncodable,
 )
 from gltest.assertions import tx_execution_failed
-from gltest.exceptions import DeploymentError
+from gltest.exceptions import DeploymentError, SchemaDiscoveryError
 from gltest_cli.config.general import get_general_config
 from gltest.fees import maybe_record_fee_observation
 from gltest.utils import extract_contract_address
@@ -118,8 +118,9 @@ class ContractFactory:
         """
         schema = self._get_schema_with_fallback()
         if schema is None:
-            raise ValueError(
-                "Failed to get schema from all clients (default, hosted studio, and local)"
+            raise SchemaDiscoveryError(
+                "Failed to get schema from all clients (default, hosted studio, and local)",
+                contract_address=contract_address,
             )
 
         return Contract.new(address=contract_address, schema=schema, account=account)
@@ -164,7 +165,21 @@ class ContractFactory:
             raise DeploymentError(f"Deployment transaction failed: {receipt}")
 
         contract_address = extract_contract_address(receipt)
-        return self.build_contract(contract_address=contract_address, account=account)
+        try:
+            return self.build_contract(
+                contract_address=contract_address, account=account
+            )
+        except SchemaDiscoveryError as e:
+            raise SchemaDiscoveryError(
+                f"Contract {self.contract_name} was deployed at {contract_address} "
+                "(do not redeploy), but schema discovery failed, so a typed "
+                "Contract could not be built. The address and deployment receipt "
+                "are available as `contract_address` and `receipt` on this "
+                "exception. Original error: "
+                f"{e}",
+                contract_address=contract_address,
+                receipt=receipt,
+            ) from e
 
     def deploy_contract_tx(
         self,
