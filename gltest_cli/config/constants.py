@@ -1,15 +1,28 @@
+from genlayer_py.chains import (
+    localnet,
+    studio_devnet,
+    studionet,
+    testnet_bradbury,
+    testnet_clarke,
+)
 from genlayer_py.chains.localnet import SIMULATOR_JSON_RPC_URL
+from genlayer_py.types import GenLayerChain
 from pathlib import Path
 
 GLTEST_CONFIG_FILE = "gltest.config.yaml"
 DEFAULT_NETWORK = "localnet"
-PRECONFIGURED_NETWORKS = [
-    "localnet",
-    "studio_devnet",
-    "studionet",
-    "testnet_asimov",
-    "testnet_bradbury",
-]
+STUDIO_CHAINS: dict[str, GenLayerChain] = {
+    "localnet": localnet,
+    "studio_devnet": studio_devnet,
+    "studionet": studionet,
+}
+# Public testnets ship no default accounts: gltest.config.yaml must provide them
+TESTNET_CHAINS: dict[str, GenLayerChain] = {
+    "testnet_bradbury": testnet_bradbury,
+    "testnet_clarke": testnet_clarke,
+}
+PRESET_CHAINS: dict[str, GenLayerChain] = {**STUDIO_CHAINS, **TESTNET_CHAINS}
+PRECONFIGURED_NETWORKS = list(PRESET_CHAINS)
 CHAINS = PRECONFIGURED_NETWORKS.copy()
 DEFAULT_RPC_URL = SIMULATOR_JSON_RPC_URL
 DEFAULT_ENVIRONMENT = ".env"

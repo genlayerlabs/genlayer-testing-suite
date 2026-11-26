@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.30.2 (2026-11-26)
+
+### Bug Fixes
+
+- **direct**: Sync message datetime on vm.warp
+  ([`05b3b50`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/05b3b502ff13fe7ddcde29892fa649307c39bcd2))
+
+### Features
+
+- **config**: Add testnet_clarke and drop dead testnet_asimov ✨🔥♻️
+  ([`4ac4ad4`](https://github.com/genlayerlabs/genlayer-testing-suite/commit/4ac4ad4c011f27fd3df86e745617ef8606999dbd))
+
+
 ## v0.30.1 (2026-11-25)
 
 ### Bug Fixes

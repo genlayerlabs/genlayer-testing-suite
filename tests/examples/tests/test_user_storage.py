@@ -6,7 +6,6 @@ from gltest import (
 )
 from gltest.assertions import tx_execution_succeeded
 from gltest_cli.config.general import get_general_config
-from genlayer_py.chains import testnet_asimov
 
 
 INITIAL_STATE_USER_A = "user_a_initial_state"
@@ -17,10 +16,9 @@ UPDATED_STATE_USER_B = "user_b_updated_state"
 
 def test_user_storage():
     general_config = get_general_config()
-    chain = general_config.get_chain()
 
     # Account Setup
-    if chain.id == testnet_asimov.id:
+    if not general_config.check_studio_based_rpc():
         accounts = get_accounts()
         if len(accounts) < 2:
             raise ValueError(
