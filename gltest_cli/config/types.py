@@ -2,13 +2,6 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
-from genlayer_py.chains import (
-    localnet,
-    studio_devnet,
-    studionet,
-    testnet_asimov,
-    testnet_bradbury,
-)
 from genlayer_py.types import GenLayerChain
 from gltest_cli.config.constants import PRECONFIGURED_NETWORKS
 from gltest_cli.config.constants import (
@@ -17,6 +10,8 @@ from gltest_cli.config.constants import (
     DEFAULT_LEADER_ONLY,
     DEFAULT_FEE_PROFILE_HEADROOM,
     CHAINS,
+    PRESET_CHAINS,
+    STUDIO_CHAINS,
 )
 
 
@@ -195,15 +190,8 @@ class GeneralConfig:
         return chain_type
 
     def get_chain(self) -> GenLayerChain:
-        chain_map = {
-            "localnet": localnet,
-            "studio_devnet": studio_devnet,
-            "studionet": studionet,
-            "testnet_asimov": testnet_asimov,
-            "testnet_bradbury": testnet_bradbury,
-        }
         chain_type = self.get_chain_type()
-        chain = deepcopy(chain_map[chain_type])
+        chain = deepcopy(PRESET_CHAINS[chain_type])
 
         # The selected network is the runtime authority. This is especially
         # important for custom Studio deployments: the endpoint and chain ID
@@ -277,4 +265,4 @@ class GeneralConfig:
         return self.get_chain_type() == "localnet"
 
     def check_studio_based_rpc(self) -> bool:
-        return self.get_chain_type() in ("studio_devnet", "studionet", "localnet")
+        return self.get_chain_type() in STUDIO_CHAINS

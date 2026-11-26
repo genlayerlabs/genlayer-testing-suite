@@ -10,9 +10,7 @@ networks:
     url: "https://studio.genlayer.com/api"
     leader_only: false
 
-  testnet_asimov:
-    id: 4221
-    url: "http://34.32.169.58:9151"
+  testnet_bradbury:
     accounts:
       - "${ACCOUNT_PRIVATE_KEY_1}"
       - "${ACCOUNT_PRIVATE_KEY_2}"

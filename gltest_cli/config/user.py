@@ -17,13 +17,9 @@ from gltest_cli.config.constants import (
     DEFAULT_WAIT_RETRIES,
     DEFAULT_LEADER_ONLY,
     CHAINS,
-)
-from genlayer_py.chains import (
-    localnet,
-    studio_devnet,
-    studionet,
-    testnet_asimov,
-    testnet_bradbury,
+    PRESET_CHAINS,
+    STUDIO_CHAINS,
+    TESTNET_CHAINS,
 )
 from gltest_cli.config.types import UserConfig, NetworkConfigData, PathConfig
 
@@ -46,57 +42,22 @@ def get_default_user_config() -> UserConfig:
     accounts = create_accounts(n_accounts=10)
     accounts_private_keys = [account.key.hex() for account in accounts]
 
+    def preset_network(chain_type, accounts):
+        chain = PRESET_CHAINS[chain_type]
+        return NetworkConfigData(
+            id=chain.id,
+            url=chain.rpc_urls["default"]["http"][0],
+            accounts=accounts,
+            from_account=accounts[0] if accounts else None,
+            leader_only=DEFAULT_LEADER_ONLY,
+            default_wait_interval=DEFAULT_WAIT_INTERVAL,
+            default_wait_retries=DEFAULT_WAIT_RETRIES,
+            chain_type=chain_type,
+        )
+
     networks = {
-        "localnet": NetworkConfigData(
-            id=localnet.id,
-            url=localnet.rpc_urls["default"]["http"][0],
-            accounts=accounts_private_keys,
-            from_account=accounts_private_keys[0],
-            leader_only=DEFAULT_LEADER_ONLY,
-            default_wait_interval=DEFAULT_WAIT_INTERVAL,
-            default_wait_retries=DEFAULT_WAIT_RETRIES,
-            chain_type="localnet",
-        ),
-        "studio_devnet": NetworkConfigData(
-            id=studio_devnet.id,
-            url=studio_devnet.rpc_urls["default"]["http"][0],
-            accounts=accounts_private_keys,
-            from_account=accounts_private_keys[0],
-            leader_only=DEFAULT_LEADER_ONLY,
-            default_wait_interval=DEFAULT_WAIT_INTERVAL,
-            default_wait_retries=DEFAULT_WAIT_RETRIES,
-            chain_type="studio_devnet",
-        ),
-        "studionet": NetworkConfigData(
-            id=studionet.id,
-            url=studionet.rpc_urls["default"]["http"][0],
-            accounts=accounts_private_keys,
-            from_account=accounts_private_keys[0],
-            leader_only=DEFAULT_LEADER_ONLY,
-            default_wait_interval=DEFAULT_WAIT_INTERVAL,
-            default_wait_retries=DEFAULT_WAIT_RETRIES,
-            chain_type="studionet",
-        ),
-        "testnet_asimov": NetworkConfigData(
-            id=testnet_asimov.id,
-            url=testnet_asimov.rpc_urls["default"]["http"][0],
-            accounts=None,
-            from_account=None,
-            leader_only=DEFAULT_LEADER_ONLY,
-            default_wait_interval=DEFAULT_WAIT_INTERVAL,
-            default_wait_retries=DEFAULT_WAIT_RETRIES,
-            chain_type="testnet_asimov",
-        ),
-        "testnet_bradbury": NetworkConfigData(
-            id=testnet_bradbury.id,
-            url=testnet_bradbury.rpc_urls["default"]["http"][0],
-            accounts=None,
-            from_account=None,
-            leader_only=DEFAULT_LEADER_ONLY,
-            default_wait_interval=DEFAULT_WAIT_INTERVAL,
-            default_wait_retries=DEFAULT_WAIT_RETRIES,
-            chain_type="testnet_bradbury",
-        ),
+        **{name: preset_network(name, accounts_private_keys) for name in STUDIO_CHAINS},
+        **{name: preset_network(name, None) for name in TESTNET_CHAINS},
     }
 
     return UserConfig(
