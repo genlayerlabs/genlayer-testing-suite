@@ -112,7 +112,7 @@ def pytest_configure(config):
             logger.info(
                 "File `gltest.config.yaml` found in the current directory, using it"
             )
-            user_config = load_user_config("gltest.config.yaml")
+            user_config = load_user_config("gltest.config.yaml", network_name)
 
         general_config.user_config = user_config
 

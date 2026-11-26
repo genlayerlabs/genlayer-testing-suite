@@ -4,6 +4,7 @@ import re
 from dotenv import load_dotenv
 from pathlib import Path
 from functools import lru_cache
+from typing import Optional
 from dataclasses import replace
 from gltest.accounts import create_accounts
 from gltest_cli.config.constants import (
@@ -109,7 +110,12 @@ def get_default_user_config() -> UserConfig:
     )
 
 
-def resolve_env_vars(obj):
+def resolve_env_vars(obj, strict: bool = True):
+    """Replace ``${VAR}`` placeholders with values from the environment.
+
+    With ``strict=False`` a placeholder whose variable is unset is left as is
+    instead of raising, so that sections that are not in use can be skipped.
+    """
     if isinstance(obj, str):
 
         def replace_env_var(m):
@@ -121,6 +127,8 @@ def resolve_env_vars(obj):
                     )
                 var_value = os.getenv(var_name)
                 if var_value is None:
+                    if not strict:
+                        return m.group(0)
                     raise ValueError(
                         f"Environment variable {var_name} is not set, please check your environment file"
                     )
@@ -132,9 +140,9 @@ def resolve_env_vars(obj):
 
         return re.sub(r"\${(\w+)}", replace_env_var, obj)
     elif isinstance(obj, dict):
-        return {k: resolve_env_vars(v) for k, v in obj.items()}
+        return {k: resolve_env_vars(v, strict) for k, v in obj.items()}
     elif isinstance(obj, list):
-        return [resolve_env_vars(i) for i in obj]
+        return [resolve_env_vars(i, strict) for i in obj]
     return obj
 
 
@@ -242,14 +250,36 @@ def validate_raw_user_config(config: dict):
         raise ValueError("environment must be a string")
 
 
-def load_user_config(path: str) -> UserConfig:
+def _resolve_config_env_vars(raw_config: dict, network: Optional[str]) -> dict:
+    """Resolve env vars, requiring them only for the network in use.
+
+    Placeholders under ``networks.<name>`` of a network that is not selected
+    (``--network`` or ``networks.default``) are resolved when set but may stay
+    unset, so a project can keep credentials for networks it is not running.
+    """
+    networks = raw_config.get("networks")
+    if not isinstance(networks, dict):
+        return resolve_env_vars(raw_config)
+
+    selected = network or networks.get("default") or DEFAULT_NETWORK
+    resolved = {
+        k: resolve_env_vars(v) for k, v in raw_config.items() if k != "networks"
+    }
+    resolved["networks"] = {
+        name: resolve_env_vars(cfg, strict=(name == "default" or name == selected))
+        for name, cfg in networks.items()
+    }
+    return resolved
+
+
+def load_user_config(path: str, network: Optional[str] = None) -> UserConfig:
     with open(path, "r") as f:
         raw_config = yaml.safe_load(f) or {}
     validate_raw_user_config(raw_config)
     load_dotenv(
         dotenv_path=raw_config.get("environment", DEFAULT_ENVIRONMENT), override=True
     )
-    resolved_config = resolve_env_vars(raw_config)
+    resolved_config = _resolve_config_env_vars(raw_config, network)
     user_config = transform_raw_to_user_config_with_defaults(resolved_config)
     return user_config
 

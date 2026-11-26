@@ -427,3 +427,60 @@ def test_fee_profile_headroom_must_be_positive(pytester):
         general_config.plugin_config.fee_profile_headroom = None
 
     assert result.ret != 0
+
+
+BRADBURY_PLACEHOLDER_CONFIG = """
+networks:
+  default: localnet
+  localnet: {}
+  studionet: {}
+  testnet_bradbury:
+    accounts:
+      - "${BRADBURY_TEST_KEY}"
+"""
+
+
+def _write_bradbury_config(pytester, monkeypatch):
+    monkeypatch.delenv("BRADBURY_TEST_KEY", raising=False)
+    pytester.path.joinpath("gltest.config.yaml").write_text(BRADBURY_PLACEHOLDER_CONFIG)
+
+
+def test_unused_network_env_var_unset_with_default_network(pytester, monkeypatch):
+    _write_bradbury_config(pytester, monkeypatch)
+    pytester.makepyfile(test_network_default="""
+        from gltest_cli.config.general import get_general_config
+
+        def test_network():
+            assert get_general_config().get_network_name() == "localnet"
+    """)
+
+    result = pytester.runpytest("test_network_default.py", "-v")
+
+    result.stdout.fnmatch_lines(["*::test_network PASSED*"])
+    assert result.ret == 0
+
+
+def test_unused_network_env_var_unset_with_network_option(pytester, monkeypatch):
+    _write_bradbury_config(pytester, monkeypatch)
+    pytester.makepyfile(test_network_studio="""
+        from gltest_cli.config.general import get_general_config
+
+        def test_network():
+            assert get_general_config().get_network_name() == "studionet"
+    """)
+
+    result = pytester.runpytest("test_network_studio.py", "--network=studionet", "-v")
+
+    result.stdout.fnmatch_lines(["*::test_network PASSED*"])
+    assert result.ret == 0
+
+
+def test_selected_network_env_var_unset_reports_missing_variable(pytester, monkeypatch):
+    _write_bradbury_config(pytester, monkeypatch)
+
+    # pytest.exit() during configure breaks pytester's in-process runner
+    result = pytester.runpytest_subprocess("--network=testnet_bradbury")
+
+    assert result.ret != 0
+    output = result.stdout.str() + result.stderr.str()
+    assert "BRADBURY_TEST_KEY is not set" in output

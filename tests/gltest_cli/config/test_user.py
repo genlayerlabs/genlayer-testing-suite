@@ -468,3 +468,68 @@ def test_artifacts_path_only_config():
     config = transform_raw_to_user_config_with_defaults(config_artifacts_only)
     assert config.paths.contracts == DEFAULT_CONTRACTS_DIR
     assert config.paths.artifacts == Path("my_artifacts")
+
+
+BRADBURY_CONFIG_YAML = """
+networks:
+  default: localnet
+  localnet: {}
+  studionet: {}
+  testnet_bradbury:
+    accounts:
+      - "${BRADBURY_TEST_KEY}"
+"""
+
+
+@pytest.fixture
+def bradbury_config_path(tmp_path, monkeypatch):
+    monkeypatch.delenv("BRADBURY_TEST_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)  # no .env next to the config
+    path = tmp_path / "gltest.config.yaml"
+    path.write_text(BRADBURY_CONFIG_YAML)
+    return str(path)
+
+
+def test_unused_network_env_var_may_be_unset_for_default_network(bradbury_config_path):
+    config = load_user_config(bradbury_config_path)
+    assert config.default_network == "localnet"
+
+
+def test_unused_network_env_var_may_be_unset_for_selected_studionet(
+    bradbury_config_path,
+):
+    config = load_user_config(bradbury_config_path, "studionet")
+    assert "studionet" in config.networks
+
+
+def test_selected_network_still_requires_its_env_var(bradbury_config_path):
+    with pytest.raises(ValueError, match="BRADBURY_TEST_KEY is not set"):
+        load_user_config(bradbury_config_path, "testnet_bradbury")
+
+
+def test_default_network_still_requires_its_env_var(tmp_path, monkeypatch):
+    monkeypatch.delenv("BRADBURY_TEST_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+    path = tmp_path / "gltest.config.yaml"
+    path.write_text(
+        BRADBURY_CONFIG_YAML.replace("default: localnet", "default: testnet_bradbury")
+    )
+    with pytest.raises(ValueError, match="BRADBURY_TEST_KEY is not set"):
+        load_user_config(str(path))
+
+
+def test_unused_network_env_var_is_resolved_when_set(bradbury_config_path, monkeypatch):
+    monkeypatch.setenv("BRADBURY_TEST_KEY", "0xabc")
+    config = load_user_config(bradbury_config_path)
+    assert config.networks["testnet_bradbury"].accounts == ["0xabc"]
+
+
+def test_env_var_outside_networks_is_still_required(tmp_path, monkeypatch):
+    monkeypatch.delenv("MISSING_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+    path = tmp_path / "gltest.config.yaml"
+    path.write_text(
+        'networks:\n  default: localnet\n  localnet: {}\npaths:\n  contracts: "${MISSING_DIR}"\n'
+    )
+    with pytest.raises(ValueError, match="MISSING_DIR is not set"):
+        load_user_config(str(path))
