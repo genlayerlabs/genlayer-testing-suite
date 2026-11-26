@@ -13,7 +13,7 @@ from gltest_cli.config.user import (
     DEFAULT_CONTRACTS_DIR,
     DEFAULT_ARTIFACTS_DIR,
 )
-from gltest_cli.config.constants import DEFAULT_RPC_URL
+from gltest_cli.config.constants import DEFAULT_RPC_URL, PRESET_CHAINS, TESTNET_CHAINS
 from gltest_cli.config.types import UserConfig, NetworkConfigData, PathConfig
 from unittest.mock import MagicMock
 from pathlib import Path
@@ -27,9 +27,9 @@ VALID_CONFIG = {
             "accounts": ["0x123", "0x456"],
             "from": "0x123",
         },
-        "testnet_asimov": {
+        "testnet_bradbury": {
             "id": 4221,
-            "url": "http://34.32.169.58:9151",
+            "url": "https://rpc.testnet-chain.genlayer.com",
             "accounts": ["0x123", "0x456"],
             "from": "0x123",
         },
@@ -75,6 +75,14 @@ def test_get_default_user_config():
     assert studio_preview.id == 61997
     assert studio_preview.url == "https://studio-dev.genlayer.com/api"
     assert studio_preview.chain_type == "studio_devnet"
+
+    assert list(config.networks) == list(PRESET_CHAINS)
+    for name, chain in TESTNET_CHAINS.items():
+        testnet = config.networks[name]
+        assert testnet.id == chain.id
+        assert testnet.chain_type == name
+        assert testnet.accounts is None
+        assert testnet.from_account is None
 
     # Check paths
     assert isinstance(config.paths, PathConfig)
@@ -301,12 +309,12 @@ def test_load_user_config(mock_load_dotenv, mock_file):
     assert config.networks["localnet"].accounts == ["0x123", "0x456"]
     assert config.networks["localnet"].from_account == "0x123"
 
-    # Check testnet_asimov network
-    assert isinstance(config.networks["testnet_asimov"], NetworkConfigData)
-    assert config.networks["testnet_asimov"].id == 4221
-    assert config.networks["testnet_asimov"].url == "http://34.32.169.58:9151"
-    assert config.networks["testnet_asimov"].accounts == ["0x123", "0x456"]
-    assert config.networks["testnet_asimov"].from_account == "0x123"
+    # Check testnet_bradbury network
+    assert isinstance(config.networks["testnet_bradbury"], NetworkConfigData)
+    assert config.networks["testnet_bradbury"].id == 4221
+    assert config.networks["testnet_bradbury"].url == "https://rpc.testnet-chain.genlayer.com"
+    assert config.networks["testnet_bradbury"].accounts == ["0x123", "0x456"]
+    assert config.networks["testnet_bradbury"].from_account == "0x123"
 
     # Check paths
     assert isinstance(config.paths, PathConfig)
@@ -358,13 +366,13 @@ def test_transform_raw_to_user_config_with_defaults():
             "testnet": {
                 "url": "http://testnet:8545",
                 "accounts": ["0x123", "0x456"],
-                "chain_type": "testnet_asimov",
+                "chain_type": "testnet_bradbury",
             },
             "mainnet": {
                 "url": "http://mainnet:8545",
                 "accounts": ["0xabc", "0x789"],
                 "from": "0x789",  # Already set
-                "chain_type": "testnet_asimov",
+                "chain_type": "testnet_bradbury",
             },
         }
     }

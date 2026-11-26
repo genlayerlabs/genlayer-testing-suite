@@ -15,6 +15,7 @@ from gltest_cli.config.pytest_context import _pytest_context
 from gltest_cli.config.constants import (
     DEFAULT_LEADER_ONLY,
     CHAINS,
+    TESTNET_CHAINS,
 )
 from gltest.fees import get_fee_profile_collector, reset_fee_profile_collector
 
@@ -103,7 +104,7 @@ def pytest_configure(config):
             user_config = get_default_user_config()
 
             # Special handling for remote testnets - check if accounts are configured
-            if network_name in ("testnet_asimov", "testnet_bradbury"):
+            if network_name in TESTNET_CHAINS:
                 logger.error(
                     f"For {network_name}, you need to configure accounts in gltest.config.yaml, see https://docs.genlayer.com/api-references/genlayer-test"
                 )
