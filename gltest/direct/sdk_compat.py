@@ -1,25 +1,35 @@
-"""Helpers for the GenVM v0.3 SDK layout."""
+"""Helpers for resolving modules from the active GenVM SDK layout.
+
+The SDK moved its Python-side modules under ``genlayer.py`` (v0.6 and later).
+Pinned runner bundles below that expose them at the package root still work, so
+each helper tries the current location first and falls back to the legacy one.
+"""
 
 from __future__ import annotations
 
+import importlib
 import sys
 from typing import Any
 
 _UNSET = object()
 
 
-def import_calldata() -> Any:
-    """Return the v0.3 calldata module from the active SDK path."""
-    from genlayer import calldata
+def _import_sdk_module(name: str) -> Any:
+    """Import ``name`` from the active SDK, current layout first."""
+    try:
+        return importlib.import_module(f"genlayer.py.{name}")
+    except ModuleNotFoundError:
+        return importlib.import_module(f"genlayer.{name}")
 
-    return calldata
+
+def import_calldata() -> Any:
+    """Return the calldata module from the active SDK path."""
+    return _import_sdk_module("calldata")
 
 
 def import_types() -> Any:
-    """Return the v0.3 types module from the active SDK path."""
-    from genlayer import types as sdk_types
-
-    return sdk_types
+    """Return the types module from the active SDK path."""
+    return _import_sdk_module("types")
 
 
 def import_address() -> type:
