@@ -688,19 +688,19 @@ wheels = [
 
 [[package]]
 name = "genlayer-py"
-version = "0.19.1"
+version = "0.19.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "web3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/2a/e6c6d857c455317959196348630094cd5cfb662e45079fc2b5b4c8243db7/genlayer_py-0.19.1.tar.gz", hash = "sha256:f78f6b2e84650819e10dace540751a22ee8718d132035eae49ecc99de3fc59e1", size = 93816, upload-time = "2026-11-25T10:19:03.281Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/19/55dd9cca4a2e393f26f03a5cb30e1468471cf8e7afcc9c5cd2674da18556/genlayer_py-0.19.2.tar.gz", hash = "sha256:b8c7a456523330b0383de77e234ef462516315ec1c956f2031c90300988c04e2", size = 94306, upload-time = "2026-11-26T13:12:08.458Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/07/330ad7f3fe202ea7201ab95e4430f2b08c3c6e859f9eb1320c3d7325d880/genlayer_py-0.19.1-py3-none-any.whl", hash = "sha256:59e8904bc8673fe2329dac8bb879539efffebf1189b2f59927c85b5742052736", size = 109948, upload-time = "2026-11-25T10:19:01.996Z" },
+    { url = "https://files.pythonhosted.org/packages/47/97/9aebf5f8afe616cffee3a95b0166c7578a814e5971927026d8495b7e23eb/genlayer_py-0.19.2-py3-none-any.whl", hash = "sha256:f614fe2396ae43f7ed6cbb67e7a5d98ff319a8d71db09f7bdd274593e6ac26d6", size = 111080, upload-time = "2026-11-26T13:12:07.511Z" },
 ]
 
 [[package]]
 name = "genlayer-test"
-version = "0.30.0"
+version = "0.30.1"
 source = { editable = "." }
 dependencies = [
     { name = "colorama" },
@@ -724,7 +724,7 @@ requires-dist = [
     { name = "colorama", specifier = ">=0.4.6" },
     { name = "eth-account", marker = "extra == 'sim'", specifier = ">=0.10" },
     { name = "fastapi", marker = "extra == 'sim'", specifier = ">=0.100" },
-    { name = "genlayer-py", specifier = ">=0.19.1,<0.20.0" },
+    { name = "genlayer-py", specifier = ">=0.19.2,<0.20.0" },
     { name = "httpx", marker = "extra == 'sim'", specifier = ">=0.24" },
     { name = "numpy", marker = "extra == 'sim'", specifier = ">=1.26" },
     { name = "pytest" },
