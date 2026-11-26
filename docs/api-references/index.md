@@ -154,7 +154,7 @@ networks:
   studionet:
     # Pre-configured — accounts auto-generated
 
-  testnet_asimov:
+  testnet_bradbury:
     accounts:
       - "${ACCOUNT_PRIVATE_KEY_1}"
       - "${ACCOUNT_PRIVATE_KEY_2}"
@@ -168,14 +168,14 @@ environment: .env
 ```
 
 Key options:
-- **Networks**: `localnet`, `studio_devnet`, and `studionet` work out of the box. `testnet_asimov` requires account keys.
+- **Networks**: `localnet`, `studio_devnet`, and `studionet` work out of the box. `testnet_bradbury` requires account keys.
 - **Paths**: Where your contracts and artifacts live.
 - **Environment**: `.env` file for private keys.
 
 Override via CLI:
 
 ```bash
-gltest --network testnet_asimov
+gltest --network testnet_bradbury
 gltest --contracts-dir custom/contracts/path
 gltest --rpc-url http://custom:4000/api
 gltest --chain-type localnet
@@ -238,7 +238,7 @@ assert tx_execution_failed(tx_receipt, match_std_err=r"Method.*failed")
 | `default_account` | session | Default account for transactions |
 | `accounts` | session | List of test accounts |
 | `current_network` | session | Name of the selected network (`--network` or configured default) |
-| `current_chain_type` | session | Chain type of the selected network (`localnet`, `studionet`, `testnet_asimov`, ...) |
+| `current_chain_type` | session | Chain type of the selected network (`localnet`, `studionet`, `testnet_bradbury`, ...) |
 
 ```python
 def test_workflow(gl_client, default_account, accounts):

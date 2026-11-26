@@ -33,7 +33,7 @@ uv run gltest tests/test_mycontract.py
 
 # Run tests on different networks
 uv run gltest --network localnet  # default
-uv run gltest --network testnet_asimov
+uv run gltest --network testnet_bradbury
 
 # Run with custom contracts directory
 uv run gltest --contracts-dir /path/to/contracts
@@ -159,7 +159,7 @@ print(stats)  # Shows success rate, reliability score, execution time, etc.
 Networks are configured in `gltest.config.yaml`:
 - `localnet`: Local development (chain ID 61127)
 - `studio_devnet`: Hosted Studio preview (chain ID 61997)
-- `testnet_asimov`: Public testnet (chain ID 4221)
+- `testnet_bradbury`: Public testnet, Bradbury Phase 3 (chain ID 4221)
 
 Paths can be configured in `gltest.config.yaml`:
 - `contracts`: Directory containing contract source files

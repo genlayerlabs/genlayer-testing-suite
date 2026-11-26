@@ -1,7 +1,6 @@
 from gltest import get_contract_factory, create_account, get_accounts
 from gltest.assertions import tx_execution_succeeded
 from gltest_cli.config.general import get_general_config
-from genlayer_py.chains import testnet_asimov
 
 
 def test_multi_read_erc20():
@@ -18,11 +17,10 @@ def test_multi_read_erc20():
     This test demonstrates the integration contract to contract reads
     """
     general_config = get_general_config()
-    chain = general_config.get_chain()
 
     TOKEN_TOTAL_SUPPLY = 1000
 
-    if chain.id == testnet_asimov.id:
+    if not general_config.check_studio_based_rpc():
         accounts = get_accounts()
         if len(accounts) < 2:
             raise ValueError(

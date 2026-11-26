@@ -22,8 +22,8 @@ def get_current_network() -> str:
 def get_current_chain_type() -> str:
     """Return the chain type of the selected network.
 
-    One of ``localnet``, ``studio_devnet``, ``studionet``, ``testnet_asimov``
-    or ``testnet_bradbury``. Honours ``--chain-type`` and the ``chain_type``
+    One of ``localnet``, ``studio_devnet``, ``studionet`` or
+    ``testnet_bradbury``. Honours ``--chain-type`` and the ``chain_type``
     of custom networks, so it is the safer value to branch on.
     """
     return get_general_config().get_chain_type()

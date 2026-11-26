@@ -7,7 +7,11 @@ from gltest_cli.config.types import (
     PathConfig,
     NetworkConfigData,
 )
-from gltest_cli.config.constants import DEFAULT_ARTIFACTS_DIR, DEFAULT_CONTRACTS_DIR
+from gltest_cli.config.constants import (
+    DEFAULT_ARTIFACTS_DIR,
+    DEFAULT_CONTRACTS_DIR,
+    TESTNET_CHAINS,
+)
 from genlayer_py.chains import studio_devnet, studionet
 
 
@@ -339,10 +343,11 @@ def test_check_studio_based_rpc_with_localnet():
     assert general_config.check_studio_based_rpc() is True
 
 
-def test_check_studio_based_rpc_with_non_studionet():
+@pytest.mark.parametrize("chain_type", list(TESTNET_CHAINS))
+def test_check_studio_based_rpc_with_non_studionet(chain_type):
     """Test check_studio_based_rpc when chain!=studionet and chain!=localnet."""
     user_config = UserConfig(
-        networks={"testnet": NetworkConfigData(chain_type="testnet_asimov")},
+        networks={"testnet": NetworkConfigData(chain_type=chain_type)},
         default_network="testnet",
     )
 
@@ -374,7 +379,7 @@ def test_check_studio_based_rpc_with_plugin_override():
     user_config2 = UserConfig(
         networks={
             "testnet": NetworkConfigData(
-                url="https://api.genlayer.com", chain_type="testnet_asimov"
+                url="https://api.genlayer.com", chain_type="testnet_bradbury"
             )
         },
         default_network="testnet",
@@ -475,7 +480,7 @@ def test_general_config_chain_methods_compatibility():
     user_config = UserConfig(
         networks={
             "testnet": NetworkConfigData(
-                url="http://testnet:8545", chain_type="testnet_asimov"
+                url="http://testnet:8545", chain_type="testnet_bradbury"
             )
         },
         default_network="testnet",

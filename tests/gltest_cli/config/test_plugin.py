@@ -1,3 +1,8 @@
+import pytest
+
+from gltest_cli.config.constants import TESTNET_CHAINS
+
+
 def test_help_message(pytester):
     result = pytester.runpytest(
         "--help",
@@ -20,7 +25,7 @@ def test_help_message(pytester):
             "  --leader-only         Run contracts in leader-only mode",
             "  --chain-type=CHAIN_TYPE",
             "                        Chain type (possible values: localnet, studio_devnet,",
-            "                        studionet, testnet_asimov, testnet_bradbury)",
+            "                        studionet, testnet_bradbury)",
             "  --fee-profile=FEE_PROFILE",
             "                        Path to write a JSON fee profile for observed deploys",
             "                        and writes",
@@ -108,38 +113,22 @@ def test_network_localnet(pytester):
     assert result.ret == 0
 
 
-def test_network_testnet(pytester):
-    pytester.makepyfile("""
+@pytest.mark.parametrize("network", list(TESTNET_CHAINS))
+def test_network_testnet_requires_accounts(pytester, caplog, network):
+    pytester.makepyfile(f"""
         from gltest_cli.config.general import get_general_config
 
         def test_network():
             general_config = get_general_config()
-            assert general_config.get_network_name() == "testnet_asimov"
+            assert general_config.get_network_name() == "{network}"
     """)
 
     result = pytester.runpytest(
-        "--network=testnet_asimov", "--rpc-url=http://test.example.com:9151", "-v"
+        f"--network={network}", "--rpc-url=http://test.example.com:9151", "-v"
     )
 
-    # The test should exit with an error code when testnet_asimov is used without accounts
     assert result.ret != 0
-
-
-def test_network_testnet_bradbury(pytester):
-    pytester.makepyfile("""
-        from gltest_cli.config.general import get_general_config
-
-        def test_network():
-            general_config = get_general_config()
-            assert general_config.get_network_name() == "testnet_bradbury"
-    """)
-
-    result = pytester.runpytest(
-        "--network=testnet_bradbury", "--rpc-url=http://test.example.com:9151", "-v"
-    )
-
-    # The test should exit with an error code when testnet_bradbury is used without accounts
-    assert result.ret != 0
+    assert f"For {network}, you need to configure accounts" in caplog.text
 
 
 def test_artifacts_dir(pytester):
@@ -291,17 +280,17 @@ def test_chain_studionet(pytester):
     assert result.ret == 0
 
 
-def test_chain_testnet_asimov(pytester):
-    """Test that --chain=testnet_asimov sets the chain correctly."""
+def test_chain_testnet_bradbury(pytester):
+    """Test that --chain=testnet_bradbury sets the chain correctly."""
     pytester.makepyfile("""
         from gltest_cli.config.general import get_general_config
 
         def test_chain_type():
             general_config = get_general_config()
-            assert general_config.get_chain_type() == "testnet_asimov"
+            assert general_config.get_chain_type() == "testnet_bradbury"
     """)
 
-    result = pytester.runpytest("--chain-type=testnet_asimov", "-v")
+    result = pytester.runpytest("--chain-type=testnet_bradbury", "-v")
 
     result.stdout.fnmatch_lines(
         [
@@ -340,7 +329,7 @@ def test_chain_none_default(pytester):
             assert general_config.plugin_config.chain_type is None
             # get_chain_type should still work using network config
             chain_type = general_config.get_chain_type()
-            assert chain_type in ["localnet", "studionet", "testnet_asimov", "testnet_bradbury"]
+            assert chain_type in ["localnet", "studionet", "testnet_bradbury"]
     """)
 
     result = pytester.runpytest("-v")
@@ -435,7 +424,7 @@ def test_current_network_and_chain_type(pytester):
 
         def test_runtime_network(current_network, current_chain_type):
             assert current_network == "my_testnet"
-            assert current_chain_type == "testnet_asimov"
+            assert current_chain_type == "testnet_bradbury"
             assert get_current_network() == current_network
             assert get_current_chain_type() == current_chain_type
     """)
@@ -451,7 +440,7 @@ networks:
     url: "https://testnet.example.com"
     accounts:
       - "0x1111111111111111111111111111111111111111111111111111111111111111"
-    chain_type: "testnet_asimov"
+    chain_type: "testnet_bradbury"
 """
         },
     )
