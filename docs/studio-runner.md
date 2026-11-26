@@ -81,7 +81,7 @@ networks:
     # Pre-configured — accounts auto-generated
     # Override any settings if needed
 
-  testnet_asimov:
+  testnet_bradbury:
     accounts:
       - "${ACCOUNT_PRIVATE_KEY_1}"
       - "${ACCOUNT_PRIVATE_KEY_2}"
@@ -113,7 +113,7 @@ environment: .env  # File containing private keys and secrets
 | `localnet` | Auto-generated | Local Docker deployment (chain 61127) |
 | `studio_devnet` | Auto-generated | Hosted release preview (chain 61997) |
 | `studionet` | Auto-generated | Stable GenLayer Studio cloud (chain 61999) |
-| `testnet_asimov` | Must be configured | Public testnet |
+| `testnet_bradbury` | Must be configured | Public testnet, Bradbury Phase 3 |
 
 **Network configuration fields:**
 
@@ -131,7 +131,7 @@ environment: .env  # File containing private keys and secrets
 The `from` field controls which account is used as the default for deployments and transactions:
 
 ```yaml
-testnet_asimov:
+testnet_bradbury:
   accounts:
     - "${DEPLOYER_KEY}"    # accounts[0]
     - "${USER_KEY}"        # accounts[1]
@@ -169,7 +169,7 @@ gltest -v                               # Verbose output
 gltest --network localnet               # Specific network (from config)
 gltest --network studio_devnet
 gltest --network studionet
-gltest --network testnet_asimov
+gltest --network testnet_bradbury
 gltest --rpc-url http://custom:4000/api # Custom RPC URL
 gltest --chain-type localnet            # Override chain type
 ```
@@ -205,7 +205,7 @@ Configures all deployments and write operations to run only on the leader node. 
 ```bash
 gltest --chain-type localnet
 gltest --chain-type studionet
-gltest --chain-type testnet_asimov
+gltest --chain-type testnet_bradbury
 ```
 
 Overrides the chain type configured for the network. The chain type determines RPC endpoints, consensus mechanisms, and available features.

@@ -52,7 +52,7 @@ def current_network():
 @pytest.fixture(scope="session")
 def current_chain_type():
     """
-    Provides the chain type of the selected network (e.g. "testnet_asimov").
+    Provides the chain type of the selected network (e.g. "testnet_bradbury").
 
     Scope: session - created once per test session
     """
